@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VDT Canvas Controller</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  body {
+    background: transparent;
+    overflow: hidden;
+    padding: 4px 1px 6px 1px;
+  }
+  #vdt-sync-root {
+    background: #ffffff;
+    border: 1.5px solid #0284c7;
+    border-radius: 10px;
+    padding: 9px 12px;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .coords-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 2.5px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .tag strong {
+    color: #0284c7;
+    font-weight: 800;
+  }
+  .status-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  .status-badge.clean {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+  }
+  .status-badge.dirty {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    animation: vdtPulseBadge 1.5s infinite;
+  }
+  @keyframes vdtPulseBadge {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.03); opacity: 0.9; }
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .btn-apply {
+    flex: 1;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .btn-apply:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.45);
+    transform: translateY(-1px);
+  }
+  .btn-apply:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+  }
+  .btn-apply.btn-pulse {
+    animation: vdtPulseBtn 1.6s infinite;
+  }
+  @keyframes vdtPulseBtn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.65); }
+    50% { box-shadow: 0 0 0 6px rgba(2, 132, 199, 0); }
+  }
+  .btn-reset {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .btn-reset:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+<div id="vdt-sync-root">
+  <div class="info-bar">
+    <div class="coords-tags">
+      <div class="tag" id="tag-logo">📍 Logo: <strong>X=80%</strong>, <strong>Y=5%</strong> • 📐 <strong>18%</strong> • 🔄 <strong>0°</strong></div>
+      <div class="tag" id="tag-sub">↕️ Phụ đề: <strong>Đáy=7%</strong></div>
+    </div>
+    <div class="status-badge clean" id="status-badge">✅ Đã lưu chuẩn</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-apply" id="btn-apply" type="button" title="Lưu tọa độ Logo và Phụ đề bạn vừa kéo thả trên video">
+      💾 ÁP DỤNG VỊ TRÍ ĐÃ CHỈNH
+    </button>
+    <button class="btn-reset" id="btn-reset" type="button" title="Khôi phục lại tọa độ mặc định ban đầu">
+      🔄 Đặt lại
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+    var serverState = {
+        lx: 80,
+        ly: 5,
+        lscale: 18,
+        lrot: 0,
+        sb: 7
+    };
+
+    var isComponentReady = false;
+
+    function reportHeight() {
+        var root = document.getElementById("vdt-sync-root");
+        var h = root ? (root.offsetHeight || root.scrollHeight || 80) : 80;
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: "streamlit:setFrameHeight",
+            height: Math.max(85, h + 16)
+        }, "*");
+    }
+
+    function sendReady() {
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: "streamlit:componentReady",
+            apiVersion: 1
+        }, "*");
+    }
+
+    function sendValueToStreamlit(val) {
+        if (!val) return;
+        try {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setComponentValue",
+                value: val
+            }, "*");
+        } catch(e) {
+            console.error("[VDT CanvasSync] PostMessage error:", e);
+        }
+    }
+
+    // Gắn hàm commit toàn cục lên parentWin để các thành phần khác có thể kích hoạt
+    try {
+        window.parent.__vdtCommitCoordinates = function(data) {
+            sendValueToStreamlit(data);
+        };
+    } catch(err) {}
+
+    // Lắng nghe dữ liệu render từ Python Streamlit
+    window.addEventListener("message", function(event) {
+        if (!event || !event.data) return;
+        if (event.data.type === "streamlit:render") {
+            var args = event.data.args || {};
+            if (args.cur_lx !== undefined) serverState.lx = parseInt(args.cur_lx, 10);
+            if (args.cur_ly !== undefined) serverState.ly = parseInt(args.cur_ly, 10);
+            if (args.cur_lscale !== undefined) serverState.lscale = parseInt(args.cur_lscale, 10);
+            if (args.cur_lrot !== undefined) serverState.lrot = parseInt(args.cur_lrot, 10);
+            if (args.cur_sb !== undefined) serverState.sb = parseInt(args.cur_sb, 10);
+
+            try {
+                if (window.parent) {
+                    window.parent.__vdtCoordsDirty = false;
+                }
+            } catch(e_dirty) {}
+
+            updateDisplay();
+            reportHeight();
+            setTimeout(reportHeight, 100);
+            setTimeout(reportHeight, 400);
+        } else if (event.data.type === "vdt:commit_coordinates" || event.data.type === "vdt:commit") {
+            sendValueToStreamlit(event.data.value);
+        }
+    });
+
+    function getLiveCoordinates() {
+        var pWin = window.parent;
+        var lx = (pWin && pWin.__vdtCurLogoX !== undefined) ? pWin.__vdtCurLogoX : serverState.lx;
+        var ly = (pWin && pWin.__vdtCurLogoY !== undefined) ? pWin.__vdtCurLogoY : serverState.ly;
+        var lscale = (pWin && pWin.__vdtCurLogoScale !== undefined) ? pWin.__vdtCurLogoScale : serverState.lscale;
+        var lrot = (pWin && pWin.__vdtCurLogoRot !== undefined) ? pWin.__vdtCurLogoRot : serverState.lrot;
+        var sb = (pWin && pWin.__vdtCurSubBottom !== undefined) ? pWin.__vdtCurSubBottom : serverState.sb;
+        return { lx: lx, ly: ly, lscale: lscale, lrot: lrot, sb: sb };
+    }
+
+    function updateDisplay() {
+        var live = getLiveCoordinates();
+        var pWin = window.parent;
+        var isDirty = (pWin && pWin.__vdtCoordsDirty) || 
+                      (live.lx !== serverState.lx || live.ly !== serverState.ly || 
+                       live.lscale !== serverState.lscale || live.lrot !== serverState.lrot || 
+                       live.sb !== serverState.sb);
+
+        var tagLogo = document.getElementById("tag-logo");
+        if (tagLogo) {
+            tagLogo.innerHTML = '📍 Logo: <strong>X=' + live.lx + '%</strong>, <strong>Y=' + live.ly + '%</strong> • 📐 <strong>' + live.lscale + '%</strong> • 🔄 <strong>' + live.lrot + '°</strong>';
+        }
+        var tagSub = document.getElementById("tag-sub");
+        if (tagSub) {
+            tagSub.innerHTML = '↕️ Phụ đề: <strong>Đáy=' + live.sb + '%</strong>';
+        }
+
+        var badge = document.getElementById("status-badge");
+        var btnApply = document.getElementById("btn-apply");
+
+        if (isDirty) {
+            if (badge) {
+                badge.className = "status-badge dirty";
+                badge.textContent = "⚠️ Vị trí đã chỉnh (Chưa lưu)";
+            }
+            if (btnApply) {
+                btnApply.classList.add("btn-pulse");
+                btnApply.innerHTML = '💾 ÁP DỤNG VỊ TRÍ ĐÃ CHỈNH (Nhấp để lưu)';
+            }
+        } else {
+            if (badge) {
+                badge.className = "status-badge clean";
+                badge.textContent = "✅ Đã lưu chuẩn";
+            }
+            if (btnApply) {
+                btnApply.classList.remove("btn-pulse");
+                btnApply.innerHTML = '💾 ÁP DỤNG VỊ TRÍ ĐÃ CHỈNH';
+            }
+        }
+    }
+
+    // Polling cập nhật tọa độ trực tiếp mỗi 80ms
+    setInterval(updateDisplay, 80);
+
+    // Xử lý sự kiện bấm nút ÁP DỤNG
+    var applyBtn = document.getElementById("btn-apply");
+    if (applyBtn) {
+        applyBtn.addEventListener("click", function() {
+            var live = getLiveCoordinates();
+            applyBtn.innerHTML = '⏳ Đang lưu & áp dụng tọa độ...';
+            applyBtn.disabled = true;
+            sendValueToStreamlit({
+                action: "apply",
+                lx: live.lx,
+                ly: live.ly,
+                lscale: live.lscale,
+                lrot: live.lrot,
+                sb: live.sb,
+                timestamp: Date.now()
+            });
+        });
+    }
+
+    // Xử lý sự kiện bấm nút ĐẶT LẠI
+    var resetBtn = document.getElementById("btn-reset");
+    if (resetBtn) {
+        resetBtn.addEventListener("click", function() {
+            resetBtn.innerHTML = '⏳...';
+            resetBtn.disabled = true;
+            sendValueToStreamlit({
+                action: "reset",
+                lx: 80,
+                ly: 5,
+                lscale: 18,
+                lrot: 0,
+                sb: 7,
+                timestamp: Date.now()
+            });
+        });
+    }
+
+    sendReady();
+    window.addEventListener("resize", reportHeight);
+    setTimeout(reportHeight, 300);
+    setTimeout(reportHeight, 1000);
+    setInterval(reportHeight, 1000);
+})();
+</script>
+</body>
+</html>

@@ -196,8 +196,24 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
                 emit_progress("error", 0, "Lỗi khi ghép âm thanh và video bằng ffmpeg!")
                 return False
 
+        # Xuất file phụ đề .srt tiếng Việt chuẩn StudioVDT
+        srt_file = out_path.with_suffix(".srt")
+        try:
+            with open(srt_file, "w", encoding="utf-8") as f:
+                for i, seg in enumerate(translated_segments, 1):
+                    s_ms = int((seg["start"] % 1) * 1000)
+                    s_s = int(seg["start"])
+                    e_ms = int((seg["end"] % 1) * 1000)
+                    e_s = int(seg["end"])
+                    s_str = f"{s_s//3600:02d}:{(s_s%3600)//60:02d}:{s_s%60:02d},{s_ms:03d}"
+                    e_str = f"{e_s//3600:02d}:{(e_s%3600)//60:02d}:{e_s%60:02d},{e_ms:03d}"
+                    f.write(f"{i}\n{s_str} --> {e_str}\n{seg['vi_text']}\n\n")
+        except Exception as srt_err:
+            pass
+
         emit_progress("completed", 100, f"Lồng tiếng hoàn tất! Đã lưu video thành công.", extra={
             "outputPath": str(out_path),
+            "srtPath": str(srt_file) if srt_file.exists() else None,
             "filename": out_path.name
         })
         return True

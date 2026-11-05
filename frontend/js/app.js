@@ -1363,7 +1363,30 @@ function App() {
     className: "text-xs text-slate-300 leading-relaxed"
   }, "Để chạy toàn bộ hệ thống (bao gồm Node.js, Python Faster-Whisper, FFmpeg, Edge-TTS) trong một môi trường cô lập không cần cài đặt phần mềm phụ trợ, bạn chỉ cần chạy:"), /*#__PURE__*/React.createElement("div", {
     className: "p-3 rounded-xl bg-slate-900 text-xs font-mono text-brand-300 border border-slate-800"
-  }, "Double click vào file ", /*#__PURE__*/React.createElement("strong", null, "CHAY_DOCKER.bat"), " hoặc chạy lệnh ", /*#__PURE__*/React.createElement("code", null, "docker compose up -d"))))), videoModal && /*#__PURE__*/React.createElement("div", {
+  }, "Double click vào file ", /*#__PURE__*/React.createElement("strong", null, "CHAY_DOCKER.bat"), " hoặc chạy lệnh ", /*#__PURE__*/React.createElement("code", null, "docker compose up -d"))), /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-3"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-bold text-indigo-400 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "🚀 Giao Diện Gốc StudioVDT Streamlit")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-300 leading-relaxed"
+  }, "Toàn bộ mã nguồn và tài nguyên gốc của dự án ", /*#__PURE__*/React.createElement("strong", null, "StudioVDT"), " (bao gồm ", /*#__PURE__*/React.createElement("code", null, "video_dubber/"), ", ", /*#__PURE__*/React.createElement("code", null, "assets/"), ", ", /*#__PURE__*/React.createElement("code", null, "studiovdt_app.py"), ") đã được mang qua và tích hợp đầy đủ. Bạn có thể mở giao diện Streamlit gốc nếu muốn:"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 flex-wrap"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: async () => {
+      showToast('Đang gửi lệnh khởi động Streamlit StudioVDT...', 'info');
+      try {
+        await fetch('/api/studiovdt/launch-streamlit', {
+          method: 'POST'
+        });
+        showToast('Đã khởi chạy! Hãy mở http://localhost:8501', 'success');
+      } catch (e) {
+        showToast('Lỗi khởi chạy Streamlit', 'error');
+      }
+    },
+    className: "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "⚡ Mở Giao Diện Streamlit (Cổng 8501)")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-slate-400"
+  }, "Hoặc chạy file ", /*#__PURE__*/React.createElement("code", null, "CHAY_STUDIOVDT_STREAMLIT.bat"), " trong thư mục dự án."))))), videoModal && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
   }, /*#__PURE__*/React.createElement("div", {
     className: "relative w-full max-w-4xl bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl"

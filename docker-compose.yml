@@ -6,6 +6,7 @@ services:
     container_name: reelssoda_studio
     ports:
       - "3000:3000"
+      - "8501:8501"
     volumes:
       - .:/app
       - ./Soda_Reels_Videos:/app/Soda_Reels_Videos

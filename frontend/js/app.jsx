@@ -1768,6 +1768,35 @@ function App() {
               </div>
             </div>
 
+            {/* Launch Original StudioVDT Streamlit UI */}
+            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
+              <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
+                <span>🚀 Giao Diện Gốc StudioVDT Streamlit</span>
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Toàn bộ mã nguồn và tài nguyên gốc của dự án <strong>StudioVDT</strong> (bao gồm <code>video_dubber/</code>, <code>assets/</code>, <code>studiovdt_app.py</code>) đã được mang qua và tích hợp đầy đủ. Bạn có thể mở giao diện Streamlit gốc nếu muốn:
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={async () => {
+                    showToast('Đang gửi lệnh khởi động Streamlit StudioVDT...', 'info');
+                    try {
+                      await fetch('/api/studiovdt/launch-streamlit', { method: 'POST' });
+                      showToast('Đã khởi chạy! Hãy mở http://localhost:8501', 'success');
+                    } catch (e) {
+                      showToast('Lỗi khởi chạy Streamlit', 'error');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md flex items-center gap-2"
+                >
+                  <span>⚡ Mở Giao Diện Streamlit (Cổng 8501)</span>
+                </button>
+                <div className="text-xs text-slate-400">
+                  Hoặc chạy file <code>CHAY_STUDIOVDT_STREAMLIT.bat</code> trong thư mục dự án.
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 

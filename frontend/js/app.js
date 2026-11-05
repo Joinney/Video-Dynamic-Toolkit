@@ -1,1111 +1,1690 @@
-    let remoteCache = [];
-    let detectedDrama = '';
-    let currentPosterUrl = '';
-    let dramaMap = {};
-    let lastDetectedDramaId = null;
-    let isPinnedOldDrama = false;
-    let latestCurrentDrama = null;
-    let latestLocalDramas = [];
-    let currentAppMode = 'auto';
-    let currentActiveApp = 'sodareels';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+const {
+  useState,
+  useEffect,
+  useRef
+} = React;
 
-    async function switchApp(appKey) {
-      currentAppMode = appKey;
-      updateAppTabsUI();
-      try {
-        await fetch('/api/set-app', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ app: appKey })
-        });
-      } catch (e) {}
-      lastDetectedDramaId = null; // Reset so new drama is picked up
-      loadStatus(true);
+// --- Helper Functions ---
+function formatBytes(bytes, decimals = 1) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+function formatDuration(seconds) {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+// --- Main App Component ---
+function App() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [status, setStatus] = useState(null);
+  const [directEpisodes, setDirectEpisodes] = useState(null);
+  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' (safe) or 'h265'
+  const [loading, setLoading] = useState(false);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [videoModal, setVideoModal] = useState(null);
+
+  // Auto-swipe state
+  const [autoSwipeTotal, setAutoSwipeTotal] = useState(10);
+  const [autoSwipeDelay, setAutoSwipeDelay] = useState(6);
+  const [autoSwipeStatus, setAutoSwipeStatus] = useState({
+    isRunning: false
+  });
+
+  // Direct batch download state
+  const [batchDownloading, setBatchDownloading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({
+    current: 0,
+    total: 0,
+    activeEp: 0,
+    percent: 0
+  });
+
+  // Dubbing studio state
+  const [dubbingTarget, setDubbingTarget] = useState(null);
+  const [dubVoice, setDubVoice] = useState('vi-VN-HoaiMyNeural');
+  const [dubSpeed, setDubSpeed] = useState('+0%');
+  const [dubModel, setDubModel] = useState('base');
+  const [dubBgmVol, setDubBgmVol] = useState(0.15);
+  const [dubJobId, setDubJobId] = useState(null);
+  const [dubProgress, setDubProgress] = useState(null);
+  const [dubResultVideo, setDubResultVideo] = useState(null);
+
+  // Library state
+  const [selectedDramaName, setSelectedDramaName] = useState(null);
+
+  // ADB Connect input
+  const [adbHostInput, setAdbHostInput] = useState('127.0.0.1:5555');
+  const [adbConnecting, setAdbConnecting] = useState(false);
+  const showToast = (message, type = 'info') => {
+    setToast({
+      message,
+      type
+    });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // Fetch status
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      setStatus(data);
+      if (data.localDramas && data.localDramas.length > 0 && !selectedDramaName) {
+        setSelectedDramaName(data.localDramas[0].name);
+      }
+    } catch (e) {
+      console.error('Lỗi lấy status:', e);
     }
+  };
 
-    function updateAppTabsUI() {
-      ['auto', 'sodareels', 'minutedrama'].forEach(id => {
-        const el = document.getElementById('tab-' + id);
-        if (el) {
-          el.className = (id === currentAppMode) ? 'app-tab active' : 'app-tab';
-        }
-      });
-    }
-
-    function updateTopPoster(imageUrl, desc, title) {
-      const imgEl = document.getElementById('top-poster-img');
-      const placeholder = document.getElementById('top-poster-placeholder');
-      const descEl = document.getElementById('top-drama-desc');
-      const dlBtn = document.getElementById('btn-download-top-poster');
-
-      currentPosterUrl = imageUrl || '';
-
-      if (imageUrl) {
-        const proxySrc = imageUrl.startsWith('/') ? imageUrl : '/api/proxy-img?url=' + encodeURIComponent(imageUrl);
-        imgEl.src = proxySrc;
-        imgEl.style.display = 'block';
-        placeholder.style.display = 'none';
-        dlBtn.href = proxySrc;
-        dlBtn.style.opacity = '1';
-        dlBtn.style.pointerEvents = 'auto';
+  // Fetch direct episodes from MinuteDrama
+  const fetchDirectEpisodes = async (dramaTitle = '') => {
+    setDirectLoading(true);
+    try {
+      const query = dramaTitle ? `?title=${encodeURIComponent(dramaTitle)}` : '';
+      const res = await fetch(`/api/direct-episodes${query}`);
+      const data = await res.json();
+      if (data.success && data.episodes && data.episodes.length > 0) {
+        setDirectEpisodes(data);
       } else {
-        const localSrc = '/poster/' + encodeURIComponent(title || 'current');
-        imgEl.src = localSrc;
-        imgEl.onload = () => {
-          imgEl.style.display = 'block';
-          placeholder.style.display = 'none';
-          dlBtn.href = localSrc;
-          dlBtn.style.opacity = '1';
-          dlBtn.style.pointerEvents = 'auto';
-        };
-        imgEl.onerror = () => {
-          imgEl.style.display = 'none';
-          placeholder.style.display = 'flex';
-          dlBtn.style.opacity = '0.5';
-          dlBtn.style.pointerEvents = 'none';
-        };
+        setDirectEpisodes(null);
       }
-
-      if (descEl) {
-        descEl.innerText = desc || 'Chưa có mô tả chi tiết cho bộ phim này.';
-      }
+    } catch (e) {
+      console.error('Lỗi lấy link trực tiếp:', e);
+    } finally {
+      setDirectLoading(false);
     }
+  };
 
-    async function loadStatus(forceSync = false) {
+  // Fetch auto-swipe status
+  const fetchAutoSwipeStatus = async () => {
+    try {
+      const res = await fetch('/api/auto-swipe/status');
+      const data = await res.json();
+      setAutoSwipeStatus(data);
+    } catch (e) {}
+  };
+  useEffect(() => {
+    fetchStatus();
+    fetchDirectEpisodes();
+    const interval = setInterval(() => {
+      fetchStatus();
+      fetchAutoSwipeStatus();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poll dubbing job
+  useEffect(() => {
+    if (!dubJobId) return;
+    const interval = setInterval(async () => {
       try {
-        const curTitle = document.getElementById('drama-title-input')?.value.trim() || '';
-        const res = await fetch('/api/status?app=' + encodeURIComponent(currentAppMode) + '&drama=' + encodeURIComponent(curTitle));
+        const res = await fetch(`/api/dub-status?id=${dubJobId}`);
         const data = await res.json();
-
-        currentActiveApp = data.activeApp || 'sodareels';
-        currentAppMode = data.currentAppMode || currentAppMode;
-        updateAppTabsUI();
-
-        // Update active app indicator
-        const appIcon = document.getElementById('active-app-icon');
-        const appName = document.getElementById('active-app-name');
-        if (data.supportedApps && data.supportedApps[currentActiveApp]) {
-          const info = data.supportedApps[currentActiveApp];
-          appIcon.innerText = info.icon;
-          appName.innerText = info.name + (currentAppMode === 'auto' ? ' (Tự Động)' : ' (Cố Định)');
+        setDubProgress(data);
+        if (data.status === 'completed') {
+          showToast('🎉 Lồng tiếng video hoàn tất thành công!', 'success');
+          setDubResultVideo(data.output_video);
+          setDubJobId(null);
+          fetchStatus();
+        } else if (data.status === 'failed') {
+          showToast(`❌ Lồng tiếng thất bại: ${data.error || 'Lỗi không xác định'}`, 'error');
+          setDubJobId(null);
         }
+      } catch (e) {}
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [dubJobId]);
 
-        // ADB Badge
-        const dot = document.getElementById('adb-dot');
-        const text = document.getElementById('adb-text');
-        if (data.connected) {
-          dot.className = 'dot online';
-          text.innerText = 'LDPlayer: ' + data.deviceName;
-        } else {
-          dot.className = 'dot';
-          text.innerText = 'Chưa kết nối LDPlayer';
-        }
-
-        // Drama detection
-        const titleInput = document.getElementById('drama-title-input');
-        if (data.allDramas) {
-          data.allDramas.forEach(d => { dramaMap[d.title] = d; });
-        }
-        latestCurrentDrama = data.currentDrama;
-
-        if (data.currentDrama) {
-          const newDramaId = data.currentDrama.id;
-          const isNewDramaFromApp = (lastDetectedDramaId !== null && String(lastDetectedDramaId) !== String(newDramaId));
-
-          if (!isPinnedOldDrama || forceSync) {
-            if (isNewDramaFromApp || !titleInput.value || forceSync) {
-              titleInput.value = data.currentDrama.title;
-              detectedDrama = data.currentDrama.title;
-              delete document.getElementById('start-ep-input').dataset.manualEdited;
-              updateTopPoster(data.currentDrama.image, data.currentDrama.desc, data.currentDrama.title);
-
-              if (isNewDramaFromApp) {
-                showToast('🎬 Phát hiện phim mới: "' + data.currentDrama.title + '"! Đã tự động tạo cấu hình.', 'success');
-              }
-            }
-          }
-          lastDetectedDramaId = newDramaId;
-        } else if (titleInput.value && !currentPosterUrl && dramaMap[titleInput.value]) {
-          const d = dramaMap[titleInput.value];
-          updateTopPoster(d.image, d.desc, d.title);
-        }
-
-        // Drama tags
-        const tagsContainer = document.getElementById('drama-tags-container');
-        if (data.allDramas && data.allDramas.length > 0) {
-          tagsContainer.innerHTML = '<span style="font-size: 11px; color: #64748b; width: 100%;">Phim gần đây trong app:</span>' + 
-            data.allDramas.map(d => `
-              <span class="drama-tag" onclick="selectDramaTag('${d.title.replace(/'/g, "\\\'")}')">
-                ${d.title}
-              </span>
-            `).join('');
-        } else {
-          tagsContainer.innerHTML = '';
-        }
-
-        // Local dramas
-        latestLocalDramas = data.localDramas || [];
-        updateEpisodeNumberHint();
-        renderLocalDramas(latestLocalDramas);
-
-        // Remote queue
-        remoteCache = data.remoteList || [];
-        renderQueue(remoteCache);
-
-        checkSwipeStatus();
-
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    function getSelectedLocalDrama() {
-      const title = document.getElementById('drama-title-input').value.trim();
-      if (!title) return null;
-      const safeName = title.replace(/[<>:"/\\|?*]/g, ' - ').replace(/\s+/g, ' ').trim().toLowerCase();
-      return latestLocalDramas.find(d => 
-        d.name.toLowerCase() === safeName ||
-        d.name.toLowerCase().includes(safeName) ||
-        safeName.includes(d.name.toLowerCase())
-      ) || null;
-    }
-
-    function updateEpisodeNumberHint() {
-      const matched = getSelectedLocalDrama();
-      const startInput = document.getElementById('start-ep-input');
-      const epHint = document.getElementById('ep-hint');
-      const modeBadge = document.getElementById('drama-mode-badge');
-      if (!epHint) return;
-
-      if (matched && matched.count > 0) {
-        if (!startInput.dataset.manualEdited) {
-          startInput.value = matched.nextEpisode;
-        }
-        epHint.innerHTML = '📁 Thư mục đã có <b>' + matched.count + ' tập</b> (Tập 1 -> ' + matched.maxEpisode + '). <b>Tự đặt tập kế tiếp: ' + matched.nextEpisode + '</b>';
-        epHint.style.color = '#38bdf8';
-        if (modeBadge) {
-          if (isPinnedOldDrama) {
-            modeBadge.className = 'drama-mode-badge mode-pinned';
-            modeBadge.innerHTML = '📌 Đang Chọn Cập Nhật Phim Cũ (Tiếp tục Tập ' + matched.nextEpisode + ') <button type="button" class="btn-badge-action" onclick="syncWithAppDrama(true)">⚡ Đồng bộ phim app</button>';
-          } else {
-            modeBadge.className = 'drama-mode-badge mode-existing';
-            modeBadge.innerHTML = '📁 Đã có sẵn trên máy (Tự đặt tiếp Tập ' + matched.nextEpisode + ')';
-          }
-          modeBadge.style.display = 'inline-flex';
-        }
-      } else {
-        if (!startInput.dataset.manualEdited) {
-          startInput.value = 1;
-        }
-        epHint.innerHTML = '✨ Bộ phim mới, sẽ tự tạo thư mục riêng & bắt đầu lưu từ <b>Tập 01</b>';
-        epHint.style.color = '#34d399';
-        if (modeBadge) {
-          modeBadge.className = 'drama-mode-badge mode-new';
-          modeBadge.innerHTML = '✨ BỘ PHIM MỚI TOANH (Tự tạo thư mục mới & tải poster khi xuất)';
-          modeBadge.style.display = 'inline-flex';
-        }
-      }
-    }
-
-    function selectDramaForUpdate(name) {
-      isPinnedOldDrama = true;
-      const input = document.getElementById('drama-title-input');
-      input.value = name;
-      delete document.getElementById('start-ep-input').dataset.manualEdited;
-
-      const matched = latestLocalDramas.find(d => d.name.toLowerCase() === name.toLowerCase());
-      const startInput = document.getElementById('start-ep-input');
-      if (matched && matched.nextEpisode) {
-        startInput.value = matched.nextEpisode;
-      }
-
-      if (dramaMap[name]) {
-        updateTopPoster(dramaMap[name].image, dramaMap[name].desc, name);
-      } else {
-        updateTopPoster('', '', name);
-      }
-
-      updateEpisodeNumberHint();
-      renderQueue(remoteCache);
-      renderLocalDramas(latestLocalDramas);
-
-      const configCard = document.getElementById('drama-config-card');
-      if (configCard) {
-        configCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        configCard.style.boxShadow = '0 0 24px rgba(56, 189, 248, 0.4)';
-        setTimeout(() => { configCard.style.boxShadow = ''; }, 1500);
-      }
-      showToast('📁 Đã chọn bộ phim cũ: "' + name + '". Đang tiếp tục từ tập ' + startInput.value + '!', 'success');
-    }
-
-    async function clearDramaConfig() {
-      const input = document.getElementById('drama-title-input');
-      if (input) input.value = '';
-      const startInput = document.getElementById('start-ep-input');
-      if (startInput) {
-        startInput.value = '1';
-        delete startInput.dataset.manualEdited;
-      }
-      isPinnedOldDrama = false;
-      lastDetectedDramaId = null;
-      latestCurrentDrama = null;
-      detectedDrama = '';
-      updateTopPoster('', '', '');
-      updateEpisodeNumberHint();
-      lastRenderedSignature = '';
-      renderQueue(remoteCache);
-      renderLocalDramas(latestLocalDramas);
-      showToast('🧹 Đang làm sạch và nhận diện lại từ app...', 'info');
-      await loadStatus(true);
-    }
-
-    async function syncWithAppDrama(manual = false) {
-      isPinnedOldDrama = false;
-      if (manual) showToast('🔄 Đang kiểm tra app trên giả lập...', 'info');
-      await loadStatus(true);
-      if (!latestCurrentDrama || !latestCurrentDrama.title) {
-        if (manual) showToast('⚠️ Chưa phát hiện phim đang mở trên app! Hãy mở 1 tập phim trên giả lập rồi bấm lại.', 'error');
-        return;
-      }
-      const input = document.getElementById('drama-title-input');
-      input.value = latestCurrentDrama.title;
-      delete document.getElementById('start-ep-input').dataset.manualEdited;
-      updateTopPoster(latestCurrentDrama.image, latestCurrentDrama.desc, latestCurrentDrama.title);
-      updateEpisodeNumberHint();
-      lastRenderedSignature = '';
-      renderQueue(remoteCache);
-      renderLocalDramas(latestLocalDramas);
-      if (manual) {
-        showToast('⚡ Đã đồng bộ sang phim đang mở: "' + latestCurrentDrama.title + '"!', 'success');
-      }
-    }
-
-    function selectDramaTag(name) {
-      const matchedLocal = latestLocalDramas.find(d => d.name.toLowerCase() === name.toLowerCase());
-      if (matchedLocal) {
-        selectDramaForUpdate(name);
-        return;
-      }
-
-      isPinnedOldDrama = false;
-      const input = document.getElementById('drama-title-input');
-      input.value = name;
-      delete document.getElementById('start-ep-input').dataset.manualEdited;
-      updateEpisodeNumberHint();
-      if (dramaMap[name]) {
-        updateTopPoster(dramaMap[name].image, dramaMap[name].desc, name);
-      } else {
-        updateTopPoster('', '', name);
-      }
-      lastRenderedSignature = '';
-      renderQueue(remoteCache);
-      renderLocalDramas(latestLocalDramas);
-      showToast('✨ Đã chọn cấu hình phim: "' + name + '"!', 'success');
-    }
-
-    const selectedCachePaths = new Set();
-    const initializedPathSet = new Set();
-    let lastRenderedSignature = '';
-
-    function handleCheckboxChange(cb, ev) {
-      if (ev) ev.stopPropagation();
-      if (cb.checked) {
-        selectedCachePaths.add(cb.value);
-      } else {
-        selectedCachePaths.delete(cb.value);
-      }
-      updateSelectedExportBtn();
-    }
-
-    function handleQueueRowClick(event, rowEl) {
-      // Bấm vào nút xem thử, nút xóa, hoặc trực tiếp vào input checkbox thì không toggle 2 lần
-      if (event.target.closest('button') || event.target.closest('.queue-thumb-mini') || event.target.tagName === 'INPUT') {
-        return;
-      }
-      const chk = rowEl.querySelector('.queue-checkbox');
-      if (chk) {
-        chk.checked = !chk.checked;
-        handleCheckboxChange(chk);
-      }
-    }
-
-    function selectOnlyNew() {
-      selectedCachePaths.clear();
-      const items = document.querySelectorAll('.queue-item');
-      items.forEach(el => {
-        const chk = el.querySelector('.queue-checkbox');
-        const isDownloaded = el.getAttribute('data-downloaded') === 'true';
-        const isComplete = el.getAttribute('data-complete') === 'true';
-        if (chk) {
-          const shouldCheck = (!isDownloaded && isComplete);
-          chk.checked = shouldCheck;
-          if (shouldCheck) selectedCachePaths.add(chk.value);
-        }
-      });
-      updateSelectedExportBtn();
-      showToast('⭐ Đã chọn các tập mới (đủ 100%)', 'success');
-    }
-
-    function toggleSelectAll(state) {
-      const boxes = document.querySelectorAll('.queue-checkbox');
-      boxes.forEach(b => {
-        b.checked = state;
-        if (state) {
-          selectedCachePaths.add(b.value);
-        } else {
-          selectedCachePaths.delete(b.value);
-        }
-      });
-      if (!state) selectedCachePaths.clear();
-      updateSelectedExportBtn();
-      showToast(state ? '✅ Đã chọn tất cả tập' : '⚪ Đã bỏ chọn tất cả', 'info');
-    }
-
-    function updateSelectedExportBtn() {
-      const btn = document.getElementById('btn-export-selected');
-      if (!btn) return;
-      const count = selectedCachePaths.size;
-      if (count > 0) {
-        btn.innerHTML = `📥 XUẤT ${count} TẬP ĐÃ CHỌN VÀO BỘ NÀY`;
-      } else {
-        btn.innerHTML = `📥 XUẤT CÁC TẬP ĐÃ CHỌN VÀO BỘ NÀY`;
-      }
-    }
-
-    let isQueueOrderReversed = false;
-
-    function reverseQueueOrder() {
-      isQueueOrderReversed = !isQueueOrderReversed;
-      if (remoteCache && remoteCache.length > 0) {
-        remoteCache.reverse();
-        // Cập nhật lại số tập tuần tự sau khi đảo
-        const matched = getSelectedLocalDrama();
-        const baseEp = (matched && matched.maxEpisode > 0) ? (matched.maxEpisode + 1) : 1;
-        let newCount = 0;
-        remoteCache.forEach((item) => {
-          if (!item.isDownloaded) {
-            item.epNumber = baseEp + (newCount++);
-            item.epLabel = `EP. ${item.epNumber}`;
-          }
-        });
-        lastRenderedSignature = '';
-        renderQueue(remoteCache);
-        showToast('🔄 Đã đảo ngược chiều danh sách tập!', 'info');
-      }
-    }
-
-    function handleEpNumChange(event, remotePath, val) {
-      if (event) event.stopPropagation();
-      const newEp = parseInt(val, 10);
-      if (isNaN(newEp) || newEp < 1) return;
-      const item = remoteCache.find(r => r.path === remotePath);
-      if (item) {
-        item.epNumber = newEp;
-        item.epLabel = `EP. ${newEp}`;
-        const chk = document.querySelector(`.queue-checkbox[value="${remotePath}"]`);
-        if (chk) chk.setAttribute('data-ep', newEp);
-        showToast(`✏️ Đã chỉnh thành Tập ${newEp}`, 'success');
-      }
-    }
-
-    function renderQueue(list) {
-      const c = document.getElementById('queue-list');
-      if (list.length === 0) {
-        selectedCachePaths.clear();
-        initializedPathSet.clear();
-        lastRenderedSignature = '';
-        c.innerHTML = '<div style="color: #64748b; font-size: 13px; padding: 20px; text-align: center;">Chưa có video mới trong bộ nhớ cache. Hãy mở app và lướt tập phim, hoặc bấm "▶ Bắt Đầu Lướt" để tự động thu thập nhé!</div>';
-        const countEl = document.getElementById('queue-count');
-        if (countEl) countEl.innerText = '0';
-        updateSelectedExportBtn();
-        return;
-      }
-
-      const matchedDrama = getSelectedLocalDrama();
-      let newCount = 0;
-      let downloadedCount = 0;
-      let incompleteCount = 0;
-
-      list.forEach(item => {
-        let matchedEp = null;
-        if (matchedDrama && matchedDrama.videos) {
-          matchedEp = matchedDrama.videos.find(v => {
-            if (item.sizeBytes && v.sizeBytes && Math.abs(v.sizeBytes - item.sizeBytes) <= 32) {
-              return true;
-            }
-            if (item.epNumber) {
-              const m = v.name.match(/Tap_0*(\d+)/i);
-              if (m && parseInt(m[1], 10) === item.epNumber) return true;
-            }
-            return false;
-          });
-        }
-
-        const isDownloaded = !!matchedEp;
-        item._isDownloaded = isDownloaded;
-        item._matchedEp = matchedEp;
-
-        if (isDownloaded) {
-          downloadedCount++;
-        } else {
-          newCount++;
-        }
-
-        if (!item.isComplete) {
-          incompleteCount++;
-        }
-
-        // Với các tập mới xuất hiện lần đầu trong phiên, tự động chọn nếu là tập mới + đủ 100%
-        if (!initializedPathSet.has(item.path)) {
-          initializedPathSet.add(item.path);
-          if (!isDownloaded && item.isComplete) {
-            selectedCachePaths.add(item.path);
-          }
-        }
-      });
-
-      // Tạo chuỗi signature để kiểm tra danh sách có thay đổi thực sự không
-      const currentSignature = list.map(i => `${i.path}:${i.sizeBytes}:${i.isComplete}:${i._isDownloaded}`).join('|') + '|' + (matchedDrama ? matchedDrama.name : '');
-
-      if (currentSignature !== lastRenderedSignature) {
-        lastRenderedSignature = currentSignature;
-
-        const itemsHtml = list.map(item => {
-          const isDownloaded = item._isDownloaded;
-          const matchedEp = item._matchedEp;
-          const isChecked = selectedCachePaths.has(item.path) ? 'checked' : '';
-          const opacityStyle = isDownloaded ? 'opacity: 0.65; background: rgba(15, 23, 42, 0.4);' : (!item.isComplete ? 'border: 1px dashed rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);' : '');
-
-          let statusBadgeHtml = '';
-          if (isDownloaded) {
-            statusBadgeHtml = '<span class="badge-downloaded" title="Đã có trong thư mục máy tính">✅ Đã tải: ' + (matchedEp ? matchedEp.name : '') + '</span>';
-          } else if (item.isComplete) {
-            statusBadgeHtml = '<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">✅ Đủ 100% (' + item.sizeMb + ' MB)</span>';
-          } else {
-            statusBadgeHtml = '<span style="background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">⚠️ Chưa xong (' + item.pct + '% • ' + item.sizeMb + '/' + item.expectedMb + ' MB)</span>';
-          }
-
-          const needMoreHint = !item.isComplete ? ('<span style="color: #f87171; font-weight: 600;">(Cần đủ: ' + item.expectedMb + ' MB)</span>') : '';
-
-          return `
-          <div class="queue-item" data-path="${item.path.replace(/"/g, '&quot;')}" data-downloaded="${isDownloaded}" data-complete="${item.isComplete}" style="${opacityStyle}" onclick="handleQueueRowClick(event, this)">
-            <input type="checkbox" class="queue-checkbox" id="chk_${item.index}" value="${item.path.replace(/"/g, '&quot;')}" data-ep="${item.epNumber || ''}" data-complete="${item.isComplete}" ${isChecked} onchange="handleCheckboxChange(this, event)">
-            <div class="queue-thumb-mini" onclick="previewRemoteVideo('${item.path.replace(/'/g, "\\\'")}', 'Tập video ${item.epLabel || '#' + item.index}')" title="Bấm để xem thử video">
-              <span style="font-size: 18px;">🎬</span>
-              <div class="queue-thumb-overlay">▶</div>
-            </div>
-            <div class="queue-item-info" style="cursor: pointer;">
-              <div class="queue-item-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <span style="font-weight: 800; color: #38bdf8;">Tập</span>
-                <input type="number" class="ep-num-input" value="${item.epNumber || item.index}" min="1" style="width: 52px; background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8; font-weight: 800; border-radius: 6px; padding: 2px 4px; text-align: center; font-size: 13px;" onclick="event.stopPropagation()" onchange="handleEpNumChange(event, '${item.path.replace(/"/g, '&quot;')}', this.value)" title="Bấm vào để chỉnh lại số tập nếu muốn">
-                <span style="color: #64748b; font-size: 11px;">(${item.epLabel || 'EP. ' + (item.epNumber || item.index)})</span>
-                ${statusBadgeHtml}
-              </div>
-              <div class="queue-item-meta">
-                Dung lượng: <b>${item.sizeMb} MB</b> ${needMoreHint} • Tải lúc: ${item.time}
-              </div>
-            </div>
-            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-              ${item.directUrl ? `
-                <a href="${item.directUrl}" target="_blank" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #38bdf8; border: 1px solid rgba(56,189,248,0.4);" onclick="event.stopPropagation()" title="Mở link video gốc trên tab mới để xem hoặc tải ngoài bằng IDM / Trình duyệt">
-                  🔗 Link gốc
-                </a>
-                <button type="button" class="btn btn-primary" style="font-size: 11px; padding: 4px 8px; background: #10b981; border: none; font-weight: 700;" onclick="event.stopPropagation(); downloadSingleDirect('${item.directUrl.replace(/'/g, "\\\'")}', ${item.epNumber || item.index})" title="Tải siêu tốc trực tiếp từ CDN về máy tính trong 1-2 giây (không cần chờ giả lập nạp)">
-                  ⚡ Tải 1s
-                </button>
-              ` : ''}
-              <button type="button" class="btn-preview" onclick="previewRemoteVideo('${item.path.replace(/'/g, "\\\'")}', 'Tập video ${item.epLabel || '#' + item.index}', '${(item.directUrl || '').replace(/'/g, "\\\'")}')">
-                ▶ Xem thử
-              </button>
-            </div>
-          </div>
-          `;
-        }).join('');
-
-        c.innerHTML = itemsHtml;
-      } else {
-        // Nếu danh sách không đổi, chỉ đồng bộ lại trạng thái checked của các ô input
-        document.querySelectorAll('.queue-checkbox').forEach(cb => {
-          cb.checked = selectedCachePaths.has(cb.value);
-        });
-      }
-
-      const countEl = document.getElementById('queue-count');
-      if (countEl) {
-        let extraInfo = '';
-        if (incompleteCount > 0) {
-          extraInfo = ' • <span style="color: #f87171; font-weight: 700;">' + incompleteCount + ' tập chưa xong</span>';
-        }
-        countEl.innerHTML = list.length + ' (<span style="color: #38bdf8;">' + newCount + ' tập mới</span> • <span style="color: #10b981;">' + downloadedCount + ' đã tải</span>' + extraInfo + ')';
-      }
-
-      updateSelectedExportBtn();
-    }
-
-    async function startSwipe(explicitCount) {
-      const countInput = document.getElementById('auto-swipe-count');
-      const count = (explicitCount !== undefined) ? explicitCount : (countInput ? countInput.value : 1);
-      const btnStart = document.getElementById('btn-start-swipe');
-      const btnStartSingle = document.getElementById('btn-start-single');
-      const btnStop = document.getElementById('btn-stop-swipe');
-      const badge = document.getElementById('swipe-status-badge');
-
-      if (btnStart) btnStart.style.display = 'none';
-      if (btnStartSingle) btnStartSingle.style.display = 'none';
-      if (btnStop) btnStop.style.display = 'inline-block';
-      badge.style.background = '#0284c7';
-      badge.style.color = '#fff';
-      badge.innerText = (count === 1) ? 'Đang chuẩn bị lấy 1 tập...' : 'Đang chuẩn bị lướt ' + count + ' tập...';
-
-      const dramaTitle = (document.getElementById('drama-title-input') ? document.getElementById('drama-title-input').value.trim() : '');
-      const startEp = (document.getElementById('start-ep-input') ? parseInt(document.getElementById('start-ep-input').value, 10) : 1);
-      const autoExportChk = document.getElementById('chk-auto-export');
-      const autoExport = autoExportChk ? autoExportChk.checked : true;
-
-      await fetch('/api/auto-swipe/start', {
+  // Connect ADB
+  const handleConnectAdb = async () => {
+    setAdbConnecting(true);
+    try {
+      const res = await fetch('/api/connect-adb', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          total: parseInt(count, 10) || 1,
-          delay: 6,
-          dramaTitle,
-          startEpisode: startEp,
-          autoExport
+          host: adbHostInput
         })
       });
-      checkSwipeStatus();
-    }
-
-    async function stopSwipe() {
-      await fetch('/api/auto-swipe/stop', { method: 'POST' });
-      const btnStart = document.getElementById('btn-start-swipe');
-      const btnStartSingle = document.getElementById('btn-start-single');
-      const btnStop = document.getElementById('btn-stop-swipe');
-      if (btnStart) btnStart.style.display = 'inline-block';
-      if (btnStartSingle) btnStartSingle.style.display = 'inline-block';
-      if (btnStop) btnStop.style.display = 'none';
-      const badge = document.getElementById('swipe-status-badge');
-      badge.style.background = 'rgba(255,255,255,0.06)';
-      badge.style.color = '#94a3b8';
-      badge.innerText = 'Đã dừng';
-    }
-
-    async function checkSwipeStatus() {
-      try {
-        const res = await fetch('/api/auto-swipe/status');
-        const data = await res.json();
-        const badge = document.getElementById('swipe-status-badge');
-        const btnStart = document.getElementById('btn-start-swipe');
-        const btnStartSingle = document.getElementById('btn-start-single');
-        const btnStop = document.getElementById('btn-stop-swipe');
-
-        if (data.running) {
-          if (btnStart) btnStart.style.display = 'none';
-          if (btnStartSingle) btnStartSingle.style.display = 'none';
-          if (btnStop) btnStop.style.display = 'inline-block';
-          badge.style.background = '#0284c7';
-          badge.style.color = '#fff';
-          badge.innerText = data.status || ('Đang nạp: ' + data.current + '/' + data.total + ' tập...');
-          setTimeout(checkSwipeStatus, 1000);
-        } else {
-          if (btnStart) btnStart.style.display = 'inline-block';
-          if (btnStartSingle) btnStartSingle.style.display = 'inline-block';
-          if (btnStop) btnStop.style.display = 'none';
-          badge.style.background = 'rgba(255,255,255,0.06)';
-          badge.style.color = '#94a3b8';
-          if (data.status) {
-            badge.innerText = data.status;
-            if (data.status.startsWith('⚠️')) {
-              badge.style.background = 'rgba(239, 68, 68, 0.2)';
-              badge.style.color = '#f87171';
-            } else if (data.status.startsWith('✅') || data.status.startsWith('Đã')) {
-              badge.style.background = 'rgba(16, 185, 129, 0.2)';
-              badge.style.color = '#34d399';
-            }
-          }
-          loadStatus();
-        }
-      } catch (e) {}
-    }
-
-    async function restartApp() {
-      if (confirm('Khởi động lại app sẽ giải phóng bộ nhớ RAM để bạn có thể xem lại và tải lại các tập đã xem trước đó. Tiếp tục?')) {
-        showToast('⏳ Đang khởi động lại app trên giả lập...', 'info');
-        const res = await fetch('/api/restart-app', { method: 'POST' });
-        const d = await res.json();
-        showToast('✅ Đã khởi động lại ' + (d.app || 'app') + '! Hãy mở tập cần tải.', 'success');
-        setTimeout(loadStatus, 2000);
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Kết nối ADB: ${data.message}`, 'success');
+        fetchStatus();
+      } else {
+        showToast(`Lỗi kết nối ADB: ${data.message || data.error}`, 'error');
       }
+    } catch (e) {
+      showToast('Lỗi gửi lệnh kết nối ADB', 'error');
+    } finally {
+      setAdbConnecting(false);
     }
+  };
 
-    let currentPreviewContext = null;
-
-    function previewRemoteVideo(remotePath, label) {
-      currentPreviewContext = { remotePath };
-      document.getElementById('modal-title').innerText = label + ' (Xem trước từ giả lập)';
-      const v = document.getElementById('player-video');
-      const errBox = document.getElementById('player-error');
-      if (errBox) errBox.style.display = 'none';
-
-      v.onerror = () => {
-        if (errBox) errBox.style.display = 'block';
-      };
-
-      v.src = '/api/preview-remote?path=' + encodeURIComponent(remotePath);
-      document.getElementById('player-modal').style.display = 'flex';
-      v.play().catch(() => {});
-    }
-
-    async function exportSelected() {
-      const title = document.getElementById('drama-title-input').value.trim();
-      if (!title) {
-        alert('Vui lòng nhập hoặc chọn Tên Bộ Phim!');
-        return;
-      }
-
-      const checkboxes = document.querySelectorAll('.queue-checkbox:checked');
-      if (checkboxes.length === 0) {
-        alert('Vui lòng tích chọn ít nhất 1 tập video để xuất!');
-        return;
-      }
-
-      const incompleteBoxes = Array.from(checkboxes).filter(b => b.getAttribute('data-complete') === 'false');
-      if (incompleteBoxes.length > 0) {
-        const warnMsg = '⚠️ CẢNH BÁO THIẾU DỮ LIỆU:\n\nCó ' + incompleteBoxes.length + ' tập video bạn chọn CHƯA TẢI XONG 100% trong cache (mới tải dở dang).\n\nNếu xuất bây giờ, video sẽ bị dừng giữa chừng khi phát!\n\n👉 Bạn có chắc chắn muốn xuất luôn không?\n(Bấm CANCEL / HỦY để mở tập đó trên app cho tải đủ 100% rồi hãy xuất)';
-        if (!confirm(warnMsg)) {
-          return;
-        }
-      }
-
-      const selectedPaths = Array.from(checkboxes).map(b => {
-        const itemObj = remoteCache.find(r => r.path === b.value) || {};
-        return {
-          path: b.value,
-          epNumber: parseInt(b.getAttribute('data-ep'), 10) || null,
-          sizeBytes: itemObj.sizeBytes || 0
-        };
+  // Switch App Mode
+  const handleSwitchApp = async app => {
+    try {
+      const res = await fetch('/api/set-app', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          app
+        })
       });
-      const startEp = document.getElementById('start-ep-input').value || 1;
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Đã chuyển ứng dụng: ${app.toUpperCase()}`, 'success');
+        fetchStatus();
+        fetchDirectEpisodes();
+      }
+    } catch (e) {}
+  };
 
-      const btn = document.getElementById('btn-export-selected');
-      btn.disabled = true;
-      btn.innerText = '⏳ Đang kéo ' + selectedPaths.length + ' tập vào bộ [' + title + ']...';
-      showToast('');
+  // Direct single download
+  const handleDownloadDirectSingle = async ep => {
+    const url = selectedCodec === 'h264' && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl;
+    if (!url) {
+      showToast('Không tìm thấy link cho tập này!', 'error');
+      return;
+    }
+    showToast(`⚡ Đang tải Tập ${ep.epNumber} từ CDN... (chỉ 1-2s)`, 'info');
+    try {
+      const res = await fetch('/api/download-direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url,
+          dramaTitle: directEpisodes ? directEpisodes.title : 'Bo_Phim_Moi',
+          epNumber: ep.epNumber
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✅ Đã tải xong Tập ${ep.epNumber} (${formatBytes(data.sizeBytes)})!`, 'success');
+        fetchStatus();
+      } else {
+        showToast(`❌ Tải thất bại: ${data.message}`, 'error');
+      }
+    } catch (e) {
+      showToast('Lỗi tải video trực tiếp', 'error');
+    }
+  };
 
+  // Direct batch download all
+  const handleDownloadAllDirect = async () => {
+    if (!directEpisodes || !directEpisodes.episodes || directEpisodes.episodes.length === 0) return;
+    const episodes = directEpisodes.episodes;
+    setBatchDownloading(true);
+    setBatchProgress({
+      current: 0,
+      total: episodes.length,
+      activeEp: 0,
+      percent: 0
+    });
+    for (let i = 0; i < episodes.length; i++) {
+      const ep = episodes[i];
+      const url = selectedCodec === 'h264' && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl;
+      setBatchProgress({
+        current: i + 1,
+        total: episodes.length,
+        activeEp: ep.epNumber,
+        percent: Math.round((i + 1) / episodes.length * 100)
+      });
       try {
-        const res = await fetch('/api/export', {
+        await fetch('/api/download-direct', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify({
-            dramaTitle: title,
-            startEpisode: startEp,
-            selectedPaths,
-            posterUrl: currentPosterUrl,
-            force: (incompleteBoxes.length > 0)
+            url,
+            dramaTitle: directEpisodes.title,
+            epNumber: ep.epNumber
           })
         });
-        const data = await res.json();
-        if (data.success) {
-          if (data.skippedCount > 0) {
-            showToast('✅ Đã xuất ' + data.count + ' tập mới (đã bỏ qua ' + data.skippedCount + ' tập đã có sẵn)!', 'success');
-          } else {
-            showToast('✅ Đã xuất thành công ' + data.count + ' tập vào bộ: ' + data.folder, 'success');
-          }
-          // Xóa các tập đã xuất khỏi danh sách đang chọn
-          selectedPaths.forEach(sp => selectedCachePaths.delete(sp.path));
-          updateSelectedExportBtn();
-          delete document.getElementById('start-ep-input').dataset.manualEdited;
-          lastRenderedSignature = '';
-          loadStatus();
-        } else {
-          showToast('❌ Thất bại: ' + data.message, 'error');
-        }
       } catch (e) {
-        showToast('❌ Lỗi: ' + e.message, 'error');
-      } finally {
-        btn.disabled = false;
-        updateSelectedExportBtn();
+        console.error('Lỗi tải tập', ep.epNumber, e);
       }
     }
+    setBatchDownloading(false);
+    showToast(`🎉 Đã tải hoàn tất toàn bộ ${episodes.length} tập phim!`, 'success');
+    fetchStatus();
+  };
 
-    async function deleteSelectedCache() {
-      const checkboxes = document.querySelectorAll('.queue-checkbox:checked');
-      if (checkboxes.length === 0) {
-        alert('Vui lòng tích chọn các tập muốn xóa trong bộ nhớ đệm!');
-        return;
+  // Export from ADB Cache
+  const handleExportCache = async () => {
+    setLoading(true);
+    try {
+      const dramaName = status && status.currentDrama ? status.currentDrama.title : 'Bo_Phim_Moi';
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dramaName
+        })
+      });
+      const data = await res.json();
+      if (data.count > 0) {
+        showToast(`✅ Đã xuất thành công ${data.count} tập về máy tính!`, 'success');
+      } else if (data.skippedCount > 0) {
+        showToast(`ℹ️ ${data.skippedCount} tập đã có sẵn trong máy tính.`, 'info');
+      } else {
+        showToast('Không có tập nào mới cần xuất.', 'info');
       }
+      fetchStatus();
+    } catch (e) {
+      showToast('Lỗi khi xuất video từ cache', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (confirm('Bạn có chắc muốn xóa ' + checkboxes.length + ' video đang chọn khỏi bộ nhớ tạm LDPlayer?')) {
-        const paths = Array.from(checkboxes).map(b => b.value);
-        await fetch('/api/delete-remote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paths })
-        });
-        paths.forEach(p => selectedCachePaths.delete(p));
-        updateSelectedExportBtn();
-        showToast('🧹 Đã xóa các file tạm trên giả lập!', 'success');
-        lastRenderedSignature = '';
-        loadStatus();
+  // Auto Swipe Start / Stop
+  const handleToggleAutoSwipe = async () => {
+    if (autoSwipeStatus && autoSwipeStatus.isRunning) {
+      await fetch('/api/auto-swipe/stop', {
+        method: 'POST'
+      });
+      showToast('Đã dừng tự động lướt tập', 'info');
+      fetchAutoSwipeStatus();
+    } else {
+      const res = await fetch('/api/auto-swipe/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          total: parseInt(autoSwipeTotal, 10),
+          delay: parseInt(autoSwipeDelay, 10)
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🚀 Đang bắt đầu tự động lướt tập trên giả lập...', 'success');
+        fetchAutoSwipeStatus();
+      } else {
+        showToast(data.message || 'Lỗi khởi động tự động lướt', 'error');
       }
     }
+  };
 
-    function renderLocalDramas(dramas) {
-      const container = document.getElementById('dramas-container');
-      if (dramas.length === 0) {
-        container.innerHTML = '<div style="color: #64748b; font-size: 14px;">Chưa có bộ phim nào được xuất.</div>';
-        return;
-      }
-
-      const currentSelectedTitle = document.getElementById('drama-title-input').value.trim();
-      const safeSelected = currentSelectedTitle.replace(/[<>:"/\\|?*]/g, ' - ').replace(/\s+/g, ' ').trim().toLowerCase();
-
-      container.innerHTML = dramas.map(d => {
-        const isCurrentSelected = (isPinnedOldDrama && d.name.toLowerCase() === safeSelected);
-        const borderStyle = isCurrentSelected ? 'border: 2px solid #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);' : '';
-        const selectedTag = isCurrentSelected ? '<span class="drama-badge" style="background: #0284c7; color: #fff;">🎯 ĐANG ĐƯỢC CHỌN ĐỂ CẬP NHẬT</span>' : '';
-
-        return `
-        <div class="drama-section" style="${borderStyle}">
-          <div class="drama-banner">
-            <img src="/poster/${encodeURIComponent(d.name)}" alt="Poster" class="drama-poster-img" onerror="this.style.display='none'">
-            <div class="drama-banner-info">
-              <div class="drama-title">
-                🎬 ${d.name}
-                ${selectedTag}
-              </div>
-              <div class="drama-stats">
-                <span class="drama-badge">📦 ${d.count} tập phim</span>
-                <span class="drama-badge">💾 ${d.totalSizeMb || 0} MB</span>
-                <span class="drama-badge" style="color: #38bdf8; font-weight: 700;">Tập kế tiếp: Tap_${String(d.nextEpisode).padStart(2, '0')}.mp4</span>
-              </div>
-              <div class="drama-actions">
-                <button class="btn-update-drama" onclick="selectDramaForUpdate('${d.name.replace(/'/g, "\\\'")}')">
-                  📥 Cập Nhật / Tải Tiếp Bộ Này (Từ Tập ${d.nextEpisode})
-                </button>
-                <button class="btn btn-secondary" onclick="openDramaFolder('${d.name.replace(/'/g, "\\\'")}')">
-                  📂 Mở Thư Mục Bộ Phim
-                </button>
-                <a href="/poster/${encodeURIComponent(d.name)}" target="_blank" download="poster_${d.name}.png" class="btn btn-secondary" style="text-decoration: none;">
-                  🖼️ Tải Ảnh Poster
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div class="episodes-grid">
-            ${d.videos.map(v => `
-              <div class="ep-card">
-                <div class="ep-thumb" onclick="playVideo('${v.relPath.replace(/'/g, "\\\'")}')">
-                  <video src="/video/${encodeURI(v.relPath)}#t=0.5" preload="metadata" muted playsinline></video>
-                  <div class="ep-thumb-overlay">
-                    <span class="ep-thumb-icon">▶</span>
-                  </div>
-                </div>
-                <div class="ep-body">
-                  <div class="ep-name">${v.name}</div>
-                  <div class="ep-meta">Dung lượng: ${v.sizeMb} MB</div>
-                  <div class="ep-actions" style="display: flex; gap: 4px; flex-wrap: wrap;">
-                    <button class="ep-btn ep-btn-play" onclick="playVideo('${v.relPath.replace(/'/g, "\\\'")}')">▶ Xem Full</button>
-                    <button class="ep-btn ep-btn-copy" onclick="copyLink('${v.relPath.replace(/'/g, "\\\'")}')">📋 Copy</button>
-                    <button class="ep-btn" style="background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; border: none; font-weight: 700; padding: 4px 8px;" onclick="openDubModal('${v.relPath.replace(/'/g, "\\\'")}', '${v.name}')" title="Dùng AI nhận diện giọng nói, dịch sang tiếng Việt và lồng tiếng lại video này">🎙️ Lồng Tiếng AI</button>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-        `;
-      }).join('');
+  // Delete remote cache
+  const handleDeleteRemoteCache = async () => {
+    if (!confirm('Bạn có chắc chắn muốn xoá toàn bộ video cache trên máy ảo không?')) return;
+    try {
+      await fetch('/api/delete-remote', {
+        method: 'POST'
+      });
+      showToast('Đã xoá sạch bộ nhớ đệm trên giả lập!', 'success');
+      fetchStatus();
+    } catch (e) {
+      showToast('Lỗi xoá cache', 'error');
     }
+  };
 
-    async function openDramaFolder(name) {
+  // Open folder
+  const handleOpenFolder = async (folderName = '') => {
+    try {
       await fetch('/api/open-folder', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: name })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          folder: folderName
+        })
       });
+      showToast('Đã mở thư mục trên máy tính', 'info');
+    } catch (e) {}
+  };
+
+  // Start dubbing
+  const handleStartDubbing = async () => {
+    if (!dubbingTarget) {
+      showToast('Vui lòng chọn video cần lồng tiếng!', 'error');
+      return;
     }
-
-    async function openCurrentDramaFolder() {
-      const title = document.getElementById('drama-title-input').value.trim();
-      openDramaFolder(title);
-    }
-
-    function playVideo(relPath) {
-      currentPreviewContext = { localPath: relPath };
-      document.getElementById('modal-title').innerText = relPath;
-      const v = document.getElementById('player-video');
-      const errBox = document.getElementById('player-error');
-      if (errBox) errBox.style.display = 'none';
-
-      v.onerror = () => {
-        if (errBox) errBox.style.display = 'block';
-      };
-
-      v.src = '/video/' + encodeURI(relPath);
-      document.getElementById('player-modal').style.display = 'flex';
-      v.play().catch(() => {});
-    }
-
-    async function openInDesktopPlayer() {
-      if (!currentPreviewContext) return;
-      showToast('⏳ Đang mở video trên máy tính...', 'info');
-      try {
-        const res = await fetch('/api/open-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentPreviewContext)
+    showToast('🚀 Bắt đầu tiến trình lồng tiếng AI...', 'info');
+    try {
+      const res = await fetch('/api/dub-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          videoPath: dubbingTarget.path,
+          voice: dubVoice,
+          rate: dubSpeed,
+          whisperModel: dubModel,
+          bgmVolume: parseFloat(dubBgmVol)
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.jobId) {
+        setDubJobId(data.jobId);
+        setDubProgress({
+          status: 'running',
+          percent: 5,
+          step: 'Khởi động pipeline lồng tiếng...'
         });
-        const d = await res.json();
-        if (d.success) {
-          showToast('🎬 Đã mở video bằng trình phát ngoài!', 'success');
-        } else {
-          showToast('❌ Không thể mở: ' + d.message, 'error');
-        }
-      } catch (e) {
-        showToast('❌ Lỗi: ' + e.message, 'error');
+      } else {
+        showToast(`Lỗi: ${data.message}`, 'error');
       }
+    } catch (e) {
+      showToast('Lỗi gửi yêu cầu lồng tiếng', 'error');
     }
+  };
 
-    function closeModal() {
-      const modal = document.getElementById('player-modal');
-      const v = document.getElementById('player-video');
-      const errBox = document.getElementById('player-error');
-      if (errBox) errBox.style.display = 'none';
-      v.pause();
-      v.src = '';
-      currentPreviewContext = null;
-      modal.style.display = 'none';
-    }
-
-    function copyLink(relPath) {
-      const fullUrl = window.location.origin + '/video/' + encodeURI(relPath);
-      navigator.clipboard.writeText(fullUrl).then(() => {
-        alert('Đã copy đường link: ' + fullUrl);
-      });
-    }
-
-    function showToast(msg, type) {
-      const t = document.getElementById('toast-msg');
-      if (!msg) { t.className = 'toast'; return; }
-      t.innerText = msg;
-      t.className = 'toast ' + type;
-    }
-
-    document.getElementById('drama-title-input').addEventListener('input', () => {
-      delete document.getElementById('start-ep-input').dataset.manualEdited;
-      updateEpisodeNumberHint();
-      lastRenderedSignature = '';
-      renderQueue(remoteCache);
+  // Total stats calculations
+  const totalLocalDramas = status?.localDramas?.length || 0;
+  let totalLocalVideos = 0;
+  let totalDubbedVideos = 0;
+  if (status?.localDramas) {
+    status.localDramas.forEach(d => {
+      totalLocalVideos += d.videos ? d.videos.length : 0;
+      if (d.videos) {
+        totalDubbedVideos += d.videos.filter(v => v.isDubbed).length;
+      }
     });
-    document.getElementById('start-ep-input').addEventListener('input', (e) => {
-      e.target.dataset.manualEdited = "true";
-    });
-
-    async function downloadSingleDirect(url, epNum) {
-      const dramaTitle = (document.getElementById('drama-title-input') ? document.getElementById('drama-title-input').value.trim() : '') || 'Bo_Phim_Moi';
-      showToast('⏳ Đang tải trực tiếp Tập ' + epNum + ' từ CDN siêu tốc...', 'info');
-      try {
-        const res = await fetch('/api/download-direct', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, dramaTitle, epNumber: epNum })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast('✅ Đã tải xong Tập ' + epNum + ' (' + (data.sizeBytes ? (data.sizeBytes / 1048576).toFixed(2) + ' MB' : '') + ')!', 'success');
-          lastRenderedSignature = '';
-          loadStatus();
-        } else {
-          showToast('❌ Tải thất bại: ' + data.message, 'error');
-        }
-      } catch (e) {
-        showToast('❌ Lỗi: ' + e.message, 'error');
-      }
-    }
-
-    let latestDirectEpisodes = [];
-
-    async function openDirectLinksModal() {
-      const modal = document.getElementById('direct-links-modal');
-      const container = document.getElementById('direct-links-container');
-      const titleEl = document.getElementById('direct-modal-title');
-      container.innerHTML = '<div style="text-align: center; padding: 20px; color: #94a3b8;">⏳ Đang trích xuất toàn bộ link video từ CSDL của app...</div>';
-      modal.style.display = 'flex';
-
-      try {
-        const res = await fetch('/api/direct-episodes');
-        const data = await res.json();
-        if (data.success && data.episodes && data.episodes.length > 0) {
-          latestDirectEpisodes = data.episodes;
-          titleEl.innerText = '⚡ Toàn Bộ Link CDN: ' + (data.title || 'Bộ Phim') + ' (' + data.episodes.length + ' tập)';
-
-          container.innerHTML = data.episodes.map(ep => {
-            return `
-            <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-weight: 800; color: #38bdf8; font-size: 14px;">Tập ${ep.epNumber}</span>
-                ${ep.isVip ? '<span style="font-size: 10px; background: #eab308; color: #000; font-weight: 700; padding: 1px 6px; border-radius: 4px;">VIP</span>' : ''}
-              </div>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; color: #a78bfa;" onclick="copyDirectUrl('${ep.directUrl.replace(/'/g, "\\\'")}')">
-                  📋 Copy Link
-                </button>
-                <a href="${ep.directUrl}" target="_blank" class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #38bdf8; border: 1px solid rgba(56,189,248,0.4);" title="Mở xem trực tiếp trên tab mới của trình duyệt">
-                  🌐 Mở Xem
-                </a>
-                <button type="button" class="btn btn-primary" style="font-size: 11px; padding: 4px 10px; background: #10b981; border: none; font-weight: 700;" onclick="downloadSingleDirect('${ep.directUrl.replace(/'/g, "\\\'")}', ${ep.epNumber})">
-                  ⚡ Tải (1s)
-                </button>
-              </div>
-            </div>
-            `;
-          }).join('');
-        } else {
-          container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">⚠️ Chưa tìm thấy dữ liệu tập của bộ phim trong app! Hãy mở phim trên app giả lập trước.</div>';
-        }
-      } catch (e) {
-        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #f87171;">❌ Lỗi: ' + e.message + '</div>';
-      }
-    }
-
-    function closeDirectLinksModal() {
-      document.getElementById('direct-links-modal').style.display = 'none';
-    }
-
-    function copyDirectUrl(url) {
-      navigator.clipboard.writeText(url).then(() => {
-        showToast('📋 Đã copy link CDN video vào bộ nhớ tạm!', 'success');
-      });
-    }
-
-    async function downloadAllDirect() {
-      if (latestDirectEpisodes.length === 0) return;
-      const dramaTitle = (document.getElementById('drama-title-input') ? document.getElementById('drama-title-input').value.trim() : '') || 'Bo_Phim_Moi';
-      if (!confirm('Bạn có muốn tải tự động TẤT CẢ ' + latestDirectEpisodes.length + ' tập trực tiếp từ CDN về máy? (Khoảng 1-2 giây / tập)')) {
-        return;
-      }
-
-      const btn = document.getElementById('btn-batch-download-direct');
-      const statusEl = document.getElementById('direct-batch-status');
-      btn.disabled = true;
-
-      for (let i = 0; i < latestDirectEpisodes.length; i++) {
-        const ep = latestDirectEpisodes[i];
-        statusEl.innerText = `⏳ Đang tải Tập ${ep.epNumber}/${latestDirectEpisodes.length}...`;
-        try {
-          await fetch('/api/download-direct', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: ep.directUrl, dramaTitle, epNumber: ep.epNumber })
-          });
-        } catch (e) {}
-      }
-
-      statusEl.innerText = `✅ Đã tải xong toàn bộ ${latestDirectEpisodes.length} tập!`;
-      btn.disabled = false;
-      lastRenderedSignature = '';
-      loadStatus();
-      showToast('🎉 Đã tải hoàn tất cả bộ phim từ link trực tiếp!', 'success');
-    }
-
-    loadStatus();
-    setInterval(loadStatus, 4000);
-
-    let currentDubbingTarget = null;
-    let activeDubJobTimer = null;
-
-    function openDubModal(relPath, name) {
-      currentDubbingTarget = { relPath, name };
-      document.getElementById('dub-video-target').innerText = name || relPath;
-      const pBox = document.getElementById('dub-progress-box');
-      pBox.style.display = 'none';
-      const pMsg = document.getElementById('dub-progress-msg');
-      pMsg.style.color = '#38bdf8';
-      document.getElementById('btn-start-dub-action').disabled = false;
-      document.getElementById('dub-modal').style.display = 'flex';
-    }
-
-    function closeDubModal() {
-      if (activeDubJobTimer) {
-        clearInterval(activeDubJobTimer);
-        activeDubJobTimer = null;
-      }
-      document.getElementById('dub-modal').style.display = 'none';
-    }
-
-    async function submitDubbing() {
-      if (!currentDubbingTarget) return;
-      const voice = document.getElementById('dub-voice-select').value;
-      const speed = document.getElementById('dub-speed-select').value;
-      const origVol = parseFloat(document.getElementById('dub-orig-vol').value) || 0.15;
-      const whisperModel = document.getElementById('dub-whisper-model').value;
-
-      const btn = document.getElementById('btn-start-dub-action');
-      btn.disabled = true;
-
-      const pBox = document.getElementById('dub-progress-box');
-      const pMsg = document.getElementById('dub-progress-msg');
-      const pPct = document.getElementById('dub-progress-pct');
-      const pBar = document.getElementById('dub-progress-bar');
-      pBox.style.display = 'block';
-      pMsg.innerText = 'Đang khởi chạy luồng lồng tiếng AI...';
-      pMsg.style.color = '#38bdf8';
-      pPct.innerText = '5%';
-      pBar.style.width = '5%';
-
-      try {
-        const res = await fetch('/api/dub-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            videoPath: currentDubbingTarget.relPath,
-            voice,
-            speed,
-            origVol,
-            whisperModel
+  }
+  const currentDrama = status?.currentDrama;
+  const isConnected = !!status?.connected;
+  return /*#__PURE__*/_jsxs("div", {
+    className: "flex flex-col min-h-screen",
+    children: [toast && /*#__PURE__*/_jsxs("div", {
+      className: `fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-semibold transition-all transform animate-bounce ${toast.type === 'success' ? 'bg-emerald-600/95 text-white border border-emerald-400/40' : toast.type === 'error' ? 'bg-rose-600/95 text-white border border-rose-400/40' : 'bg-slate-800/95 text-brand-300 border border-brand-500/30'}`,
+      children: [/*#__PURE__*/_jsx("span", {
+        children: toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'
+      }), /*#__PURE__*/_jsx("span", {
+        children: toast.message
+      })]
+    }), /*#__PURE__*/_jsxs("header", {
+      className: "sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800",
+      children: [/*#__PURE__*/_jsxs("div", {
+        className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "flex items-center gap-3 cursor-pointer",
+          onClick: () => setActiveTab('home'),
+          children: [/*#__PURE__*/_jsx("div", {
+            className: "w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-brand-500/25",
+            children: "⚡"
+          }), /*#__PURE__*/_jsxs("div", {
+            children: [/*#__PURE__*/_jsx("div", {
+              className: "font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-300 bg-clip-text text-transparent",
+              children: "Video Dynamic Toolkit"
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "text-xs text-slate-400 flex items-center gap-1.5",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: "Soda Reels & MinuteDrama"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "w-1 h-1 rounded-full bg-slate-600"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "text-brand-400 font-medium",
+                children: "StudioVDT AI"
+              })]
+            })]
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "hidden md:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60",
+          children: [/*#__PURE__*/_jsx("button", {
+            onClick: () => handleSwitchApp('auto'),
+            className: `px-3 py-1 rounded-lg text-xs font-semibold transition-all ${status?.currentAppMode === 'auto' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`,
+            children: "🤖 Tự Động"
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => handleSwitchApp('minutedrama'),
+            className: `px-3 py-1 rounded-lg text-xs font-semibold transition-all ${status?.currentAppMode === 'minutedrama' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`,
+            children: "🎭 MinuteDrama"
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => handleSwitchApp('sodareels'),
+            className: `px-3 py-1 rounded-lg text-xs font-semibold transition-all ${status?.currentAppMode === 'sodareels' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`,
+            children: "🥤 Soda Reels"
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "flex items-center gap-2",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: `flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${isConnected ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30' : 'bg-rose-950/40 text-rose-400 border-rose-500/30'}`,
+            children: [/*#__PURE__*/_jsx("span", {
+              className: `w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse-dot' : 'bg-rose-500'}`
+            }), /*#__PURE__*/_jsx("span", {
+              className: "font-semibold",
+              children: isConnected ? status.deviceName : 'Chưa có ADB'
+            })]
+          }), !isConnected && /*#__PURE__*/_jsx("button", {
+            onClick: handleConnectAdb,
+            disabled: adbConnecting,
+            className: "px-2.5 py-1 text-xs font-bold rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition-all",
+            children: adbConnecting ? '...' : 'Kết nối'
+          })]
+        })]
+      }), /*#__PURE__*/_jsx("div", {
+        className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 overflow-x-auto",
+        children: /*#__PURE__*/_jsx("nav", {
+          className: "flex space-x-1 py-2",
+          children: [{
+            id: 'home',
+            label: 'Trang Chủ',
+            icon: '🏠',
+            badge: null
+          }, {
+            id: 'direct',
+            label: 'Tải Trực Tiếp CDN',
+            icon: '⚡',
+            badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null
+          }, {
+            id: 'cache',
+            label: 'Giả Lập & Quét Cache',
+            icon: '🔄',
+            badge: status?.remoteCacheCount ? `${status.remoteCacheCount}` : null
+          }, {
+            id: 'library',
+            label: 'Kho Phim & Video',
+            icon: '🎬',
+            badge: totalLocalVideos ? `${totalLocalVideos}` : null
+          }, {
+            id: 'dubbing',
+            label: 'Studio Lồng Tiếng AI',
+            icon: '🎙️',
+            badge: dubJobId ? 'Đang chạy' : null
+          }, {
+            id: 'settings',
+            label: 'Cài Đặt & Hướng Dẫn',
+            icon: '⚙️',
+            badge: null
+          }].map(tab => {
+            const isActive = activeTab === tab.id;
+            return /*#__PURE__*/_jsxs("button", {
+              onClick: () => setActiveTab(tab.id),
+              className: `flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 ${isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`,
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-base",
+                children: tab.icon
+              }), /*#__PURE__*/_jsx("span", {
+                children: tab.label
+              }), tab.badge && /*#__PURE__*/_jsx("span", {
+                className: `text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-brand-500/20 text-brand-300'}`,
+                children: tab.badge
+              })]
+            }, tab.id);
           })
-        });
-        const data = await res.json();
-        if (data.success && data.job) {
-          const jobId = data.job.id;
-          activeDubJobTimer = setInterval(async () => {
-            try {
-              const sRes = await fetch('/api/dub-status?id=' + encodeURIComponent(jobId));
-              const sData = await sRes.json();
-              if (sData.success && sData.job) {
-                const j = sData.job;
-                pMsg.innerText = j.message || 'Đang xử lý...';
-                pPct.innerText = j.pct + '%';
-                pBar.style.width = j.pct + '%';
+        })
+      })]
+    }), /*#__PURE__*/_jsxs("main", {
+      className: "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6",
+      children: [activeTab === 'home' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-brand-950 p-6 md:p-8 border border-slate-800 shadow-xl",
+          children: [/*#__PURE__*/_jsx("div", {
+            className: "absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-brand-600/10 to-transparent pointer-events-none"
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "relative z-10 max-w-2xl",
+            children: [/*#__PURE__*/_jsx("span", {
+              className: "inline-block px-3 py-1 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30 mb-3",
+              children: "🚀 Video Dynamic Toolkit v2.0"
+            }), /*#__PURE__*/_jsx("h1", {
+              className: "text-2xl md:text-3xl font-extrabold text-white tracking-tight",
+              children: "Trung Tâm Tải Phim Ngắn & Phòng Lồng Tiếng AI"
+            }), /*#__PURE__*/_jsx("p", {
+              className: "mt-2 text-sm text-slate-300 leading-relaxed",
+              children: "Tải cả bộ phim siêu tốc 1-2s/tập từ link CDN trực tiếp, quét bộ nhớ đệm giả lập Android, phát mượt mà chuẩn H.264 và tự động lồng tiếng tiếng Việt bằng công nghệ AI từ StudioVDT."
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "mt-5 flex flex-wrap items-center gap-3",
+              children: [/*#__PURE__*/_jsx("button", {
+                onClick: () => setActiveTab('direct'),
+                className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all",
+                children: /*#__PURE__*/_jsx("span", {
+                  children: "⚡ Tải Trực Tiếp Cả Bộ (1s/tập)"
+                })
+              }), /*#__PURE__*/_jsx("button", {
+                onClick: () => setActiveTab('dubbing'),
+                className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all",
+                children: /*#__PURE__*/_jsx("span", {
+                  children: "🎙️ Studio Lồng Tiếng AI"
+                })
+              }), /*#__PURE__*/_jsx("button", {
+                onClick: () => handleOpenFolder(),
+                className: "px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-800 transition-all",
+                children: "📂 Mở Thư Mục Video"
+              })]
+            })]
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "grid grid-cols-2 md:grid-cols-4 gap-4",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "glass-card p-4 rounded-2xl flex flex-col justify-between",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "flex items-center justify-between text-slate-400",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs font-semibold uppercase tracking-wider",
+                children: "Giả Lập Android"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "text-lg",
+                children: "📱"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "mt-2",
+              children: [/*#__PURE__*/_jsx("div", {
+                className: `text-xl font-bold ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`,
+                children: isConnected ? 'Đã Kết Nối' : 'Chưa Kết Nối'
+              }), /*#__PURE__*/_jsx("div", {
+                className: "text-xs text-slate-400 mt-0.5 truncate",
+                children: isConnected ? status.deviceName : 'Cổng 127.0.0.1:5555'
+              })]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "glass-card p-4 rounded-2xl flex flex-col justify-between",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "flex items-center justify-between text-slate-400",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs font-semibold uppercase tracking-wider",
+                children: "Phim Đang Xem"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "text-lg",
+                children: "🎭"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "mt-2",
+              children: [/*#__PURE__*/_jsx("div", {
+                className: "text-xl font-bold text-white truncate",
+                children: currentDrama ? currentDrama.title : 'Chưa có phim'
+              }), /*#__PURE__*/_jsx("div", {
+                className: "text-xs text-slate-400 mt-0.5",
+                children: currentDrama ? `Tập ${currentDrama.currentEpisode || 1} / ${currentDrama.totalEpisodes || '?'}` : 'Mở app trên máy ảo'
+              })]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "glass-card p-4 rounded-2xl flex flex-col justify-between",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "flex items-center justify-between text-slate-400",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs font-semibold uppercase tracking-wider",
+                children: "Kho Video Đã Tải"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "text-lg",
+                children: "💾"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "mt-2",
+              children: [/*#__PURE__*/_jsxs("div", {
+                className: "text-xl font-bold text-brand-400",
+                children: [totalLocalVideos, " Tập Phim"]
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "text-xs text-slate-400 mt-0.5",
+                children: [totalLocalDramas, " Bộ phim đã lưu trữ"]
+              })]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "glass-card p-4 rounded-2xl flex flex-col justify-between",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "flex items-center justify-between text-slate-400",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs font-semibold uppercase tracking-wider",
+                children: "Đã Lồng Tiếng AI"
+              }), /*#__PURE__*/_jsx("span", {
+                className: "text-lg",
+                children: "🎙️"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "mt-2",
+              children: [/*#__PURE__*/_jsxs("div", {
+                className: "text-xl font-bold text-purple-400",
+                children: [totalDubbedVideos, " Tập Lồng Tiếng"]
+              }), /*#__PURE__*/_jsx("div", {
+                className: "text-xs text-slate-400 mt-0.5",
+                children: "Giọng đọc tiếng Việt StudioVDT"
+              })]
+            })]
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          children: [/*#__PURE__*/_jsxs("h2", {
+            className: "text-base font-bold text-slate-300 mb-3 flex items-center gap-2",
+            children: [/*#__PURE__*/_jsx("span", {
+              children: "🛠️ Các Công Cụ Chính"
+            }), /*#__PURE__*/_jsx("span", {
+              className: "text-xs font-normal text-slate-500",
+              children: "(Bấm vào từng thẻ để mở trang công cụ riêng)"
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "grid grid-cols-1 md:grid-cols-3 gap-4",
+            children: [/*#__PURE__*/_jsxs("div", {
+              onClick: () => setActiveTab('direct'),
+              className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-brand-500/50 transition-all flex flex-col justify-between",
+              children: [/*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("div", {
+                  className: "w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform",
+                  children: "⚡"
+                }), /*#__PURE__*/_jsx("h3", {
+                  className: "font-bold text-base text-white mt-4 group-hover:text-amber-400 transition-colors",
+                  children: "Tải Trực Tiếp CDN (1s/tập)"
+                }), /*#__PURE__*/_jsx("p", {
+                  className: "text-xs text-slate-400 mt-2 leading-relaxed",
+                  children: "Lấy toàn bộ danh sách tập từ database. Tải trực tiếp siêu tốc qua CDN không cần chờ máy ảo tua. Chuẩn H.264 xem ngay không lỗi."
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "Mở công cụ tải"
+                }), /*#__PURE__*/_jsx("span", {
+                  className: "group-hover:translate-x-1 transition-transform",
+                  children: "→"
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              onClick: () => setActiveTab('cache'),
+              className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-blue-500/50 transition-all flex flex-col justify-between",
+              children: [/*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("div", {
+                  className: "w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform",
+                  children: "🔄"
+                }), /*#__PURE__*/_jsx("h3", {
+                  className: "font-bold text-base text-white mt-4 group-hover:text-blue-400 transition-colors",
+                  children: "Giả Lập & Quét Cache"
+                }), /*#__PURE__*/_jsx("p", {
+                  className: "text-xs text-slate-400 mt-2 leading-relaxed",
+                  children: "Tự động lướt tập trên Android emulator, nhận diện tập thông minh tránh bị ngược tập 1 và 3, xuất video an toàn khi đã cache 100%."
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-blue-400 flex items-center justify-between",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "Mở quét cache"
+                }), /*#__PURE__*/_jsx("span", {
+                  className: "group-hover:translate-x-1 transition-transform",
+                  children: "→"
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              onClick: () => setActiveTab('dubbing'),
+              className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-purple-500/50 transition-all flex flex-col justify-between",
+              children: [/*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("div", {
+                  className: "w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform",
+                  children: "🎙️"
+                }), /*#__PURE__*/_jsx("h3", {
+                  className: "font-bold text-base text-white mt-4 group-hover:text-purple-400 transition-colors",
+                  children: "Studio Lồng Tiếng AI"
+                }), /*#__PURE__*/_jsx("p", {
+                  className: "text-xs text-slate-400 mt-2 leading-relaxed",
+                  children: "Tích hợp từ dự án StudioVDT: Whisper nhận diện lời thoại, tự dịch sang tiếng Việt, lồng tiếng cảm xúc bằng Edge-TTS và trộn âm thanh."
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-purple-400 flex items-center justify-between",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "Mở phòng lồng tiếng"
+                }), /*#__PURE__*/_jsx("span", {
+                  className: "group-hover:translate-x-1 transition-transform",
+                  children: "→"
+                })]
+              })]
+            })]
+          })]
+        }), directEpisodes && /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "flex items-center gap-4",
+            children: [directEpisodes.coverUrl ? /*#__PURE__*/_jsx("img", {
+              src: directEpisodes.coverUrl,
+              alt: "Cover",
+              className: "w-16 h-22 object-cover rounded-xl shadow-md border border-slate-700"
+            }) : /*#__PURE__*/_jsx("div", {
+              className: "w-16 h-22 rounded-xl bg-slate-800 flex items-center justify-center text-2xl border border-slate-700",
+              children: "🎬"
+            }), /*#__PURE__*/_jsxs("div", {
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs font-bold text-amber-400 uppercase tracking-wider",
+                children: "Phim Sẵn Sàng Tải Trực Tiếp"
+              }), /*#__PURE__*/_jsx("h3", {
+                className: "text-lg font-bold text-white mt-0.5",
+                children: directEpisodes.title
+              }), /*#__PURE__*/_jsxs("p", {
+                className: "text-xs text-slate-400 mt-1",
+                children: ["Tổng số: ", /*#__PURE__*/_jsx("span", {
+                  className: "font-semibold text-white",
+                  children: directEpisodes.totalEpisodes || directEpisodes.episodes.length
+                }), " tập phim có link CDN"]
+              })]
+            })]
+          }), /*#__PURE__*/_jsx("div", {
+            className: "flex items-center gap-3 w-full md:w-auto",
+            children: /*#__PURE__*/_jsx("button", {
+              onClick: () => setActiveTab('direct'),
+              className: "flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-md",
+              children: "⚡ Xem Danh Sách & Tải Ngay"
+            })
+          })]
+        })]
+      }), activeTab === 'direct' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl",
+          children: [/*#__PURE__*/_jsxs("div", {
+            children: [/*#__PURE__*/_jsx("h2", {
+              className: "text-xl font-bold text-white flex items-center gap-2",
+              children: /*#__PURE__*/_jsx("span", {
+                children: "⚡ Tải Phim Siêu Tốc Từ Link Trực Tiếp CDN"
+              })
+            }), /*#__PURE__*/_jsx("p", {
+              className: "text-xs text-slate-400 mt-1",
+              children: "Bắt link trực tiếp từ database MinuteDrama. Tải toàn bộ tập phim chỉ mất 1-2 giây / tập (tốc độ ~35-50 Mbps)."
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "flex items-center gap-2 flex-wrap",
+            children: [/*#__PURE__*/_jsxs("button", {
+              onClick: () => fetchDirectEpisodes(),
+              disabled: directLoading,
+              className: "px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: "🔄"
+              }), /*#__PURE__*/_jsx("span", {
+                children: directLoading ? 'Đang đọc...' : 'Quét Lại Database'
+              })]
+            }), directEpisodes && directEpisodes.episodes && directEpisodes.episodes.length > 0 && /*#__PURE__*/_jsxs("button", {
+              onClick: handleDownloadAllDirect,
+              disabled: batchDownloading,
+              className: "px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: batchDownloading ? '⏳' : '🚀'
+              }), /*#__PURE__*/_jsx("span", {
+                children: batchDownloading ? `Đang Tải (Tập ${batchProgress.activeEp}/${batchProgress.total})...` : 'Tải Toàn Bộ Các Tập (1-2s / tập)'
+              })]
+            })]
+          })]
+        }), batchDownloading && /*#__PURE__*/_jsxs("div", {
+          className: "glass-card p-4 rounded-2xl border border-amber-500/30",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "flex items-center justify-between text-xs font-bold text-amber-400 mb-2",
+            children: [/*#__PURE__*/_jsxs("span", {
+              children: ["Đang tải hàng loạt: Tập ", batchProgress.activeEp, " / ", batchProgress.total]
+            }), /*#__PURE__*/_jsxs("span", {
+              children: [batchProgress.percent, "%"]
+            })]
+          }), /*#__PURE__*/_jsx("div", {
+            className: "w-full bg-slate-800 rounded-full h-3 overflow-hidden",
+            children: /*#__PURE__*/_jsx("div", {
+              className: "bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all duration-300 rounded-full",
+              style: {
+                width: `${batchProgress.percent}%`
+              }
+            })
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "glass-card p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-l-4 border-l-emerald-500",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "text-xs",
+            children: [/*#__PURE__*/_jsx("span", {
+              className: "font-bold text-emerald-400 text-sm block",
+              children: "💡 Chọn Chuẩn Video Khi Tải:"
+            }), /*#__PURE__*/_jsxs("span", {
+              className: "text-slate-300",
+              children: ["Chuẩn ", /*#__PURE__*/_jsx("strong", {
+                children: "H.264 (AVC)"
+              }), " mở được ngay trên mọi máy tính Windows Media Player mà không bao giờ bị lỗi ", /*#__PURE__*/_jsx("code", {
+                children: "0xC00D36C4"
+              }), "."]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-700",
+            children: [/*#__PURE__*/_jsx("button", {
+              onClick: () => setSelectedCodec('h264'),
+              className: `px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCodec === 'h264' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`,
+              children: "🟢 H.264 (Chuẩn Windows)"
+            }), /*#__PURE__*/_jsx("button", {
+              onClick: () => setSelectedCodec('h265'),
+              className: `px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCodec === 'h265' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`,
+              children: "🔵 H.265 (HEVC Gốc)"
+            })]
+          })]
+        }), directEpisodes ? /*#__PURE__*/_jsxs("div", {
+          className: "space-y-4",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "glass-panel p-4 rounded-2xl flex items-center justify-between",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "flex items-center gap-3",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-2xl",
+                children: "🎬"
+              }), /*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("h3", {
+                  className: "font-bold text-base text-white",
+                  children: directEpisodes.title
+                }), /*#__PURE__*/_jsxs("p", {
+                  className: "text-xs text-slate-400",
+                  children: ["Tổng cộng: ", /*#__PURE__*/_jsx("strong", {
+                    className: "text-white",
+                    children: directEpisodes.totalEpisodes || directEpisodes.episodes.length
+                  }), " tập có sẵn link trực tiếp"]
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "text-xs text-slate-400",
+              children: ["Thư mục lưu: ", /*#__PURE__*/_jsxs("code", {
+                className: "text-brand-300",
+                children: ["Soda_Reels_Videos/", directEpisodes.title, "/"]
+              })]
+            })]
+          }), /*#__PURE__*/_jsx("div", {
+            className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3",
+            children: directEpisodes.episodes.map(ep => {
+              const activeUrl = selectedCodec === 'h264' && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl;
 
-                if (j.done) {
-                  clearInterval(activeDubJobTimer);
-                  activeDubJobTimer = null;
-                  btn.disabled = false;
-                  if (j.error) {
-                    pMsg.innerText = '❌ Lỗi: ' + j.error;
-                    pMsg.style.color = '#f87171';
-                    showToast('❌ Lồng tiếng thất bại: ' + j.error, 'error');
-                  } else {
-                    pMsg.innerText = '🎉 ' + j.message;
-                    pMsg.style.color = '#34d399';
-                    showToast('🎉 Đã lồng tiếng hoàn tất cho video: ' + (j.outputFileName || ''), 'success');
-                    loadStatus();
-                  }
+              // Check if this episode is already downloaded in local library
+              let isDownloaded = false;
+              if (status?.localDramas) {
+                const matched = status.localDramas.find(d => d.name.toLowerCase().includes(directEpisodes.title.toLowerCase()) || directEpisodes.title.toLowerCase().includes(d.name.toLowerCase()));
+                if (matched && matched.videos) {
+                  const epPadded = `Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`;
+                  isDownloaded = matched.videos.some(v => v.filename === epPadded);
                 }
               }
-            } catch (e) {}
-          }, 1200);
-        } else {
-          btn.disabled = false;
-          pMsg.innerText = '❌ Lỗi: ' + (data.message || 'Không thể bắt đầu');
-          showToast('❌ Lỗi: ' + data.message, 'error');
-        }
-      } catch (err) {
-        btn.disabled = false;
-        pMsg.innerText = '❌ Lỗi: ' + err.message;
-        showToast('❌ Lỗi: ' + err.message, 'error');
-      }
-    }
+              return /*#__PURE__*/_jsxs("div", {
+                className: `glass-card p-3 rounded-xl border flex flex-col justify-between transition-all ${isDownloaded ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-800'}`,
+                children: [/*#__PURE__*/_jsxs("div", {
+                  children: [/*#__PURE__*/_jsxs("div", {
+                    className: "flex items-center justify-between",
+                    children: [/*#__PURE__*/_jsxs("span", {
+                      className: "font-extrabold text-sm text-white",
+                      children: ["Tập ", ep.epNumber]
+                    }), isDownloaded ? /*#__PURE__*/_jsx("span", {
+                      className: "text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
+                      children: "Đã tải"
+                    }) : ep.isVip ? /*#__PURE__*/_jsx("span", {
+                      className: "text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400",
+                      children: "VIP"
+                    }) : /*#__PURE__*/_jsx("span", {
+                      className: "text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400",
+                      children: "Free"
+                    })]
+                  }), /*#__PURE__*/_jsxs("div", {
+                    className: "text-[11px] text-slate-400 mt-1",
+                    children: ["⏱️ ", formatDuration(ep.duration)]
+                  })]
+                }), /*#__PURE__*/_jsxs("div", {
+                  className: "mt-3 pt-2 border-t border-slate-800/80 flex items-center gap-1.5",
+                  children: [/*#__PURE__*/_jsxs("button", {
+                    onClick: () => handleDownloadDirectSingle(ep),
+                    title: "Tải nhanh 1-2s về máy tính",
+                    className: "flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all flex items-center justify-center gap-1",
+                    children: [/*#__PURE__*/_jsx("span", {
+                      children: "⚡"
+                    }), /*#__PURE__*/_jsx("span", {
+                      children: isDownloaded ? 'Tải Lại' : 'Tải 1s'
+                    })]
+                  }), /*#__PURE__*/_jsx("button", {
+                    onClick: () => {
+                      navigator.clipboard.writeText(activeUrl);
+                      showToast(`Đã copy link CDN Tập ${ep.epNumber}!`, 'success');
+                    },
+                    title: "Copy link CDN",
+                    className: "p-1 px-2 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300",
+                    children: "📋"
+                  }), /*#__PURE__*/_jsx("a", {
+                    href: activeUrl,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    title: "Mở xem trực tiếp link CDN",
+                    className: "p-1 px-2 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300",
+                    children: "🌐"
+                  })]
+                })]
+              }, ep.epNumber);
+            })
+          })]
+        }) : /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-12 text-center rounded-2xl border border-slate-800",
+          children: [/*#__PURE__*/_jsx("div", {
+            className: "text-4xl",
+            children: "🎭"
+          }), /*#__PURE__*/_jsx("h3", {
+            className: "font-bold text-lg text-white mt-3",
+            children: "Chưa Tìm Thấy Dữ Liệu Link Trực Tiếp"
+          }), /*#__PURE__*/_jsxs("p", {
+            className: "text-xs text-slate-400 max-w-md mx-auto mt-1",
+            children: ["Hãy mở một bộ phim bất kỳ trên ứng dụng ", /*#__PURE__*/_jsx("strong", {
+              children: "MinuteDrama"
+            }), " trong máy ảo LDPlayer/Nox, sau đó nhấn nút ", /*#__PURE__*/_jsx("strong", {
+              children: "Quét Lại Database"
+            }), " ở góc phải."]
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => fetchDirectEpisodes(),
+            className: "mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all",
+            children: "🔄 Quét Lại Ngay"
+          })]
+        })]
+      }), activeTab === 'cache' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-5 rounded-2xl space-y-4",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "flex flex-col md:flex-row md:items-center justify-between gap-4",
+            children: [/*#__PURE__*/_jsxs("div", {
+              children: [/*#__PURE__*/_jsx("h2", {
+                className: "text-xl font-bold text-white flex items-center gap-2",
+                children: /*#__PURE__*/_jsx("span", {
+                  children: "🔄 Quét Cache Giả Lập & Tự Động Lướt Tập"
+                })
+              }), /*#__PURE__*/_jsx("p", {
+                className: "text-xs text-slate-400 mt-1",
+                children: "Bắt các file video được ứng dụng lưu tạm trên máy ảo Android. Tự động lướt tập thông minh."
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "flex items-center gap-2 flex-wrap",
+              children: [/*#__PURE__*/_jsxs("button", {
+                onClick: handleExportCache,
+                disabled: loading || !status?.remoteCacheCount,
+                className: "px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 flex items-center gap-1.5 transition-all disabled:opacity-50",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "📥"
+                }), /*#__PURE__*/_jsx("span", {
+                  children: loading ? 'Đang xuất video...' : `Xuất Tất Cả (${status?.remoteCacheCount || 0} tập) Về Máy`
+                })]
+              }), /*#__PURE__*/_jsxs("button", {
+                onClick: handleDeleteRemoteCache,
+                className: "px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 transition-all",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "🗑️"
+                }), /*#__PURE__*/_jsx("span", {
+                  children: "Dọn Sạch Cache Máy Ảo"
+                })]
+              })]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-3 items-center",
+            children: [/*#__PURE__*/_jsxs("div", {
+              className: "text-xs font-semibold text-slate-300 flex items-center gap-2",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: "📱 Tự Động Lướt Tập:"
+              }), autoSwipeStatus?.isRunning && /*#__PURE__*/_jsxs("span", {
+                className: "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse",
+                children: ["Đang chạy (", autoSwipeStatus.currentCount, "/", autoSwipeStatus.totalCount, ")"]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "flex items-center gap-2",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs text-slate-400",
+                children: "Số tập:"
+              }), /*#__PURE__*/_jsx("input", {
+                type: "number",
+                min: "1",
+                max: "100",
+                value: autoSwipeTotal,
+                onChange: e => setAutoSwipeTotal(e.target.value),
+                className: "w-20 px-2 py-1 text-xs bg-slate-900 border border-slate-700 rounded-lg text-white"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "flex items-center gap-2",
+              children: [/*#__PURE__*/_jsx("span", {
+                className: "text-xs text-slate-400",
+                children: "Giây/tập:"
+              }), /*#__PURE__*/_jsx("input", {
+                type: "number",
+                min: "3",
+                max: "120",
+                value: autoSwipeDelay,
+                onChange: e => setAutoSwipeDelay(e.target.value),
+                className: "w-20 px-2 py-1 text-xs bg-slate-900 border border-slate-700 rounded-lg text-white"
+              })]
+            }), /*#__PURE__*/_jsx("div", {
+              children: /*#__PURE__*/_jsx("button", {
+                onClick: handleToggleAutoSwipe,
+                className: `w-full py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${autoSwipeStatus?.isRunning ? 'bg-rose-600 hover:bg-rose-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`,
+                children: /*#__PURE__*/_jsx("span", {
+                  children: autoSwipeStatus?.isRunning ? '⏹️ Dừng Lướt Tập' : '▶️ Bắt Đầu Tự Động Lướt'
+                })
+              })
+            })]
+          })]
+        }), status?.remoteList && status.remoteList.length > 0 ? /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel rounded-2xl overflow-hidden border border-slate-800",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "px-5 py-3 border-b border-slate-800 flex items-center justify-between",
+            children: [/*#__PURE__*/_jsx("h3", {
+              className: "font-bold text-sm text-white",
+              children: "Danh Sách Video Trong Cache Máy Ảo"
+            }), /*#__PURE__*/_jsxs("span", {
+              className: "text-xs text-slate-400 font-semibold",
+              children: [status.remoteList.length, " video tìm thấy"]
+            })]
+          }), /*#__PURE__*/_jsx("div", {
+            className: "divide-y divide-slate-800/80",
+            children: status.remoteList.map((item, idx) => /*#__PURE__*/_jsxs("div", {
+              className: "px-5 py-3 flex items-center justify-between hover:bg-slate-800/40 transition-colors",
+              children: [/*#__PURE__*/_jsxs("div", {
+                className: "flex items-center gap-3",
+                children: [/*#__PURE__*/_jsx("span", {
+                  className: "w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-brand-400",
+                  children: item.suggestedEp ? `T${item.suggestedEp}` : `#${idx + 1}`
+                }), /*#__PURE__*/_jsxs("div", {
+                  children: [/*#__PURE__*/_jsxs("div", {
+                    className: "font-semibold text-sm text-white flex items-center gap-2",
+                    children: [/*#__PURE__*/_jsx("span", {
+                      children: item.suggestedEp ? `Tập ${item.suggestedEp}` : item.name
+                    }), item.isAlreadyExported && /*#__PURE__*/_jsx("span", {
+                      className: "text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400",
+                      children: "Đã tải vào máy"
+                    })]
+                  }), /*#__PURE__*/_jsxs("div", {
+                    className: "text-xs text-slate-400 mt-0.5",
+                    children: ["Dung lượng: ", /*#__PURE__*/_jsx("strong", {
+                      className: "text-slate-300",
+                      children: item.sizeFormatted
+                    }), item.percentComplete < 100 && /*#__PURE__*/_jsxs("span", {
+                      className: "text-amber-400 ml-2 font-medium",
+                      children: ["(Đang cache: ", item.percentComplete, "%)"]
+                    })]
+                  })]
+                })]
+              }), /*#__PURE__*/_jsx("div", {
+                className: "flex items-center gap-2",
+                children: /*#__PURE__*/_jsx("button", {
+                  onClick: async () => {
+                    showToast(`Đang xuất Tập ${item.suggestedEp}...`, 'info');
+                    try {
+                      const res = await fetch('/api/export-single', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          remotePath: item.path,
+                          dramaName: status?.currentDrama?.title || 'Bo_Phim_Moi',
+                          epNum: item.suggestedEp
+                        })
+                      });
+                      const data = await res.json();
+                      showToast(`✅ Đã xuất Tập ${item.suggestedEp} về máy!`, 'success');
+                      fetchStatus();
+                    } catch (e) {
+                      showToast('Lỗi xuất tập đơn', 'error');
+                    }
+                  },
+                  className: "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all",
+                  children: "Tải Về Máy"
+                })
+              })]
+            }, idx))
+          })]
+        }) : /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-12 text-center rounded-2xl border border-slate-800",
+          children: [/*#__PURE__*/_jsx("div", {
+            className: "text-4xl",
+            children: "💤"
+          }), /*#__PURE__*/_jsx("h3", {
+            className: "font-bold text-lg text-white mt-3",
+            children: "Chưa Có Video Nào Trong Cache Máy Ảo"
+          }), /*#__PURE__*/_jsxs("p", {
+            className: "text-xs text-slate-400 max-w-md mx-auto mt-1",
+            children: ["Hãy bấm vào video trên ứng dụng trong máy ảo để video tải vào bộ nhớ đệm, hoặc sử dụng công cụ ", /*#__PURE__*/_jsx("strong", {
+              children: "Tự Động Lướt Tập"
+            }), " phía trên."]
+          })]
+        })]
+      }), activeTab === 'library' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl",
+          children: [/*#__PURE__*/_jsxs("div", {
+            children: [/*#__PURE__*/_jsx("h2", {
+              className: "text-xl font-bold text-white flex items-center gap-2",
+              children: /*#__PURE__*/_jsx("span", {
+                children: "🎬 Kho Phim Đã Lưu Trên Máy Tính"
+              })
+            }), /*#__PURE__*/_jsxs("p", {
+              className: "text-xs text-slate-400 mt-1",
+              children: ["Thư mục lưu trữ: ", /*#__PURE__*/_jsx("code", {
+                className: "text-brand-300",
+                children: "Soda_Reels_Videos/"
+              }), ". Xem video trực tiếp trên web không lo lỗi thiếu codec."]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "flex items-center gap-2",
+            children: [/*#__PURE__*/_jsxs("button", {
+              onClick: () => handleOpenFolder(selectedDramaName || ''),
+              className: "px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: "📂"
+              }), /*#__PURE__*/_jsx("span", {
+                children: "Mở Trong Windows Explorer"
+              })]
+            }), /*#__PURE__*/_jsx("button", {
+              onClick: fetchStatus,
+              className: "px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700",
+              children: "🔄 Làm Mới"
+            })]
+          })]
+        }), status?.localDramas && status.localDramas.length > 0 ? /*#__PURE__*/_jsxs("div", {
+          className: "grid grid-cols-1 md:grid-cols-4 gap-6",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "space-y-2",
+            children: [/*#__PURE__*/_jsxs("span", {
+              className: "text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1",
+              children: ["Danh Sách Bộ Phim (", status.localDramas.length, ")"]
+            }), status.localDramas.map(drama => {
+              const isSelected = selectedDramaName === drama.name;
+              return /*#__PURE__*/_jsxs("div", {
+                onClick: () => setSelectedDramaName(drama.name),
+                className: `p-3 rounded-xl cursor-pointer border transition-all ${isSelected ? 'bg-brand-600/20 border-brand-500/50 text-white shadow-md' : 'glass-card border-slate-800 text-slate-300 hover:text-white'}`,
+                children: [/*#__PURE__*/_jsx("div", {
+                  className: "font-bold text-sm truncate",
+                  children: drama.name
+                }), /*#__PURE__*/_jsxs("div", {
+                  className: "text-xs text-slate-400 mt-1 flex items-center justify-between",
+                  children: [/*#__PURE__*/_jsxs("span", {
+                    children: [drama.videos ? drama.videos.length : 0, " tập phim"]
+                  }), /*#__PURE__*/_jsx("span", {
+                    className: "text-[10px] text-brand-300 font-semibold",
+                    children: "Xem chi tiết →"
+                  })]
+                })]
+              }, drama.name);
+            })]
+          }), /*#__PURE__*/_jsx("div", {
+            className: "md:col-span-3 space-y-4",
+            children: (() => {
+              const activeDrama = status.localDramas.find(d => d.name === selectedDramaName) || status.localDramas[0];
+              if (!activeDrama) return null;
+              return /*#__PURE__*/_jsxs("div", {
+                className: "glass-panel p-5 rounded-2xl border border-slate-800",
+                children: [/*#__PURE__*/_jsxs("div", {
+                  className: "flex items-center justify-between pb-4 border-b border-slate-800 mb-4",
+                  children: [/*#__PURE__*/_jsxs("div", {
+                    children: [/*#__PURE__*/_jsx("h3", {
+                      className: "text-lg font-bold text-white",
+                      children: activeDrama.name
+                    }), /*#__PURE__*/_jsxs("p", {
+                      className: "text-xs text-slate-400",
+                      children: ["Đã tải: ", /*#__PURE__*/_jsx("strong", {
+                        children: activeDrama.videos ? activeDrama.videos.length : 0
+                      }), " tập phim"]
+                    })]
+                  }), /*#__PURE__*/_jsx("button", {
+                    onClick: () => handleOpenFolder(activeDrama.name),
+                    className: "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300",
+                    children: "📂 Mở Thư Mục Phim"
+                  })]
+                }), activeDrama.videos && activeDrama.videos.length > 0 ? /*#__PURE__*/_jsx("div", {
+                  className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3",
+                  children: activeDrama.videos.map((vid, idx) => /*#__PURE__*/_jsxs("div", {
+                    className: "glass-card p-3 rounded-xl border border-slate-800 flex flex-col justify-between",
+                    children: [/*#__PURE__*/_jsxs("div", {
+                      children: [/*#__PURE__*/_jsxs("div", {
+                        className: "flex items-center justify-between",
+                        children: [/*#__PURE__*/_jsx("span", {
+                          className: "font-bold text-sm text-white",
+                          children: vid.filename
+                        }), vid.isDubbed && /*#__PURE__*/_jsx("span", {
+                          className: "text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30",
+                          children: "🎙️ Đã lồng tiếng"
+                        })]
+                      }), /*#__PURE__*/_jsxs("div", {
+                        className: "text-xs text-slate-400 mt-1",
+                        children: ["Dung lượng: ", /*#__PURE__*/_jsx("span", {
+                          className: "text-slate-300",
+                          children: vid.sizeFormatted
+                        })]
+                      })]
+                    }), /*#__PURE__*/_jsxs("div", {
+                      className: "mt-4 pt-2 border-t border-slate-800/80 flex items-center gap-2",
+                      children: [/*#__PURE__*/_jsxs("button", {
+                        onClick: () => setVideoModal({
+                          title: `${activeDrama.name} - ${vid.filename}`,
+                          url: `/video/${encodeURIComponent(activeDrama.name)}/${encodeURIComponent(vid.filename)}`
+                        }),
+                        className: "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all flex items-center justify-center gap-1",
+                        children: [/*#__PURE__*/_jsx("span", {
+                          children: "▶️"
+                        }), /*#__PURE__*/_jsx("span", {
+                          children: "Phát Video"
+                        })]
+                      }), /*#__PURE__*/_jsxs("button", {
+                        onClick: () => {
+                          setDubbingTarget({
+                            name: `${activeDrama.name} - ${vid.filename}`,
+                            path: vid.path
+                          });
+                          setActiveTab('dubbing');
+                        },
+                        title: "Chuyển video này sang Studio Lồng Tiếng AI",
+                        className: "py-1.5 px-3 rounded-lg text-xs font-bold bg-purple-600/30 hover:bg-purple-600 text-purple-200 border border-purple-500/40 transition-all flex items-center gap-1",
+                        children: [/*#__PURE__*/_jsx("span", {
+                          children: "🎙️"
+                        }), /*#__PURE__*/_jsx("span", {
+                          children: "Lồng Tiếng"
+                        })]
+                      })]
+                    })]
+                  }, idx))
+                }) : /*#__PURE__*/_jsx("div", {
+                  className: "p-8 text-center text-slate-400 text-xs",
+                  children: "Chưa có tập phim nào trong bộ phim này."
+                })]
+              });
+            })()
+          })]
+        }) : /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-12 text-center rounded-2xl border border-slate-800",
+          children: [/*#__PURE__*/_jsx("div", {
+            className: "text-4xl",
+            children: "📁"
+          }), /*#__PURE__*/_jsx("h3", {
+            className: "font-bold text-lg text-white mt-3",
+            children: "Kho Video Trống"
+          }), /*#__PURE__*/_jsxs("p", {
+            className: "text-xs text-slate-400 max-w-md mx-auto mt-1",
+            children: ["Bạn chưa tải tập phim nào về máy tính. Hãy chuyển sang tab ", /*#__PURE__*/_jsx("strong", {
+              children: "Tải Trực Tiếp CDN"
+            }), " hoặc ", /*#__PURE__*/_jsx("strong", {
+              children: "Giả Lập & Quét Cache"
+            }), " để bắt đầu tải!"]
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => setActiveTab('direct'),
+            className: "mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all",
+            children: "⚡ Chuyển Sang Tải Trực Tiếp CDN"
+          })]
+        })]
+      }), activeTab === 'dubbing' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-5 rounded-2xl",
+          children: [/*#__PURE__*/_jsx("h2", {
+            className: "text-xl font-bold text-white flex items-center gap-2",
+            children: /*#__PURE__*/_jsx("span", {
+              children: "🎙️ Phòng Lồng Tiếng Phim AI (StudioVDT Engine)"
+            })
+          }), /*#__PURE__*/_jsx("p", {
+            className: "text-xs text-slate-400 mt-1",
+            children: "Tự động nhận diện giọng nói gốc bằng Faster-Whisper, dịch kịch bản sang tiếng Việt và tạo giọng đọc truyền cảm xúc bằng Edge-TTS."
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "grid grid-cols-1 md:grid-cols-3 gap-6",
+          children: [/*#__PURE__*/_jsxs("div", {
+            className: "md:col-span-2 glass-panel p-6 rounded-2xl space-y-5",
+            children: [/*#__PURE__*/_jsxs("div", {
+              children: [/*#__PURE__*/_jsx("label", {
+                className: "block text-xs font-bold uppercase text-slate-400 mb-2",
+                children: "1. Video Đầu Vào Cần Lồng Tiếng:"
+              }), dubbingTarget ? /*#__PURE__*/_jsxs("div", {
+                className: "p-3 rounded-xl bg-purple-950/30 border border-purple-500/40 flex items-center justify-between",
+                children: [/*#__PURE__*/_jsxs("div", {
+                  className: "flex items-center gap-3",
+                  children: [/*#__PURE__*/_jsx("span", {
+                    className: "text-2xl",
+                    children: "🎬"
+                  }), /*#__PURE__*/_jsxs("div", {
+                    children: [/*#__PURE__*/_jsx("div", {
+                      className: "font-bold text-sm text-white",
+                      children: dubbingTarget.name
+                    }), /*#__PURE__*/_jsx("div", {
+                      className: "text-[11px] text-slate-400 truncate max-w-xs",
+                      children: dubbingTarget.path
+                    })]
+                  })]
+                }), /*#__PURE__*/_jsx("button", {
+                  onClick: () => setDubbingTarget(null),
+                  className: "text-xs text-rose-400 hover:text-rose-300 font-semibold",
+                  children: "Đổi video"
+                })]
+              }) : /*#__PURE__*/_jsxs("div", {
+                className: "space-y-2",
+                children: [/*#__PURE__*/_jsxs("select", {
+                  onChange: e => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    const parts = val.split('||');
+                    setDubbingTarget({
+                      name: parts[0],
+                      path: parts[1]
+                    });
+                  },
+                  className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+                  defaultValue: "",
+                  children: [/*#__PURE__*/_jsx("option", {
+                    value: "",
+                    disabled: true,
+                    children: "-- Chọn video từ Kho Phim đã tải --"
+                  }), status?.localDramas?.map(d => /*#__PURE__*/_jsx("optgroup", {
+                    label: d.name,
+                    children: d.videos?.map(v => /*#__PURE__*/_jsxs("option", {
+                      value: `${d.name} - ${v.filename}||${v.path}`,
+                      children: [v.filename, " (", v.sizeFormatted, ")"]
+                    }, v.path))
+                  }, d.name))]
+                }), /*#__PURE__*/_jsxs("p", {
+                  className: "text-[11px] text-slate-500",
+                  children: ["Hoặc chuyển sang tab ", /*#__PURE__*/_jsx("strong", {
+                    children: "Kho Phim & Video"
+                  }), " rồi bấm nút \"🎙️ Lồng Tiếng\" trên tập phim mong muốn."]
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+              children: [/*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("label", {
+                  className: "block text-xs font-bold uppercase text-slate-400 mb-2",
+                  children: "2. Giọng Đọc Lồng Tiếng:"
+                }), /*#__PURE__*/_jsxs("select", {
+                  value: dubVoice,
+                  onChange: e => setDubVoice(e.target.value),
+                  className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+                  children: [/*#__PURE__*/_jsx("option", {
+                    value: "vi-VN-HoaiMyNeural",
+                    children: "👩 Hoài My (Nữ nhẹ nhàng, truyền cảm)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "vi-VN-NamMinhNeural",
+                    children: "👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh)"
+                  })]
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("label", {
+                  className: "block text-xs font-bold uppercase text-slate-400 mb-2",
+                  children: "3. Tốc Độ Nói (Rate):"
+                }), /*#__PURE__*/_jsxs("select", {
+                  value: dubSpeed,
+                  onChange: e => setDubSpeed(e.target.value),
+                  className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+                  children: [/*#__PURE__*/_jsx("option", {
+                    value: "-10%",
+                    children: "0.9x (Hơi chậm)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "+0%",
+                    children: "1.0x (Tốc độ chuẩn)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "+10%",
+                    children: "1.1x (Nhanh nhẹn)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "+20%",
+                    children: "1.2x (Kịch tính)"
+                  })]
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "grid grid-cols-1 sm:grid-cols-2 gap-4",
+              children: [/*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("label", {
+                  className: "block text-xs font-bold uppercase text-slate-400 mb-2",
+                  children: "4. Model Whisper Nhận Dạng:"
+                }), /*#__PURE__*/_jsxs("select", {
+                  value: dubModel,
+                  onChange: e => setDubModel(e.target.value),
+                  className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+                  children: [/*#__PURE__*/_jsx("option", {
+                    value: "tiny",
+                    children: "tiny (Siêu nhanh, ít RAM)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "base",
+                    children: "base (Khuyên dùng - Cân bằng tốt)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "small",
+                    children: "small (Chính xác cao hơn)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "medium",
+                    children: "medium (Rất chính xác)"
+                  })]
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                children: [/*#__PURE__*/_jsx("label", {
+                  className: "block text-xs font-bold uppercase text-slate-400 mb-2",
+                  children: "5. Âm Lượng Nhạc Nền Gốc (Ducking):"
+                }), /*#__PURE__*/_jsxs("select", {
+                  value: dubBgmVol,
+                  onChange: e => setDubBgmVol(parseFloat(e.target.value)),
+                  className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+                  children: [/*#__PURE__*/_jsx("option", {
+                    value: "0.10",
+                    children: "10% (Nhạc nền rất nhỏ)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "0.15",
+                    children: "15% (Chuẩn phim truyền hình)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "0.25",
+                    children: "25% (Nhạc nền vừa phải)"
+                  }), /*#__PURE__*/_jsx("option", {
+                    value: "0.35",
+                    children: "35% (Nhạc nền lớn)"
+                  })]
+                })]
+              })]
+            }), /*#__PURE__*/_jsxs("button", {
+              onClick: handleStartDubbing,
+              disabled: !!dubJobId || !dubbingTarget,
+              className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2",
+              children: [/*#__PURE__*/_jsx("span", {
+                children: dubJobId ? '⏳' : '🚀'
+              }), /*#__PURE__*/_jsx("span", {
+                children: dubJobId ? 'Đang Xử Lý Lồng Tiếng AI...' : 'Bắt Đầu Lồng Tiếng Video'
+              })]
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4",
+            children: [/*#__PURE__*/_jsxs("div", {
+              children: [/*#__PURE__*/_jsx("h3", {
+                className: "font-bold text-sm text-white mb-2 flex items-center gap-2",
+                children: /*#__PURE__*/_jsx("span", {
+                  children: "⚙️ Tiến Trình Xử Lý AI"
+                })
+              }), dubProgress ? /*#__PURE__*/_jsxs("div", {
+                className: "space-y-3",
+                children: [/*#__PURE__*/_jsxs("div", {
+                  className: "flex items-center justify-between text-xs font-bold text-purple-400",
+                  children: [/*#__PURE__*/_jsx("span", {
+                    children: dubProgress.step || 'Đang tiến hành...'
+                  }), /*#__PURE__*/_jsxs("span", {
+                    children: [dubProgress.percent || 0, "%"]
+                  })]
+                }), /*#__PURE__*/_jsx("div", {
+                  className: "w-full bg-slate-800 rounded-full h-2.5 overflow-hidden",
+                  children: /*#__PURE__*/_jsx("div", {
+                    className: "bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full transition-all duration-300",
+                    style: {
+                      width: `${dubProgress.percent || 0}%`
+                    }
+                  })
+                }), /*#__PURE__*/_jsxs("div", {
+                  className: "p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1",
+                  children: [/*#__PURE__*/_jsxs("div", {
+                    children: ["Trạng thái: ", /*#__PURE__*/_jsx("strong", {
+                      className: "text-white",
+                      children: dubProgress.status
+                    })]
+                  }), dubProgress.message && /*#__PURE__*/_jsx("div", {
+                    className: "text-slate-400",
+                    children: dubProgress.message
+                  })]
+                })]
+              }) : /*#__PURE__*/_jsx("div", {
+                className: "p-6 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl",
+                children: "Chưa có tiến trình lồng tiếng nào đang chạy."
+              })]
+            }), dubResultVideo && /*#__PURE__*/_jsxs("div", {
+              className: "p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3",
+              children: [/*#__PURE__*/_jsxs("div", {
+                className: "font-bold text-xs text-emerald-400 flex items-center gap-1.5",
+                children: [/*#__PURE__*/_jsx("span", {
+                  children: "🎉"
+                }), /*#__PURE__*/_jsx("span", {
+                  children: "Video Đã Lồng Tiếng Sẵn Sàng!"
+                })]
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "text-xs text-slate-300 truncate",
+                children: ["File: ", dubResultVideo.replace(/^.*[\\\/]/, '')]
+              }), /*#__PURE__*/_jsx("button", {
+                onClick: () => {
+                  const parts = dubResultVideo.split(/[\\\/]/);
+                  const fileName = parts.pop();
+                  const subFolder = parts.pop();
+                  const dramaFolder = parts.pop();
+                  setVideoModal({
+                    title: `Video Lồng Tiếng - ${fileName}`,
+                    url: `/video/${encodeURIComponent(dramaFolder)}/${encodeURIComponent(subFolder)}/${encodeURIComponent(fileName)}`
+                  });
+                },
+                className: "w-full py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-1.5",
+                children: /*#__PURE__*/_jsx("span", {
+                  children: "▶️ Phát Video Lồng Tiếng"
+                })
+              })]
+            })]
+          })]
+        })]
+      }), activeTab === 'settings' && /*#__PURE__*/_jsxs("div", {
+        className: "space-y-6",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-4",
+          children: [/*#__PURE__*/_jsx("h2", {
+            className: "text-lg font-bold text-white flex items-center gap-2",
+            children: /*#__PURE__*/_jsx("span", {
+              children: "📱 Kết Nối Thiết Bị Giả Lập Android (ADB)"
+            })
+          }), /*#__PURE__*/_jsx("p", {
+            className: "text-xs text-slate-400",
+            children: "Nhập địa chỉ IP và cổng của giả lập LDPlayer, NoxPlayer, hoặc BlueStacks để kết nối."
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "flex flex-col sm:flex-row items-center gap-3",
+            children: [/*#__PURE__*/_jsx("input", {
+              type: "text",
+              value: adbHostInput,
+              onChange: e => setAdbHostInput(e.target.value),
+              placeholder: "127.0.0.1:5555",
+              className: "w-full sm:w-80 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+            }), /*#__PURE__*/_jsx("button", {
+              onClick: handleConnectAdb,
+              disabled: adbConnecting,
+              className: "w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md",
+              children: adbConnecting ? 'Đang kết nối...' : '⚡ Kết Nối ADB Ngay'
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "text-xs text-slate-400 space-y-1",
+            children: [/*#__PURE__*/_jsxs("div", {
+              children: ["• Cổng mặc định LDPlayer 9: ", /*#__PURE__*/_jsx("code", {
+                children: "127.0.0.1:5555"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              children: ["• Cổng mặc định NoxPlayer: ", /*#__PURE__*/_jsx("code", {
+                children: "127.0.0.1:62001"
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              children: ["• Cổng mặc định BlueStacks: ", /*#__PURE__*/_jsx("code", {
+                children: "127.0.0.1:5554"
+              })]
+            })]
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-3",
+          children: [/*#__PURE__*/_jsx("h2", {
+            className: "text-lg font-bold text-amber-400 flex items-center gap-2",
+            children: /*#__PURE__*/_jsx("span", {
+              children: "💡 Hướng Dẫn Khắc Phục Lỗi 0xC00D36C4 Trên Windows Media Player"
+            })
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "text-xs text-slate-300 space-y-2 leading-relaxed",
+            children: [/*#__PURE__*/_jsxs("p", {
+              children: [/*#__PURE__*/_jsx("strong", {
+                children: "Nguyên nhân:"
+              }), " Khi bạn mở file video MP4 trên máy tính bằng Windows Media Player và gặp lỗi", /*#__PURE__*/_jsx("code", {
+                className: "text-rose-400 mx-1",
+                children: "0xC00D36C4 (file type unsupported or corrupt)"
+              }), ", nguyên nhân là do video đó được encode bằng chuẩn nén ", /*#__PURE__*/_jsx("strong", {
+                children: "HEVC (H.265)"
+              }), " mà Windows 10/11 mặc định không cài sẵn codec HEVC."]
+            }), /*#__PURE__*/_jsxs("div", {
+              className: "p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2",
+              children: [/*#__PURE__*/_jsx("div", {
+                className: "font-bold text-white text-sm",
+                children: "3 Cách Khắc Phục Đơn Giản Nhất:"
+              }), /*#__PURE__*/_jsxs("div", {
+                className: "space-y-1.5 text-slate-300",
+                children: [/*#__PURE__*/_jsxs("div", {
+                  children: ["✅ ", /*#__PURE__*/_jsx("strong", {
+                    children: "Cách 1 (Khuyên dùng):"
+                  }), " Trong tab ", /*#__PURE__*/_jsx("strong", {
+                    children: "Tải Trực Tiếp CDN"
+                  }), " của tool, luôn chọn nút ", /*#__PURE__*/_jsx("strong", {
+                    className: "text-emerald-400",
+                    children: "🟢 H.264 (Chuẩn Windows)"
+                  }), ". Tool sẽ tự động lấy link H.264 bản chuẩn để mở ngay trên Windows Media Player mà không bao giờ bị lỗi!"]
+                }), /*#__PURE__*/_jsxs("div", {
+                  children: ["✅ ", /*#__PURE__*/_jsx("strong", {
+                    children: "Cách 2:"
+                  }), " Xem video trực tiếp trong tab ", /*#__PURE__*/_jsx("strong", {
+                    children: "Kho Phim & Video"
+                  }), " trên giao diện web của tool. Trình phát web đã tích hợp bộ giải mã tương thích."]
+                }), /*#__PURE__*/_jsxs("div", {
+                  children: ["✅ ", /*#__PURE__*/_jsx("strong", {
+                    children: "Cách 3:"
+                  }), " Khi bạn đưa video vào ", /*#__PURE__*/_jsx("strong", {
+                    children: "Studio Lồng Tiếng AI"
+                  }), ", hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo."]
+                })]
+              })]
+            })]
+          })]
+        }), /*#__PURE__*/_jsxs("div", {
+          className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-3",
+          children: [/*#__PURE__*/_jsx("h2", {
+            className: "text-lg font-bold text-white flex items-center gap-2",
+            children: /*#__PURE__*/_jsx("span", {
+              children: "🐳 Chạy Ứng Dụng Bằng Docker"
+            })
+          }), /*#__PURE__*/_jsx("p", {
+            className: "text-xs text-slate-300 leading-relaxed",
+            children: "Để chạy toàn bộ hệ thống (bao gồm Node.js, Python Faster-Whisper, FFmpeg, Edge-TTS) trong một môi trường cô lập không cần cài đặt phần mềm phụ trợ, bạn chỉ cần chạy:"
+          }), /*#__PURE__*/_jsxs("div", {
+            className: "p-3 rounded-xl bg-slate-900 text-xs font-mono text-brand-300 border border-slate-800",
+            children: ["Double click vào file ", /*#__PURE__*/_jsx("strong", {
+              children: "CHAY_DOCKER.bat"
+            }), " hoặc chạy lệnh ", /*#__PURE__*/_jsx("code", {
+              children: "docker compose up -d"
+            })]
+          })]
+        })]
+      })]
+    }), videoModal && /*#__PURE__*/_jsx("div", {
+      className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md",
+      children: /*#__PURE__*/_jsxs("div", {
+        className: "relative w-full max-w-4xl bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl",
+        children: [/*#__PURE__*/_jsxs("div", {
+          className: "p-4 border-b border-slate-800 flex items-center justify-between",
+          children: [/*#__PURE__*/_jsx("h3", {
+            className: "font-bold text-sm text-white truncate max-w-lg",
+            children: videoModal.title
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => setVideoModal(null),
+            className: "w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm font-bold",
+            children: "✕"
+          })]
+        }), /*#__PURE__*/_jsx("div", {
+          className: "p-4 bg-black flex justify-center",
+          children: /*#__PURE__*/_jsx("video", {
+            src: videoModal.url,
+            controls: true,
+            autoPlay: true,
+            className: "max-h-[70vh] w-auto rounded-lg",
+            children: "Trình duyệt không hỗ trợ phát video này."
+          })
+        })]
+      })
+    }), /*#__PURE__*/_jsx("footer", {
+      className: "mt-auto border-t border-slate-800 py-4 text-center text-xs text-slate-500",
+      children: "Video Dynamic Toolkit • Soda Reels & MinuteDrama Downloader & AI Dubbing Studio • 2026"
+    })]
+  });
+}
+
+// Render React App
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(/*#__PURE__*/_jsx(App, {}));

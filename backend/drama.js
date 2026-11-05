@@ -479,10 +479,13 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
     if (!bestDrama) return { title: '', totalEpisodes: 0, episodes: [] };
 
     const episodes = (bestDrama.episodesInfos || []).map(ep => {
-      const directUrl = ep.signPlayUrl || ep.signPlayUrlH264 || ep.bkSignPlayUrl || '';
+      // Ưu tiên signPlayUrlH264 (H.264) để xem mượt mà trên mọi thiết bị và Windows Media Player mà không bị lỗi 0xC00D36C4 (thiếu HEVC)
+      const directUrl = ep.signPlayUrlH264 || ep.signPlayUrl || ep.bkSignPlayUrl || '';
       return {
         epNumber: ep.episodeNum,
         directUrl,
+        directUrlH264: ep.signPlayUrlH264 || '',
+        directUrlH265: ep.signPlayUrl || '',
         duration: ep.episodeDuration || 0,
         isVip: (ep.vipFlag === 1)
       };

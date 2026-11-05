@@ -38,12 +38,32 @@ process.on('unhandledRejection', (reason) => {
 if (!fs.existsSync(TARGET_DIR)) fs.mkdirSync(TARGET_DIR, { recursive: true });
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.jsx': 'text/plain; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
+  '.mp3': 'audio/mpeg',
+  '.woff2': 'font/woff2'
+};
+
 function serveStaticFile(res, filePath, contentType) {
-  if (fs.existsSync(filePath)) {
-    res.writeHead(200, { 'Content-Type': contentType });
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    const type = contentType || MIME_TYPES[ext] || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': type });
     fs.createReadStream(filePath).pipe(res);
   } else {
-    res.writeHead(404);
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Not found');
   }
 }
@@ -99,13 +119,14 @@ const server = http.createServer(async (req, res) => {
 
   // 1. Static Frontend Files
   if (url.pathname === '/' || url.pathname === '/index.html') {
-    return serveStaticFile(res, path.join(FRONTEND_DIR, 'index.html'), 'text/html; charset=utf-8');
+    return serveStaticFile(res, path.join(FRONTEND_DIR, 'index.html'));
   }
-  if (url.pathname === '/css/style.css' || url.pathname === '/style.css') {
-    return serveStaticFile(res, path.join(FRONTEND_DIR, 'css', 'style.css'), 'text/css; charset=utf-8');
-  }
-  if (url.pathname === '/js/app.js' || url.pathname === '/app.js') {
-    return serveStaticFile(res, path.join(FRONTEND_DIR, 'js', 'app.js'), 'application/javascript; charset=utf-8');
+
+  // Serve static files from FRONTEND_DIR if file exists
+  const safePath = path.normalize(url.pathname).replace(/^(\.\.[\/\\])+/, '');
+  const candidatePath = path.join(FRONTEND_DIR, safePath);
+  if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
+    return serveStaticFile(res, candidatePath);
   }
 
   // 2. API Status & Information
@@ -217,6 +238,22 @@ const server = http.createServer(async (req, res) => {
       spawn('explorer.exe', [targetFolder], { detached: true });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  // 6.2 Connect ADB Device API
+  if (url.pathname === '/api/connect-adb' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const host = (payload.host || '127.0.0.1:5555').trim();
+      const output = execSync(`"${ADB_PATH}" connect ${host}`, { encoding: 'utf8' });
+      const device = checkAdbDevice();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, message: output.trim(), connected: !!device, deviceName: device }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, message: e.message }));

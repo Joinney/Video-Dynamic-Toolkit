@@ -1,18 +1,30 @@
 {
   "name": "reelssoda",
   "version": "1.0.0",
-  "description": "Tool tự động trích xuất và tải phim ngắn từ Soda Reels & MinuteDrama qua ADB & Direct CDN",
+  "description": "Video Dynamic Toolkit - Tool tải phim ngắn & Studio Lồng Tiếng AI (Soda Reels, MinuteDrama)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:ui": "node -e \"const babel=require('@babel/standalone');const fs=require('fs');fs.writeFileSync('frontend/js/app.js',babel.transform(fs.readFileSync('frontend/js/app.jsx','utf8'),{presets:['react']}).code);console.log('UI bundle compiled!');\""
+  },
+  "dependencies": {
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "keywords": [
     "drama",
     "minutedrama",
     "sodareels",
     "downloader",
+    "dubbing",
+    "ai",
     "adb"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/standalone": "^8.1.1",
+    "tailwindcss": "^4.3.4"
+  }
 }

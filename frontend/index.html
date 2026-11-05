@@ -1,317 +1,69 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Drama Series Downloader - Soda Reels • MinuteDrama</title>
+  <title>Video Dynamic Toolkit - Soda Reels & MinuteDrama Downloader & AI Dubbing Studio</title>
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS (Local Vendor Script + Custom Config) -->
+  <script src="/vendor/tailwind.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+              950: '#2e1065',
+            },
+            dark: {
+              base: '#0B0F19',
+              surface: '#111827',
+              card: '#1F2937',
+              border: '#374151',
+              accent: '#2563EB',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM (Local Vendor) -->
+  <script src="/vendor/react.min.js"></script>
+  <script src="/vendor/react-dom.min.js"></script>
+
+  <!-- Custom Styles -->
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <header>
-    <div class="logo">
-      🎬 Video Drama Series Downloader
-    </div>
-
-    <!-- App Switcher Tabs -->
-    <div class="app-switcher-bar">
-      <div class="app-tab active" id="tab-auto" onclick="switchApp('auto')">
-        🤖 Tự Động
-      </div>
-      <div class="app-tab" id="tab-sodareels" onclick="switchApp('sodareels')">
-        🥤 Soda Reels
-      </div>
-      <div class="app-tab" id="tab-minutedrama" onclick="switchApp('minutedrama')">
-        🎭 MinuteDrama
-      </div>
-    </div>
-
-    <div class="header-badges">
-      <div class="app-active-badge" id="app-active-badge" title="App đang được đọc dữ liệu">
-        <span id="active-app-icon">🤖</span>
-        <span id="active-app-name">Đang quét app...</span>
-      </div>
-      <div class="status-badge" id="adb-badge">
-        <span class="dot" id="adb-dot"></span>
-        <span id="adb-text">Đang kiểm tra kết nối...</span>
-      </div>
-    </div>
-  </header>
-
-  <div class="container">
-    <div class="main-grid">
-      
-      <!-- Cột Trái: Cấu hình bộ phim -->
-      <div class="card" id="drama-config-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
-          <h2 class="card-title" style="margin-bottom: 0;">🏷️ 1. Cấu Hình Tên Bộ Phim</h2>
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-resync" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.35); font-weight: 700; padding: 4px 10px; font-size: 12px;" onclick="clearDramaConfig()" title="Xóa trắng cấu hình hiện tại để nhận diện lại từ đầu">
-              🧹 Làm Sạch / Nhập Lại
-            </button>
-            <span id="drama-mode-badge" class="drama-mode-badge mode-new" style="display: none;"></span>
-          </div>
-        </div>
-        <p class="card-subtitle">
-          Tự động phát hiện phim đang mở từ app được chọn. Bấm "🧹 Làm Sạch / Nhập Lại" nếu muốn xóa trắng để nhận diện lại từ app.
-        </p>
-
-        <!-- Khung Poster & Thông Tin Phim -->
-        <div class="drama-preview-box">
-          <div class="drama-poster-preview-wrap">
-            <img id="top-poster-img" src="" alt="Poster" class="top-poster-img" style="display: none;">
-            <div id="top-poster-placeholder" class="top-poster-placeholder">🎬<br>Chưa có poster</div>
-          </div>
-          <div class="drama-preview-info">
-            <div class="form-group" style="margin-bottom: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-                <label class="form-label" style="margin-bottom: 0;">Tên Bộ Phim (Thư mục sẽ lưu):</label>
-                <div style="display: flex; gap: 6px;">
-                  <button type="button" class="btn-resync" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.35);" onclick="clearDramaConfig()" title="Xóa trắng cấu hình để nhận diện lại">
-                    🧹 Làm Sạch
-                  </button>
-                  <button type="button" class="btn-resync" onclick="syncWithAppDrama(true)" title="Lấy phim mới nhất đang mở trên app">
-                    ⚡ Lấy Phim Đang Xem Trên App
-                  </button>
-                </div>
-              </div>
-              <input type="text" id="drama-title-input" class="input-text" placeholder="Nhập tên bộ phim...">
-            </div>
-            <div id="top-drama-desc" class="top-drama-desc"></div>
-            <div class="drama-tags" id="drama-tags-container">
-              <!-- Quick tags from app history -->
-            </div>
-          </div>
-        </div>
-
-        <div class="row-two">
-          <div class="form-group">
-            <label class="form-label">Bắt đầu từ tập số:</label>
-            <input type="number" id="start-ep-input" class="input-text" value="1" min="1">
-            <div id="ep-hint" style="font-size: 11px; color: #38bdf8; margin-top: 5px; line-height: 1.4;">✨ Đang tự động nhận diện...</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tải Poster & Mở thư mục:</label>
-            <div style="display: flex; gap: 8px;">
-              <a id="btn-download-top-poster" href="#" target="_blank" download="poster.png" class="btn btn-secondary" style="flex: 1; padding: 12px 6px; text-decoration: none; text-align: center; white-space: nowrap;">
-                🖼️ Tải Poster
-              </a>
-              <button class="btn btn-secondary" style="flex: 1; padding: 12px 6px; white-space: nowrap;" onclick="openCurrentDramaFolder()">
-                📂 Mở Thư Mục
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn btn-primary" id="btn-export-selected" style="flex: 2;" onclick="exportSelected()">
-            📥 XUẤT CÁC TẬP ĐÃ CHỌN VÀO BỘ NÀY
-          </button>
-          <button class="btn btn-secondary" style="flex: 1; font-size: 12px; white-space: nowrap;" onclick="restartApp()" title="Làm sạch bộ nhớ đệm RAM của app để có thể tải lại các tập đã xem">
-            🔄 Tải Lại Tập Cũ
-          </button>
-        </div>
-
-        <div class="toast" id="toast-msg"></div>
-      </div>
-
-      <!-- Cột Phải: Danh sách video trong cache -->
-      <div class="card">
-        <div class="queue-header">
-          <div>
-            <h2 class="card-title" style="font-size: 16px;">
-              📼 Video Chờ Xuất (<span id="queue-count">0</span>)
-            </h2>
-            <div style="font-size: 12px; color: #64748b;">Tích chọn những tập bạn muốn tải</div>
-          </div>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <button class="btn-secondary" style="color: #34d399; font-weight: 700; border-color: rgba(16, 185, 129, 0.4);" onclick="openDirectLinksModal()" title="Xem toàn bộ link video trực tiếp từ CDN của app để tải siêu tốc 1 giây">⚡ Link Trực Tiếp Cả Bộ</button>
-            <button class="btn-secondary" style="color: #38bdf8; font-weight: 700;" onclick="selectOnlyNew()">⭐ Chọn tập mới</button>
-            <button class="btn-secondary" onclick="toggleSelectAll(true)">Chọn hết</button>
-            <button class="btn-secondary" onclick="toggleSelectAll(false)">Bỏ chọn</button>
-            <button class="btn-secondary" style="color: #a78bfa; font-weight: 700;" onclick="reverseQueueOrder()" title="Bấm nếu số tập bị ngược thứ tự 1 ⇄ N">🔄 Đảo thứ tự</button>
-            <button class="btn-secondary" style="color: #f87171;" onclick="deleteSelectedCache()">Xóa cache</button>
-          </div>
-        </div>
-
-        <!-- Thanh Tự Động Lướt Tập (Auto Swipe & Tải Từng Tập) -->
-        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 13px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
-              🤖 Tải Video Từng Tập (Đủ 100% Mới Qua Tập Tiếp)
-            </span>
-            <span id="swipe-status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: #94a3b8;">Sẵn sàng</span>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-primary" id="btn-start-single" style="padding: 7px 14px; font-size: 12px; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700;" onclick="startSwipe(1)" title="Chỉ tải đúng 1 video đang phát trên màn hình app, đợi đủ 100% và lưu về máy tính">
-              🎯 Lấy Đúng 1 Tập Này
-            </button>
-            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
-              <span style="font-size: 12px; color: #94a3b8;">Số tập:</span>
-              <input type="number" id="auto-swipe-count" value="1" min="1" max="100" style="width: 48px; padding: 4px; background: #090d16; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff; font-size: 12px; text-align: center;">
-              <button class="btn btn-secondary" id="btn-start-swipe" style="padding: 5px 12px; font-size: 12px; background: #2563eb; color: #fff; border: none; font-weight: 600;" onclick="startSwipe()">
-                ▶ Lướt Tự Động
-              </button>
-            </div>
-            <button class="btn btn-secondary" id="btn-stop-swipe" style="padding: 7px 14px; font-size: 12px; display: none; background: #ef4444; color: white;" onclick="stopSwipe()">
-              ⏹ Dừng Lại
-            </button>
-            <label style="font-size: 11px; color: #34d399; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; margin-left: auto;">
-              <input type="checkbox" id="chk-auto-export" checked style="accent-color: #10b981;">
-              Tự lưu về máy khi đủ 100%
-            </label>
-          </div>
-          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
-            💡 <b>Quy tắc an toàn:</b> Tool chỉ tải duy nhất <b>1 video tại một thời điểm</b>. Luôn chờ nạp đủ <b>100%</b> và lưu an toàn vào máy tính rồi mới chuyển sang tập kế tiếp. Tuyệt đối không nhảy cóc làm hỏng video.
-          </div>
-        </div>
-
-        <div class="queue-list" id="queue-list">
-          <!-- Checkbox items -->
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Danh sách các bộ phim đã tải -->
-    <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-      📚 Các Bộ Phim Đã Tải Trên Máy Tính
-    </h2>
-
-    <div id="dramas-container">
-      <!-- Accordion / sections of downloaded dramas -->
-    </div>
-
-  </div>
-
-  <!-- Modal Player -->
-  <div class="modal" id="player-modal" onclick="closeModal()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="modal-title">Xem video</h3>
-        <button class="close-btn" onclick="closeModal()">&times;</button>
-      </div>
-      <video id="player-video" controls autoplay style="width: 100%; max-height: 70vh; background: #000; border-radius: 8px;"></video>
-      <div id="player-error" style="display: none; color: #f87171; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 13px; line-height: 1.5;">
-        ⚠️ <b>Trình duyệt web không thể giải mã định dạng video này (Codec H.265/HEVC hoặc file chưa nạp xong).</b><br>
-        Bấm nút bên dưới để mở phát trực tiếp bằng phần mềm trên máy tính (VLC / PotPlayer / Windows Media Player):
-      </div>
-      <div style="display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; flex-wrap: wrap;">
-        <button class="btn btn-secondary" id="btn-open-desktop-player" style="color: #38bdf8; font-weight: 700;" onclick="openInDesktopPlayer()">
-          🎬 Mở Xem Bằng Media Player Máy Tính (VLC / PotPlayer)
-        </button>
-        <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
-      </div>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen antialiased font-sans selection:bg-brand-500 selection:text-white">
+  <div id="root">
+    <!-- Loading state until React boots up -->
+    <div class="flex flex-col items-center justify-center min-h-screen text-slate-400 gap-4">
+      <div class="w-12 h-12 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin"></div>
+      <p class="font-medium text-sm tracking-wide text-slate-300">Đang khởi tạo Video Dynamic Toolkit...</p>
     </div>
   </div>
 
-  <!-- Modal Direct Links (Toàn bộ link CDN của bộ phim) -->
-  <div class="modal" id="direct-links-modal" onclick="closeDirectLinksModal()">
-    <div class="modal-content" style="max-width: 780px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="direct-modal-title">⚡ Toàn Bộ Link Video Trực Tiếp (CDN Siêu Tốc)</h3>
-        <button class="close-btn" onclick="closeDirectLinksModal()">&times;</button>
-      </div>
-      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
-        💡 Đây là link video trực tiếp từ máy chủ CDN của app. Bạn có thể mở xem trực tiếp trên tab mới của trình duyệt, copy link để tải bằng IDM, hoặc bấm nút <b>Tải (1s)</b> để tool tải thẳng về máy tính trong 1-2 giây mà <b>không cần chờ giả lập phát video</b>!
-      </div>
-      <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
-        <button class="btn btn-primary" id="btn-batch-download-direct" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700;" onclick="downloadAllDirect()">
-          🚀 Tải Tự Động Tất Cả Các Tập Từ Link Này (1-2s / tập)
-        </button>
-        <span id="direct-batch-status" style="font-size: 12px; color: #38bdf8;"></span>
-      </div>
-      <div id="direct-links-container" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-        <!-- Episodes will be rendered here -->
-      </div>
-      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-        <button class="btn btn-secondary" onclick="closeDirectLinksModal()">Đóng</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal AI Video Dubbing (Lồng tiếng Việt AI) -->
-  <div class="modal" id="dub-modal" onclick="closeDubModal()">
-    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="dub-modal-title">🎙️ Lồng Tiếng Việt AI Cho Video</h3>
-        <button class="close-btn" onclick="closeDubModal()">&times;</button>
-      </div>
-
-      <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px;">
-        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 4px;">Video đang chọn:</div>
-        <div id="dub-video-target" style="font-size: 14px; font-weight: 700; color: #38bdf8;">Tap_01.mp4</div>
-      </div>
-
-      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-        <div>
-          <label style="font-size: 12px; font-weight: 700; color: #e2e8f0; display: block; margin-bottom: 6px;">
-            🗣️ Chọn giọng đọc AI (Neural TTS):
-          </label>
-          <select id="dub-voice-select" class="input-text" style="width: 100%;">
-            <option value="vi-VN-HoaiMyNeural">🌸 Hoài My (Nữ - Giọng đọc truyền cảm, chuẩn kịch bản phim)</option>
-            <option value="vi-VN-NamMinhNeural">🦁 Nam Minh (Nam - Giọng đọc trầm ấm, cuốn hút)</option>
-          </select>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div>
-            <label style="font-size: 12px; font-weight: 700; color: #e2e8f0; display: block; margin-bottom: 6px;">
-              ⚡ Tốc độ giọng đọc:
-            </label>
-            <select id="dub-speed-select" class="input-text" style="width: 100%;">
-              <option value="+0%">Chuẩn (1.0x)</option>
-              <option value="+10%">Nhanh nhẹ (+10%)</option>
-              <option value="+15%">Nhanh (+15%)</option>
-              <option value="+20%">Nhanh hơn (+20%)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size: 12px; font-weight: 700; color: #e2e8f0; display: block; margin-bottom: 6px;">
-              🔊 Âm lượng nhạc nền gốc:
-            </label>
-            <select id="dub-orig-vol" class="input-text" style="width: 100%;">
-              <option value="0.15">15% (Nhỏ nhẹ để nghe rõ lồng tiếng)</option>
-              <option value="0.25">25% (Vừa phải)</option>
-              <option value="0.05">5% (Rất nhỏ)</option>
-              <option value="0">0% (Tắt hẳn tiếng gốc)</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label style="font-size: 12px; font-weight: 700; color: #e2e8f0; display: block; margin-bottom: 6px;">
-            🧠 Mô hình nhận diện Whisper:
-          </label>
-          <select id="dub-whisper-model" class="input-text" style="width: 100%;">
-            <option value="base">Mô hình Base (Cân bằng, tốc độ nhanh)</option>
-            <option value="tiny">Mô hình Tiny (Siêu nhanh)</option>
-            <option value="small">Mô hình Small (Độ chính xác cao hơn)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Khối hiển thị tiến trình -->
-      <div id="dub-progress-box" style="display: none; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
-          <span id="dub-progress-msg" style="color: #38bdf8; font-weight: 600;">Đang khởi chạy...</span>
-          <span id="dub-progress-pct" style="color: #10b981; font-weight: 800;">0%</span>
-        </div>
-        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-          <div id="dub-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.3s ease;"></div>
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 8px; justify-content: flex-end;">
-        <button class="btn btn-secondary" onclick="closeDubModal()">Đóng</button>
-        <button class="btn btn-primary" id="btn-start-dub-action" style="background: linear-gradient(135deg, #a855f7, #6366f1); border: none; font-weight: 700;" onclick="submitDubbing()">
-          🚀 BẮT ĐẦU LỒNG TIẾNG AI
-        </button>
-      </div>
-    </div>
-  </div>
-
+  <!-- React Application Bundle -->
   <script src="/js/app.js"></script>
 </body>
 </html>

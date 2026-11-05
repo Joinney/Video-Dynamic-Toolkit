@@ -28,6 +28,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('vi');
+  const [videoAspect, setVideoAspect] = useState('9 / 16');
 
   // 4 Tabs Tùy Chỉnh Overlay từ StudioVDT
   const [activeOverlayTab, setActiveOverlayTab] = useState('logo'); // 'logo' | 'sub' | 'wm' | 'outro'
@@ -771,102 +772,118 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
               </span>
             </div>
 
-            {/* Video Canvas Container */}
-            <div className="relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group">
-              {videoUrl ? (
-                <video
-                  src={videoUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                    <Play size={20} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-400">Chưa chọn video</span>
-                  <p className="text-[11px] text-slate-600 max-w-xs">
-                    Vui lòng chọn video từ danh sách kho phim bên trái hoặc tải file lên để xem trước trên Canvas.
-                  </p>
-                </div>
-              )}
-
-              {/* Logo Overlay trên mặt video */}
-              {watermarkEnabled && videoUrl && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: `${logoY}%`,
-                    left: `${logoX}%`,
-                    width: `${logoSize}%`,
-                    opacity: logoOpacity / 100,
-                    transform: `rotate(${logoRotation}deg)`
-                  }}
-                  className="cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity"
-                  title="Kéo thả hoặc dùng thanh trượt để chỉnh vị trí logo"
-                >
-                  <img
-                    src={customLogoPreviewUrl}
-                    alt="Logo"
-                    className="w-full h-auto object-contain pointer-events-none drop-shadow-md"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
+            {/* Video Canvas Container (Ôm khít 100% video không bị thừa 2 bên) */}
+            <div className="w-full bg-slate-950/70 rounded-2xl p-2 flex items-center justify-center border border-slate-800 shadow-inner overflow-hidden">
+              <div
+                className="relative rounded-xl overflow-hidden shadow-2xl bg-black border border-slate-700/80 group flex items-center justify-center select-none"
+                style={{
+                  aspectRatio: videoAspect,
+                  maxHeight: '580px',
+                  height: '580px',
+                  maxWidth: '100%'
+                }}
+              >
+                {videoUrl ? (
+                  <video
+                    src={videoUrl}
+                    controls
+                    onLoadedMetadata={(e) => {
+                      const v = e.target;
+                      if (v.videoWidth && v.videoHeight) {
+                        setVideoAspect(`${v.videoWidth} / ${v.videoHeight}`);
+                      }
                     }}
+                    className="w-full h-full object-cover block"
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center w-full h-full">
+                    <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                      <Play size={20} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">Chưa chọn video</span>
+                    <p className="text-[11px] text-slate-600 max-w-xs">
+                      Vui lòng chọn video từ danh sách kho phim bên trái hoặc tải file lên để xem trước trên Canvas.
+                    </p>
+                  </div>
+                )}
 
-              {/* Phụ đề mẫu trên mặt video theo Style được chọn */}
-              {burnSubtitles && videoUrl && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: `${subBottomPct}%`,
-                    left: '5%',
-                    right: '5%',
-                    fontSize: `${subFontSize * 0.55}px`
-                  }}
-                  className="text-center font-bold pointer-events-none select-none transition-all"
-                >
-                  {subStyle === 'glassmorphism' && (
-                    <span className="bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md">
-                      {previewSubText}
-                    </span>
-                  )}
-                  {subStyle === 'yellow_outline' && (
-                    <span className="text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black" style={{ WebkitTextStroke: '1px black' }}>
-                      {previewSubText}
-                    </span>
-                  )}
-                  {subStyle === 'black_box' && (
-                    <span className="bg-black text-white px-3 py-1 rounded">
-                      {previewSubText}
-                    </span>
-                  )}
-                  {subStyle === 'white_outline' && (
-                    <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" style={{ WebkitTextStroke: '1px black' }}>
-                      {previewSubText}
-                    </span>
-                  )}
-                </div>
-              )}
+                {/* Logo Overlay trên mặt video */}
+                {watermarkEnabled && videoUrl && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: `${logoY}%`,
+                      left: `${logoX}%`,
+                      width: `${logoSize}%`,
+                      opacity: logoOpacity / 100,
+                      transform: `rotate(${logoRotation}deg)`
+                    }}
+                    className="cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity"
+                    title="Kéo thả hoặc dùng thanh trượt để chỉnh vị trí logo"
+                  >
+                    <img
+                      src={customLogoPreviewUrl}
+                      alt="Logo"
+                      className="w-full h-auto object-contain pointer-events-none drop-shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
 
-              {/* Chữ mờ bảo vệ bản quyền trên mặt video */}
-              {enableFloatWm && videoUrl && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '45%',
-                    left: '30%',
-                    fontSize: `${floatWmSize}px`,
-                    opacity: floatWmOpacity / 100,
-                    transform: 'rotate(-20deg)'
-                  }}
-                  className="text-white font-black pointer-events-none select-none drop-shadow"
-                >
-                  {floatWmText}
-                </div>
-              )}
+                {/* Phụ đề mẫu trên mặt video theo Style được chọn */}
+                {burnSubtitles && videoUrl && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: `${subBottomPct}%`,
+                      left: '5%',
+                      right: '5%',
+                      fontSize: `${subFontSize * 0.55}px`
+                    }}
+                    className="text-center font-bold pointer-events-none select-none transition-all"
+                  >
+                    {subStyle === 'glassmorphism' && (
+                      <span className="bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md">
+                        {previewSubText}
+                      </span>
+                    )}
+                    {subStyle === 'yellow_outline' && (
+                      <span className="text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black" style={{ WebkitTextStroke: '1px black' }}>
+                        {previewSubText}
+                      </span>
+                    )}
+                    {subStyle === 'black_box' && (
+                      <span className="bg-black text-white px-3 py-1 rounded">
+                        {previewSubText}
+                      </span>
+                    )}
+                    {subStyle === 'white_outline' && (
+                      <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" style={{ WebkitTextStroke: '1px black' }}>
+                        {previewSubText}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Chữ mờ bảo vệ bản quyền trên mặt video */}
+                {enableFloatWm && videoUrl && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '45%',
+                      left: '30%',
+                      fontSize: `${floatWmSize}px`,
+                      opacity: floatWmOpacity / 100,
+                      transform: 'rotate(-20deg)'
+                    }}
+                    className="text-white font-black pointer-events-none select-none drop-shadow"
+                  >
+                    {floatWmText}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Nút Khởi Chạy Lồng Tiếng AI */}

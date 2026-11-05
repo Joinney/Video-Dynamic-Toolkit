@@ -24150,6 +24150,7 @@
     const [localDramas, setLocalDramas] = (0, import_react6.useState)(backendData?.localDramas || []);
     const [sourceLang, setSourceLang] = (0, import_react6.useState)("auto");
     const [targetLang, setTargetLang] = (0, import_react6.useState)("vi");
+    const [videoAspect, setVideoAspect] = (0, import_react6.useState)("9 / 16");
     const [activeOverlayTab, setActiveOverlayTab] = (0, import_react6.useState)("logo");
     const [watermarkEnabled, setWatermarkEnabled] = (0, import_react6.useState)(true);
     const [logoSize, setLogoSize] = (0, import_react6.useState)(18);
@@ -24594,68 +24595,89 @@
           controls: true,
           className: "w-full h-full object-contain"
         }
-      )))))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group" }, videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
-        "video",
-        {
-          src: videoUrl,
-          controls: true,
-          className: "w-full h-full object-contain"
-        }
-      ) : /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400" }, /* @__PURE__ */ import_react6.default.createElement(Play, { size: 20 })), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-slate-400" }, "Ch\u01B0a ch\u1ECDn video"), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-slate-600 max-w-xs" }, "Vui l\xF2ng ch\u1ECDn video t\u1EEB danh s\xE1ch kho phim b\xEAn tr\xE1i ho\u1EB7c t\u1EA3i file l\xEAn \u0111\u1EC3 xem tr\u01B0\u1EDBc tr\xEAn Canvas.")), watermarkEnabled && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+      )))))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-full bg-slate-950/70 rounded-2xl p-2 flex items-center justify-center border border-slate-800 shadow-inner overflow-hidden" }, /* @__PURE__ */ import_react6.default.createElement(
         "div",
         {
+          className: "relative rounded-xl overflow-hidden shadow-2xl bg-black border border-slate-700/80 group flex items-center justify-center select-none",
           style: {
-            position: "absolute",
-            top: `${logoY}%`,
-            left: `${logoX}%`,
-            width: `${logoSize}%`,
-            opacity: logoOpacity / 100,
-            transform: `rotate(${logoRotation}deg)`
-          },
-          className: "cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity",
-          title: "K\xE9o th\u1EA3 ho\u1EB7c d\xF9ng thanh tr\u01B0\u1EE3t \u0111\u1EC3 ch\u1EC9nh v\u1ECB tr\xED logo"
-        },
-        /* @__PURE__ */ import_react6.default.createElement(
-          "img",
-          {
-            src: customLogoPreviewUrl,
-            alt: "Logo",
-            className: "w-full h-auto object-contain pointer-events-none drop-shadow-md",
-            onError: (e) => {
-              e.target.style.display = "none";
-            }
+            aspectRatio: videoAspect,
+            maxHeight: "580px",
+            height: "580px",
+            maxWidth: "100%"
           }
+        },
+        videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
+          "video",
+          {
+            src: videoUrl,
+            controls: true,
+            onLoadedMetadata: (e) => {
+              const v = e.target;
+              if (v.videoWidth && v.videoHeight) {
+                setVideoAspect(`${v.videoWidth} / ${v.videoHeight}`);
+              }
+            },
+            className: "w-full h-full object-cover block"
+          }
+        ) : /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center w-full h-full" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400" }, /* @__PURE__ */ import_react6.default.createElement(Play, { size: 20 })), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-slate-400" }, "Ch\u01B0a ch\u1ECDn video"), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-slate-600 max-w-xs" }, "Vui l\xF2ng ch\u1ECDn video t\u1EEB danh s\xE1ch kho phim b\xEAn tr\xE1i ho\u1EB7c t\u1EA3i file l\xEAn \u0111\u1EC3 xem tr\u01B0\u1EDBc tr\xEAn Canvas.")),
+        watermarkEnabled && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              top: `${logoY}%`,
+              left: `${logoX}%`,
+              width: `${logoSize}%`,
+              opacity: logoOpacity / 100,
+              transform: `rotate(${logoRotation}deg)`
+            },
+            className: "cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity",
+            title: "K\xE9o th\u1EA3 ho\u1EB7c d\xF9ng thanh tr\u01B0\u1EE3t \u0111\u1EC3 ch\u1EC9nh v\u1ECB tr\xED logo"
+          },
+          /* @__PURE__ */ import_react6.default.createElement(
+            "img",
+            {
+              src: customLogoPreviewUrl,
+              alt: "Logo",
+              className: "w-full h-auto object-contain pointer-events-none drop-shadow-md",
+              onError: (e) => {
+                e.target.style.display = "none";
+              }
+            }
+          )
+        ),
+        burnSubtitles && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              bottom: `${subBottomPct}%`,
+              left: "5%",
+              right: "5%",
+              fontSize: `${subFontSize * 0.55}px`
+            },
+            className: "text-center font-bold pointer-events-none select-none transition-all"
+          },
+          subStyle === "glassmorphism" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md" }, previewSubText),
+          subStyle === "yellow_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black", style: { WebkitTextStroke: "1px black" } }, previewSubText),
+          subStyle === "black_box" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black text-white px-3 py-1 rounded" }, previewSubText),
+          subStyle === "white_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]", style: { WebkitTextStroke: "1px black" } }, previewSubText)
+        ),
+        enableFloatWm && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              top: "45%",
+              left: "30%",
+              fontSize: `${floatWmSize}px`,
+              opacity: floatWmOpacity / 100,
+              transform: "rotate(-20deg)"
+            },
+            className: "text-white font-black pointer-events-none select-none drop-shadow"
+          },
+          floatWmText
         )
-      ), burnSubtitles && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
-        "div",
-        {
-          style: {
-            position: "absolute",
-            bottom: `${subBottomPct}%`,
-            left: "5%",
-            right: "5%",
-            fontSize: `${subFontSize * 0.55}px`
-          },
-          className: "text-center font-bold pointer-events-none select-none transition-all"
-        },
-        subStyle === "glassmorphism" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md" }, previewSubText),
-        subStyle === "yellow_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black", style: { WebkitTextStroke: "1px black" } }, previewSubText),
-        subStyle === "black_box" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black text-white px-3 py-1 rounded" }, previewSubText),
-        subStyle === "white_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]", style: { WebkitTextStroke: "1px black" } }, previewSubText)
-      ), enableFloatWm && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
-        "div",
-        {
-          style: {
-            position: "absolute",
-            top: "45%",
-            left: "30%",
-            fontSize: `${floatWmSize}px`,
-            opacity: floatWmOpacity / 100,
-            transform: "rotate(-20deg)"
-          },
-          className: "text-white font-black pointer-events-none select-none drop-shadow"
-        },
-        floatWmText
       )), /* @__PURE__ */ import_react6.default.createElement(
         "button",
         {

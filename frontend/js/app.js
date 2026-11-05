@@ -24169,6 +24169,7 @@
     const [previewSegments, setPreviewSegments] = (0, import_react6.useState)([]);
     const [activeSegmentIndex, setActiveSegmentIndex] = (0, import_react6.useState)(0);
     const [isTranscribingSubtitles, setIsTranscribingSubtitles] = (0, import_react6.useState)(false);
+    const [whisperModel, setWhisperModel] = (0, import_react6.useState)("small");
     const handleQuickTranscribe = async () => {
       const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : "");
       if (!targetVideo) {
@@ -24184,7 +24185,7 @@
             videoPath: targetVideo,
             sourceLang,
             targetLang,
-            whisperModel: "base"
+            whisperModel
           })
         });
         const data = await res.json();
@@ -24357,6 +24358,8 @@
             voice: selectedVoice,
             sourceLang,
             targetLang,
+            whisperModel,
+            subtitles: previewSegments && previewSegments.length > 0 ? previewSegments : void 0,
             burnSubtitles,
             subStyle,
             subFontSize,
@@ -24562,6 +24565,15 @@
           onChange: (e) => setBurnSubtitles(e.target.checked),
           className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] text-gray-700 font-semibold bg-slate-50 border border-slate-200 rounded-lg p-2" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1" }, "\u{1F9E0} Model Whisper ASR:"), /* @__PURE__ */ import_react6.default.createElement(
+        "select",
+        {
+          value: whisperModel,
+          onChange: (e) => setWhisperModel(e.target.value),
+          className: "bg-white border border-gray-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 cursor-pointer"
+        },
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "small" }, "\u2B50 Small (Chu\u1EA9n x\xE1c nh\u1EA5t cho phim Trung/Anh)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "base" }, "\u26A1 Base (Nhanh c\u01A1 b\u1EA3n)")
       )), burnSubtitles && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, previewSegments && previewSegments.length > 0 ? /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-black text-sky-900" }, "\u{1F4DD} Danh s\xE1ch ph\u1EE5 \u0111\u1EC1 \u0111\xE3 d\u1ECBch (", previewSegments.length, " c\xE2u):"), /* @__PURE__ */ import_react6.default.createElement(
         "button",
         {

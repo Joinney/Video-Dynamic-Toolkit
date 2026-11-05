@@ -9,7 +9,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const voice = options.voice || 'vi-VN-HoaiMyNeural';
   const speed = options.speed || '+0%';
   const origVol = options.origVol !== undefined ? options.origVol : 0.15;
-  const whisperModel = options.whisperModel || 'base';
+  const whisperModel = options.whisperModel || 'small';
 
   const dir = path.dirname(inputVideoPath);
   const ext = path.extname(inputVideoPath);
@@ -75,6 +75,15 @@ function startDubbingJob(inputVideoPath, options = {}) {
   if (options.enableOutro !== false) {
     args.push('--enable-outro');
     if (options.outroPath) args.push('--outro-path', options.outroPath);
+  }
+  if (options.subtitles && Array.isArray(options.subtitles) && options.subtitles.length > 0) {
+    const subJsonFile = path.join(dir, `.temp_sub_${jobId}.json`);
+    try {
+      fs.writeFileSync(subJsonFile, JSON.stringify(options.subtitles, null, 2), 'utf-8');
+      args.push('--subtitles-json', subJsonFile);
+    } catch (e) {
+      console.warn('Failed to write temp subJsonFile:', e);
+    }
   }
 
   try {
@@ -189,7 +198,7 @@ function generateTTSAudio(text, options = {}) {
 function transcribeAndTranslateVideo(inputVideoPath, options = {}) {
   const sourceLang = options.sourceLang || 'auto';
   const targetLang = options.targetLang || 'vi';
-  const whisperModel = options.whisperModel || 'base';
+  const whisperModel = options.whisperModel || 'small';
 
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, 'dubber', 'quick_transcribe.py');

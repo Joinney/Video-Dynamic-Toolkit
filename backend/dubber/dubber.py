@@ -35,11 +35,11 @@ def emit_progress(status, pct, message, extra=None):
         payload.update(extra)
     print(f"__PROGRESS__{json.dumps(payload, ensure_ascii=False)}__PROGRESS__", flush=True)
 
-def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="base", burn_subtitles=True, source_lang="auto", target_lang="vi",
+def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="small", burn_subtitles=True, source_lang="auto", target_lang="vi",
                 enable_logo=False, logo_path=None, logo_x=0.80, logo_y=0.05, logo_scale=0.18, logo_opacity=0.90, logo_rotation=0.0,
                 subtitle_style="white_outline", subtitle_font_size=42,
                 enable_float_wm=False, float_wm_text="@gocphimcuon", float_wm_opacity=0.30,
-                enable_outro=True, outro_path=None):
+                enable_outro=True, outro_path=None, subtitles_json=None):
     input_path = Path(input_video).resolve()
     if not input_path.exists():
         emit_progress("error", 0, f"File video đầu vào không tồn tại: {input_video}")
@@ -51,7 +51,10 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
     # 1. Thử chạy bằng VideoDubberPipeline từ StudioVDT
     try:
         from config import DubbingConfig
-        from video_dubber.pipeline import VideoDubberPipeline
+        try:
+            from pipeline import VideoDubberPipeline
+        except ImportError:
+            from .pipeline import VideoDubberPipeline
 
         emit_progress("starting", 5, "Đang khởi tạo StudioVDT VideoDubberPipeline...")
 
@@ -84,6 +87,15 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
 
         pipeline = VideoDubberPipeline(config)
 
+        preloaded_segments = None
+        if subtitles_json and Path(subtitles_json).exists():
+            try:
+                with open(subtitles_json, "r", encoding="utf-8") as f_sub:
+                    sub_data = json.load(f_sub)
+                    preloaded_segments = sub_data.get("segments", sub_data) if isinstance(sub_data, dict) else sub_data
+            except Exception as e:
+                print(f"Warning: Lỗi nạp subtitles_json: {e}", file=sys.stderr)
+
         def progress_callback(msg, progress_fraction):
             pct = int(progress_fraction * 100)
             emit_progress("running", pct, msg)
@@ -92,7 +104,8 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
         result_path = pipeline.process(
             video_path=input_path,
             output_path=out_path,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            preloaded_segments=preloaded_segments
         )
 
         emit_progress("completed", 100, "Lồng tiếng hoàn tất thành công bằng StudioVDT!", extra={
@@ -262,6 +275,7 @@ def main():
     parser.add_argument("--float-wm-text", default="@gocphimcuon", help="Nội dung chữ mờ")
     parser.add_argument("--float-wm-opacity", type=float, default=0.30, help="Độ mờ chữ mờ")
     parser.add_argument("--enable-outro", action="store_true", default=True, help="Ghép video Outro")
+    parser.add_argument("--subtitles-json", default=None, help="Đường dẫn file JSON phụ đề đã sửa")
     parser.add_argument("--outro-path", default=None, help="Đường dẫn file Outro")
 
     args = parser.parse_args()
@@ -288,7 +302,8 @@ def main():
         float_wm_text=args.float_wm_text,
         float_wm_opacity=args.float_wm_opacity,
         enable_outro=args.enable_outro,
-        outro_path=args.outro_path
+        outro_path=args.outro_path,
+        subtitles_json=args.subtitles_json
     )
     sys.exit(0 if success else 1)
 

@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--input", required=True, help="Đường dẫn file video đầu vào")
     parser.add_argument("--source-lang", default="auto", help="Ngôn ngữ gốc (auto, zh, en, ja, ko...)")
     parser.add_argument("--target-lang", default="vi", help="Ngôn ngữ dịch phụ đề (vi)")
-    parser.add_argument("--whisper-model", default="base", help="Kích thước mô hình Whisper (tiny, base, small)")
+    parser.add_argument("--whisper-model", default="small", help="Kích thước mô hình Whisper (tiny, base, small, medium)")
     parser.add_argument("--output", help="Đường dẫn file JSON lưu kết quả")
 
     args = parser.parse_args()

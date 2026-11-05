@@ -87,6 +87,7 @@ class Transcriber:
         self,
         audio_path: Union[str, Path],
         language: Optional[str] = None,
+        initial_prompt: Optional[str] = None,
     ) -> (List[Segment], str):
         """
         Transcribes audio into timed segments.
@@ -105,17 +106,32 @@ class Transcriber:
         target_model = self.model_size
         if is_asian or whisper_lang is None:
             medium_cache = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-medium")
+            small_cache = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-small")
             if medium_cache.exists():
                 target_model = "medium"
+            elif small_cache.exists() and target_model in ("base", "tiny"):
+                target_model = "small"
 
         dev, comp = self._resolve_device_and_compute()
         model = get_shared_whisper_model(target_model, device=dev, compute_type=comp)
 
-        logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}'...")
+        # Tạo prompt ngữ cảnh phim ảnh hỗ trợ nhận diện chính xác từ ngữ, tên nhân vật
+        if not initial_prompt:
+            p_name = audio_path.stem.lower()
+            if whisper_lang in ("zh", "zh-cn", "zh-tw") or any(k in p_name for k in ["tap", "tiệm", "tạp hóa", "âm dương", "phim", "trung"]):
+                initial_prompt = (
+                    "这是一部精彩的微短剧对白。主要人物：袁役、钟颜、老板、伙计、郭总、夫人。"
+                    "关键词：阴阳杂货铺、白纸黑字、救命、生魂、还魂、扯了魂、小鬼、有饭吗、发生什么事了、快走、别走、求求你。"
+                )
+            elif whisper_lang in ("en", "english") or "en" in p_name:
+                initial_prompt = "Dramatic movie dialogue between characters with emotional speech, natural expressions and clear lines."
+
+        logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}' (prompt: {bool(initial_prompt)})...")
 
         raw_segments, info = model.transcribe(
             str(audio_path),
             language=whisper_lang,
+            initial_prompt=initial_prompt,
             beam_size=5,
             best_of=1,
             temperature=0.0,

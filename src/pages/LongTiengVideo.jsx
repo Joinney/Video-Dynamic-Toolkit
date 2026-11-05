@@ -53,6 +53,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [previewSegments, setPreviewSegments] = useState([]);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [isTranscribingSubtitles, setIsTranscribingSubtitles] = useState(false);
+  const [whisperModel, setWhisperModel] = useState('small');
 
   // Dịch trước từ Video bằng Whisper AI
   const handleQuickTranscribe = async () => {
@@ -71,7 +72,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           videoPath: targetVideo,
           sourceLang: sourceLang,
           targetLang: targetLang,
-          whisperModel: 'base'
+          whisperModel: whisperModel
         })
       });
       const data = await res.json();
@@ -269,6 +270,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           voice: selectedVoice,
           sourceLang: sourceLang,
           targetLang: targetLang,
+          whisperModel: whisperModel,
+          subtitles: (previewSegments && previewSegments.length > 0) ? previewSegments : undefined,
           burnSubtitles: burnSubtitles,
           subStyle: subStyle,
           subFontSize: subFontSize,
@@ -641,6 +644,18 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                       onChange={(e) => setBurnSubtitles(e.target.checked)}
                       className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-gray-700 font-semibold bg-slate-50 border border-slate-200 rounded-lg p-2">
+                    <span className="flex items-center gap-1">🧠 Model Whisper ASR:</span>
+                    <select
+                      value={whisperModel}
+                      onChange={(e) => setWhisperModel(e.target.value)}
+                      className="bg-white border border-gray-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 cursor-pointer"
+                    >
+                      <option value="small">⭐ Small (Chuẩn xác nhất cho phim Trung/Anh)</option>
+                      <option value="base">⚡ Base (Nhanh cơ bản)</option>
+                    </select>
                   </div>
 
                   {burnSubtitles && (

@@ -426,7 +426,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ success: true, job }));
+    res.end(JSON.stringify({ success: true, ...job, job }));
     return;
   }
 

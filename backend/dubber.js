@@ -25,11 +25,25 @@ function startDubbingJob(inputVideoPath, options = {}) {
     status: 'starting',
     pct: 0,
     message: 'Đang khởi chạy luồng lồng tiếng AI...',
+    logs: [
+      { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `🚀 Khởi tạo phiên lồng tiếng: ${outputFileName}` }
+    ],
     startTime: Date.now(),
     done: false,
     error: null
   };
   dubJobs.set(jobId, jobState);
+
+  const addLog = (text) => {
+    if (!text || !text.trim()) return;
+    const clean = text.trim();
+    if (clean.includes('unauthenticated requests') || clean.includes('CACHEDIR.TAG')) return;
+    const timeStr = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+    jobState.logs.push({ time: timeStr, text: clean });
+    if (jobState.logs.length > 500) {
+      jobState.logs.shift();
+    }
+  };
 
   const scriptPath = path.join(__dirname, 'dubber', 'dubber.py');
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
@@ -91,28 +105,42 @@ function startDubbingJob(inputVideoPath, options = {}) {
 
     proc.stdout.on('data', (data) => {
       const text = data.toString();
-      const matches = text.match(/__PROGRESS__(\{.*?\})__PROGRESS__/g);
-      if (matches) {
-        matches.forEach(m => {
-          try {
-            const jsonStr = m.replace(/__PROGRESS__/g, '');
-            const parsed = JSON.parse(jsonStr);
-            jobState.status = parsed.status;
-            jobState.pct = parsed.pct;
-            jobState.message = parsed.message;
-            if (parsed.status === 'completed') {
-              jobState.done = true;
-            } else if (parsed.status === 'error') {
-              jobState.done = true;
-              jobState.error = parsed.message;
-            }
-          } catch (e) {}
-        });
-      }
+      const lines = text.split('\n');
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        if (trimmed.includes('__PROGRESS__')) {
+          const matches = trimmed.match(/__PROGRESS__(\{.*?\})__PROGRESS__/g);
+          if (matches) {
+            matches.forEach(m => {
+              try {
+                const jsonStr = m.replace(/__PROGRESS__/g, '');
+                const parsed = JSON.parse(jsonStr);
+                jobState.status = parsed.status;
+                jobState.pct = parsed.pct;
+                jobState.message = parsed.message;
+                addLog(`[${parsed.pct}%] ${parsed.message}`);
+                if (parsed.status === 'completed') {
+                  jobState.done = true;
+                } else if (parsed.status === 'error') {
+                  jobState.done = true;
+                  jobState.error = parsed.message;
+                }
+              } catch (e) {}
+            });
+          }
+        } else {
+          addLog(trimmed);
+        }
+      });
     });
 
     proc.stderr.on('data', (data) => {
-      const errText = data.toString();
+      const errText = data.toString().trim();
+      if (!errText) return;
+      if (!errText.includes('unauthenticated requests') && !errText.includes('HF_TOKEN')) {
+        addLog(errText);
+      }
       if (errText.includes('Error') || errText.includes('Traceback')) {
         console.error('[DUBBER ERROR]', errText);
       }
@@ -123,11 +151,13 @@ function startDubbingJob(inputVideoPath, options = {}) {
         jobState.status = 'error';
         jobState.done = true;
         jobState.error = jobState.error || 'Tiến trình lồng tiếng bị gián đoạn (Exit code ' + code + ')';
+        addLog(`❌ Tiến trình kết thúc với mã lỗi (Exit code ${code})`);
       } else if (code === 0 && !jobState.done) {
         jobState.status = 'completed';
         jobState.pct = 100;
         jobState.done = true;
         jobState.message = 'Lồng tiếng hoàn tất!';
+        addLog('🎉 Lồng tiếng video hoàn tất 100%! Tệp thành phẩm đã sẵn sàng.');
       }
     });
 
@@ -135,6 +165,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
       jobState.status = 'error';
       jobState.done = true;
       jobState.error = 'Không thể gọi Python: ' + err.message + '. Vui lòng chạy bằng Docker hoặc cài Python 3.';
+      addLog(`❌ Lỗi khởi chạy Python: ${err.message}`);
     });
   } catch (err) {
     jobState.status = 'error';

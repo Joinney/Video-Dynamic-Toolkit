@@ -63,6 +63,10 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
       return;
     }
     setIsTranscribingSubtitles(true);
+    setDubLogs(prev => [
+      ...prev,
+      { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: '⚡ Bắt đầu bóc tách âm thanh & nhận diện phụ đề Whisper AI...' }
+    ]);
 
     try {
       const res = await fetch('/api/quick-transcribe', {
@@ -82,11 +86,23 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
         if (data.segments[0].text) {
           setPreviewSubText(data.segments[0].text);
         }
+        setDubLogs(prev => [
+          ...prev,
+          { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `✅ Đã trích xuất & dịch thành công ${data.segments.length} câu thoại từ video.` }
+        ]);
       } else {
         alert(data.message || 'Không tìm thấy câu thoại nào trong video!');
+        setDubLogs(prev => [
+          ...prev,
+          { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `⚠️ ${data.message || 'Không tìm thấy câu thoại nào trong video.'}` }
+        ]);
       }
     } catch (err) {
       alert('Lỗi nhận diện và dịch phụ đề: ' + err.message);
+      setDubLogs(prev => [
+        ...prev,
+        { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `❌ Lỗi nhận diện phụ đề: ${err.message}` }
+      ]);
     } finally {
       setIsTranscribingSubtitles(false);
     }
@@ -177,9 +193,17 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [dubbingCompleted, setDubbingCompleted] = useState(false);
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
+  const [dubLogs, setDubLogs] = useState([]);
+  const logsEndRef = useRef(null);
   const [resultVideoUrl, setResultVideoUrl] = useState(null);
   const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
   const previewAudioRef = useRef(null);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [dubLogs]);
 
   const toggleVoicePreview = () => {
     if (!previewAudioRef.current) return;
@@ -231,20 +255,24 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
       try {
         const res = await fetch(`/api/dub-status?id=${dubJobId}`);
         const data = await res.json();
-        setDubProgress(data);
-        if (data.status === 'completed' || data.done) {
+        const jobData = data.job || data;
+        setDubProgress(jobData);
+        if (jobData.logs && Array.isArray(jobData.logs) && jobData.logs.length > 0) {
+          setDubLogs(jobData.logs);
+        }
+        if (jobData.status === 'completed' || jobData.done) {
           setIsDubbingProcessing(false);
           setDubbingCompleted(true);
-          const outPath = data.outputVideo || data.output_video || '';
+          const outPath = jobData.outputVideo || jobData.output_video || '';
           const parts = outPath.split(/[\\\/]/);
           const fName = parts.pop();
           const subF = parts.pop();
           const dName = parts.pop();
           setResultVideoUrl(`/video/${encodeURIComponent(dName)}/${encodeURIComponent(subF)}/${encodeURIComponent(fName)}`);
           setDubJobId(null);
-        } else if (data.status === 'error' || data.status === 'failed') {
+        } else if (jobData.status === 'error' || jobData.status === 'failed') {
           setIsDubbingProcessing(false);
-          alert('Lỗi lồng tiếng: ' + (data.error || 'Thất bại'));
+          alert('Lỗi lồng tiếng: ' + (jobData.error || 'Thất bại'));
           setDubJobId(null);
         }
       } catch (e) {}
@@ -260,6 +288,9 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
     }
     setIsDubbingProcessing(true);
     setDubbingCompleted(false);
+    setDubLogs([
+      { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: '🚀 Khởi động quy trình StudioVDT VideoDubberPipeline...' }
+    ]);
 
     try {
       const res = await fetch('/api/dub-video', {
@@ -1084,6 +1115,65 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 </div>
               </div>
             )}
+
+            {/* Terminal Nhật ký tiến trình Realtime */}
+            <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex flex-col gap-2 shadow-xs">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${isDubbingProcessing || isTranscribingSubtitles ? 'bg-sky-400 animate-ping' : dubbingCompleted ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
+                  <span className="text-[10px] font-black text-slate-300 tracking-wider uppercase">
+                    🖥️ NHẬT KÝ TIẾN TRÌNH AI (LOGS)
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!dubLogs || dubLogs.length === 0) return;
+                      const allLogs = dubLogs.map(l => `[${l.time}] ${l.text}`).join('\n');
+                      navigator.clipboard.writeText(allLogs);
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                    title="Sao chép toàn bộ log"
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDubLogs([])}
+                    className="text-[10px] text-slate-400 hover:text-rose-400 px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                    title="Xóa log"
+                  >
+                    🗑️ Xóa
+                  </button>
+                </div>
+              </div>
+
+              <div className="font-mono text-[11px] leading-relaxed max-h-64 overflow-y-auto space-y-1 pr-1 select-text">
+                {dubLogs && dubLogs.length > 0 ? (
+                  dubLogs.map((log, index) => {
+                    let textColor = 'text-slate-300';
+                    if (log.text.includes('%')) textColor = 'text-sky-400 font-semibold';
+                    if (log.text.includes('✅') || log.text.includes('🎉') || log.text.includes('hoàn tất') || log.text.includes('thành công') || log.text.includes('sẵn sàng')) textColor = 'text-emerald-400 font-bold';
+                    if (log.text.includes('⚠️') || log.text.includes('warning') || log.text.includes('Warning')) textColor = 'text-amber-300';
+                    if (log.text.includes('❌') || log.text.includes('Lỗi') || log.text.includes('Error')) textColor = 'text-rose-400 font-bold';
+
+                    return (
+                      <div key={index} className="flex items-start gap-1.5 break-words">
+                        <span className="text-slate-500 shrink-0 select-none">[{log.time}]</span>
+                        <span className={textColor}>{log.text}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-slate-500 italic py-2 leading-relaxed">
+                    🖥️ Studio VDT AI Engine v3.0 sẵn sàng.<br />
+                    &gt; Bấm nút để bắt đầu theo dõi tiến trình trực tiếp.
+                  </div>
+                )}
+                <div ref={logsEndRef} />
+              </div>
+            </div>
 
             {/* Video thành phẩm sau khi hoàn tất */}
             {dubbingCompleted && resultVideoUrl ? (

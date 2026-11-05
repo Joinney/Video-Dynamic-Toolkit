@@ -24177,6 +24177,10 @@
         return;
       }
       setIsTranscribingSubtitles(true);
+      setDubLogs((prev) => [
+        ...prev,
+        { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: "\u26A1 B\u1EAFt \u0111\u1EA7u b\xF3c t\xE1ch \xE2m thanh & nh\u1EADn di\u1EC7n ph\u1EE5 \u0111\u1EC1 Whisper AI..." }
+      ]);
       try {
         const res = await fetch("/api/quick-transcribe", {
           method: "POST",
@@ -24195,11 +24199,23 @@
           if (data.segments[0].text) {
             setPreviewSubText(data.segments[0].text);
           }
+          setDubLogs((prev) => [
+            ...prev,
+            { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: `\u2705 \u0110\xE3 tr\xEDch xu\u1EA5t & d\u1ECBch th\xE0nh c\xF4ng ${data.segments.length} c\xE2u tho\u1EA1i t\u1EEB video.` }
+          ]);
         } else {
           alert(data.message || "Kh\xF4ng t\xECm th\u1EA5y c\xE2u tho\u1EA1i n\xE0o trong video!");
+          setDubLogs((prev) => [
+            ...prev,
+            { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: `\u26A0\uFE0F ${data.message || "Kh\xF4ng t\xECm th\u1EA5y c\xE2u tho\u1EA1i n\xE0o trong video."}` }
+          ]);
         }
       } catch (err) {
         alert("L\u1ED7i nh\u1EADn di\u1EC7n v\xE0 d\u1ECBch ph\u1EE5 \u0111\u1EC1: " + err.message);
+        setDubLogs((prev) => [
+          ...prev,
+          { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: `\u274C L\u1ED7i nh\u1EADn di\u1EC7n ph\u1EE5 \u0111\u1EC1: ${err.message}` }
+        ]);
       } finally {
         setIsTranscribingSubtitles(false);
       }
@@ -24274,9 +24290,16 @@
     const [dubbingCompleted, setDubbingCompleted] = (0, import_react6.useState)(false);
     const [dubJobId, setDubJobId] = (0, import_react6.useState)(null);
     const [dubProgress, setDubProgress] = (0, import_react6.useState)(null);
+    const [dubLogs, setDubLogs] = (0, import_react6.useState)([]);
+    const logsEndRef = (0, import_react6.useRef)(null);
     const [resultVideoUrl, setResultVideoUrl] = (0, import_react6.useState)(null);
     const [isPlayingVoicePreview, setIsPlayingVoicePreview] = (0, import_react6.useState)(false);
     const previewAudioRef = (0, import_react6.useRef)(null);
+    (0, import_react6.useEffect)(() => {
+      if (logsEndRef.current) {
+        logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, [dubLogs]);
     const toggleVoicePreview = () => {
       if (!previewAudioRef.current) return;
       if (isPlayingVoicePreview) {
@@ -24320,20 +24343,24 @@
         try {
           const res = await fetch(`/api/dub-status?id=${dubJobId}`);
           const data = await res.json();
-          setDubProgress(data);
-          if (data.status === "completed" || data.done) {
+          const jobData = data.job || data;
+          setDubProgress(jobData);
+          if (jobData.logs && Array.isArray(jobData.logs) && jobData.logs.length > 0) {
+            setDubLogs(jobData.logs);
+          }
+          if (jobData.status === "completed" || jobData.done) {
             setIsDubbingProcessing(false);
             setDubbingCompleted(true);
-            const outPath = data.outputVideo || data.output_video || "";
+            const outPath = jobData.outputVideo || jobData.output_video || "";
             const parts = outPath.split(/[\\\/]/);
             const fName = parts.pop();
             const subF = parts.pop();
             const dName = parts.pop();
             setResultVideoUrl(`/video/${encodeURIComponent(dName)}/${encodeURIComponent(subF)}/${encodeURIComponent(fName)}`);
             setDubJobId(null);
-          } else if (data.status === "error" || data.status === "failed") {
+          } else if (jobData.status === "error" || jobData.status === "failed") {
             setIsDubbingProcessing(false);
-            alert("L\u1ED7i l\u1ED3ng ti\u1EBFng: " + (data.error || "Th\u1EA5t b\u1EA1i"));
+            alert("L\u1ED7i l\u1ED3ng ti\u1EBFng: " + (jobData.error || "Th\u1EA5t b\u1EA1i"));
             setDubJobId(null);
           }
         } catch (e) {
@@ -24349,6 +24376,9 @@
       }
       setIsDubbingProcessing(true);
       setDubbingCompleted(false);
+      setDubLogs([
+        { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: "\u{1F680} Kh\u1EDFi \u0111\u1ED9ng quy tr\xECnh StudioVDT VideoDubberPipeline..." }
+      ]);
       try {
         const res = await fetch("/api/dub-video", {
           method: "POST",
@@ -24793,7 +24823,36 @@
           className: "h-full bg-blue-600 transition-all duration-300 rounded-full",
           style: { width: `${dubProgress?.percent || dubProgress?.pct || 15}%` }
         }
-      ))), dubbingCompleted && resultVideoUrl ? /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-1.5 text-xs font-bold text-emerald-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u2713"), " L\u1ED3ng ti\u1EBFng ho\xE0n t\u1EA5t 100%!"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "aspect-[9/16] bg-black rounded-lg overflow-hidden border border-emerald-200" }, /* @__PURE__ */ import_react6.default.createElement("video", { src: resultVideoUrl, controls: true, autoPlay: true, className: "w-full h-full object-contain" })), /* @__PURE__ */ import_react6.default.createElement(
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex flex-col gap-2 shadow-xs" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between border-b border-slate-800/80 pb-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: `w-2 h-2 rounded-full ${isDubbingProcessing || isTranscribingSubtitles ? "bg-sky-400 animate-ping" : dubbingCompleted ? "bg-emerald-400" : "bg-slate-500"}` }), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] font-black text-slate-300 tracking-wider uppercase" }, "\u{1F5A5}\uFE0F NH\u1EACT K\xDD TI\u1EBEN TR\xCCNH AI (LOGS)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            if (!dubLogs || dubLogs.length === 0) return;
+            const allLogs = dubLogs.map((l) => `[${l.time}] ${l.text}`).join("\n");
+            navigator.clipboard.writeText(allLogs);
+          },
+          className: "text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer",
+          title: "Sao ch\xE9p to\xE0n b\u1ED9 log"
+        },
+        "\u{1F4CB} Copy"
+      ), /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setDubLogs([]),
+          className: "text-[10px] text-slate-400 hover:text-rose-400 px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer",
+          title: "X\xF3a log"
+        },
+        "\u{1F5D1}\uFE0F X\xF3a"
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "font-mono text-[11px] leading-relaxed max-h-64 overflow-y-auto space-y-1 pr-1 select-text" }, dubLogs && dubLogs.length > 0 ? dubLogs.map((log, index) => {
+        let textColor = "text-slate-300";
+        if (log.text.includes("%")) textColor = "text-sky-400 font-semibold";
+        if (log.text.includes("\u2705") || log.text.includes("\u{1F389}") || log.text.includes("ho\xE0n t\u1EA5t") || log.text.includes("th\xE0nh c\xF4ng") || log.text.includes("s\u1EB5n s\xE0ng")) textColor = "text-emerald-400 font-bold";
+        if (log.text.includes("\u26A0\uFE0F") || log.text.includes("warning") || log.text.includes("Warning")) textColor = "text-amber-300";
+        if (log.text.includes("\u274C") || log.text.includes("L\u1ED7i") || log.text.includes("Error")) textColor = "text-rose-400 font-bold";
+        return /* @__PURE__ */ import_react6.default.createElement("div", { key: index, className: "flex items-start gap-1.5 break-words" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-slate-500 shrink-0 select-none" }, "[", log.time, "]"), /* @__PURE__ */ import_react6.default.createElement("span", { className: textColor }, log.text));
+      }) : /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-slate-500 italic py-2 leading-relaxed" }, "\u{1F5A5}\uFE0F Studio VDT AI Engine v3.0 s\u1EB5n s\xE0ng.", /* @__PURE__ */ import_react6.default.createElement("br", null), "> B\u1EA5m n\xFAt \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u theo d\xF5i ti\u1EBFn tr\xECnh tr\u1EF1c ti\u1EBFp."), /* @__PURE__ */ import_react6.default.createElement("div", { ref: logsEndRef }))), dubbingCompleted && resultVideoUrl ? /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-1.5 text-xs font-bold text-emerald-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u2713"), " L\u1ED3ng ti\u1EBFng ho\xE0n t\u1EA5t 100%!"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "aspect-[9/16] bg-black rounded-lg overflow-hidden border border-emerald-200" }, /* @__PURE__ */ import_react6.default.createElement("video", { src: resultVideoUrl, controls: true, autoPlay: true, className: "w-full h-full object-contain" })), /* @__PURE__ */ import_react6.default.createElement(
         "a",
         {
           href: resultVideoUrl,

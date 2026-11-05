@@ -136,8 +136,14 @@ class Transcriber:
             best_of=1,
             temperature=0.0,
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
-            vad_filter=False,
-            word_timestamps=False,
+            vad_filter=True,
+            vad_parameters=dict(
+                threshold=0.20,
+                min_speech_duration_ms=200,
+                min_silence_duration_ms=400,
+                speech_pad_ms=200,
+            ),
+            word_timestamps=True,
         )
 
         detected_lang = info.language

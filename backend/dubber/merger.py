@@ -756,6 +756,7 @@ class VideoMerger:
                         "-crf", "22",
                         "-c:a", "aac",
                         "-b:a", "192k",
+                        "-movflags", "+faststart",
                         "-shortest",
                         str(intermediate_out),
                     ])
@@ -764,6 +765,7 @@ class VideoMerger:
                         "-c:v", "copy",
                         "-c:a", "aac",
                         "-b:a", "192k",
+                        "-movflags", "+faststart",
                         "-map", "0:v:0",
                         "-map", "1:a:0",
                         "-shortest",
@@ -1280,6 +1282,7 @@ class VideoMerger:
                     "-threads", str(cpu_threads),
                     "-c:a", "aac",
                     "-b:a", "192k",
+                    "-movflags", "+faststart",
                     str(final_output_path),
                 ]
                 subprocess.run(cmd_cat, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

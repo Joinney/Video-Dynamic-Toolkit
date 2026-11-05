@@ -73,31 +73,88 @@ function serveStaticFile(res, filePath, contentType) {
 
 function streamVideoFile(req, res, filePath) {
   if (!fs.existsSync(filePath)) {
-    res.writeHead(404);
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('File not found');
     return;
   }
 
   const stat = fs.statSync(filePath);
+  const total = stat.size;
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Access-Control-Max-Age': '86400',
+    });
+    res.end();
+    return;
+  }
+
+  if (req.method === 'HEAD') {
+    res.writeHead(200, {
+      'Content-Length': total,
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end();
+    return;
+  }
+
   const range = req.headers.range;
 
   if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+    const match = range.match(/bytes=(\d*)-(\d*)/);
+    if (!match) {
+      res.writeHead(416, {
+        'Content-Range': `bytes */${total}`,
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end();
+      return;
+    }
+
+    let start = match[1] ? parseInt(match[1], 10) : NaN;
+    let end = match[2] ? parseInt(match[2], 10) : NaN;
+
+    if (isNaN(start)) {
+      // Suffix range (e.g. bytes=-500)
+      start = total - end;
+      end = total - 1;
+    } else if (isNaN(end)) {
+      // Open range (e.g. bytes=500-)
+      end = total - 1;
+    }
+
+    if (start < 0) start = 0;
+    if (end >= total) end = total - 1;
+
+    if (start > end || start >= total) {
+      res.writeHead(416, {
+        'Content-Range': `bytes */${total}`,
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end();
+      return;
+    }
+
     const chunksize = (end - start) + 1;
-    const file = fs.createReadStream(filePath, { start, end });
     res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+      'Content-Range': `bytes ${start}-${end}/${total}`,
       'Accept-Ranges': 'bytes',
       'Content-Length': chunksize,
-      'Content-Type': 'video/mp4'
+      'Content-Type': 'video/mp4',
+      'Access-Control-Allow-Origin': '*'
     });
-    file.pipe(res);
+    fs.createReadStream(filePath, { start, end }).pipe(res);
   } else {
     res.writeHead(200, {
-      'Content-Length': stat.size,
-      'Content-Type': 'video/mp4'
+      'Content-Length': total,
+      'Content-Type': 'video/mp4',
+      'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*'
     });
     fs.createReadStream(filePath).pipe(res);
   }

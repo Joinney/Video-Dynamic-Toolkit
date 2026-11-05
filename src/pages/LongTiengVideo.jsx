@@ -10,7 +10,10 @@ import {
   Sparkles,
   Layers,
   ChevronRight,
-  Info
+  Info,
+  ShieldCheck,
+  Film,
+  FileText
 } from 'lucide-react';
 import Header from '../components/Header';
 
@@ -24,14 +27,36 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('vi');
+
+  // 4 Tabs Tùy Chỉnh Overlay từ StudioVDT
+  const [activeOverlayTab, setActiveOverlayTab] = useState('logo'); // 'logo' | 'sub' | 'wm' | 'outro'
+
+  // Tab 1: Logo
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
-  const [activeOverlayTab, setActiveOverlayTab] = useState('logo');
   const [logoSize, setLogoSize] = useState(18);
   const [logoX, setLogoX] = useState(80);
   const [logoY, setLogoY] = useState(5);
   const [logoOpacity, setLogoOpacity] = useState(90);
   const [logoRotation, setLogoRotation] = useState(0);
 
+  // Tab 2: Phụ đề
+  const [burnSubtitles, setBurnSubtitles] = useState(true);
+  const [subStyle, setSubStyle] = useState('white_outline'); // 'white_outline' | 'glassmorphism' | 'yellow_outline' | 'black_box'
+  const [subFontSize, setSubFontSize] = useState(28);
+  const [subBottomPct, setSubBottomPct] = useState(7);
+  const [previewSubText, setPreviewSubText] = useState('Studio VDT — Lồng tiếng phim AI đỉnh cao');
+
+  // Tab 3: Chữ mờ bảo vệ bản quyền (Floating Watermark)
+  const [enableFloatWm, setEnableFloatWm] = useState(true);
+  const [floatWmText, setFloatWmText] = useState('@gocphimcuon');
+  const [floatWmSize, setFloatWmSize] = useState(18);
+  const [floatWmOpacity, setFloatWmOpacity] = useState(30);
+
+  // Tab 4: Outro kết thúc
+  const [enableOutro, setEnableOutro] = useState(true);
+  const [outroPath, setOutroPath] = useState('assets/endgpc.mp4');
+
+  // Trạng thái xử lý
   const [isDubbingProcessing, setIsDubbingProcessing] = useState(false);
   const [dubbingCompleted, setDubbingCompleted] = useState(false);
   const [dubJobId, setDubJobId] = useState(null);
@@ -104,14 +129,27 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           voice: selectedVoice,
           sourceLang: sourceLang,
           targetLang: targetLang,
-          burnSubtitles: true,
+          burnSubtitles: burnSubtitles,
+          subStyle: subStyle,
+          subFontSize: subFontSize,
+          enableLogo: watermarkEnabled,
+          logoXPct: logoX,
+          logoYPct: logoY,
+          logoScale: logoSize,
+          logoOpacity: logoOpacity,
+          logoRotation: logoRotation,
+          enableFloatingWatermark: enableFloatWm,
+          floatingWatermarkText: floatWmText,
+          floatingWatermarkOpacity: floatWmOpacity,
+          enableOutro: enableOutro,
+          outroPath: outroPath,
           bgmVolume: 0.15
         })
       });
       const data = await res.json();
       if (data.success && data.job) {
         setDubJobId(data.job.id);
-        setDubProgress({ status: 'starting', pct: 5, message: 'Đang chuẩn bị luồng lồng tiếng AI...' });
+        setDubProgress({ status: 'starting', pct: 5, message: 'Đang chuẩn bị luồng StudioVDT Pipeline...' });
       } else {
         alert('Lỗi khởi động: ' + (data.message || 'Không thành công'));
         setIsDubbingProcessing(false);
@@ -122,9 +160,15 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
     }
   };
 
+  // Nút định vị nhanh logo 4 góc
+  const setLogoCorner = (x, y) => {
+    setLogoX(x);
+    setLogoY(y);
+  };
+
   return (
     <div
-      className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative"
+      className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative pb-10"
       style={{
         backgroundColor: '#f6f9fc',
         backgroundImage:
@@ -135,20 +179,21 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
       <div className="pt-2.5 px-4 max-w-[1740px] w-full mx-auto">
         <Header
           title="Studio VDT"
-          badge="AI VIDEO DUBBING"
+          badge="AI VIDEO DUBBING PRO"
           showBackButton={true}
           onBackHome={onBackHome}
           backendData={backendData}
         />
       </div>
 
-      {/* Main Grid: 3 Cột */}
+      {/* Main Grid: 3 Cột Studio Chuẩn */}
       <main className="p-3.5 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 items-start mt-1">
-        {/* CỘT 1: THIẾT LẬP */}
+        {/* CỘT 1: THIẾT LẬP GIỌNG ĐỌC, KHO PHIM & 4 TABS OVERLAY */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
+          {/* Card Giọng Đọc AI */}
           <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
             <div className="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700">
-              <div className="flex items-center gap-2 truncate">
+              <div className="flex items-center gap-2 truncate w-full">
                 <span className="text-orange-500 text-sm">🔥</span>
                 <select
                   value={selectedVoice}
@@ -175,8 +220,6 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                       <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm, tấu hài)</option>
                       <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào, truyền cảm)</option>
                       <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm, tin tức)</option>
-                      <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh)</option>
-                      <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
                     </>
                   )}
                 </select>
@@ -215,6 +258,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             </div>
           </div>
 
+          {/* Ngôn ngữ gốc & đích */}
           <div className="grid grid-cols-2 gap-2 bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
             <div>
               <label className="text-[11px] text-gray-600 font-semibold block mb-1">Ngôn ngữ gốc của video:</label>
@@ -243,7 +287,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             </div>
           </div>
 
-          {/* Chọn Video: Tải lên hoặc chọn từ kho phim */}
+          {/* Chọn Video từ kho phim máy tính hoặc upload */}
           <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2">
             <label className="text-xs font-bold text-gray-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5"><span>🎬</span> Chọn Video Cần Lồng Tiếng:</span>
@@ -254,7 +298,6 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
               )}
             </label>
 
-            {/* Dropdown kho phim máy tính */}
             {localDramas && localDramas.length > 0 && (
               <div className="p-2 bg-sky-50/70 border border-sky-200 rounded-lg">
                 <div className="text-[11px] font-bold text-sky-900 mb-1 flex items-center gap-1">
@@ -313,53 +356,219 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             </label>
           </div>
 
-          {/* Watermark controls */}
-          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2.5">
-            <div className="flex items-center justify-between text-xs font-bold text-gray-800">
-              <span className="flex items-center gap-1.5">
-                <Sliders size={14} className="text-blue-600" /> Tùy Chỉnh Watermark & Phụ Đề
-              </span>
-              <label className="flex items-center gap-1 cursor-pointer text-[11px] text-blue-600">
-                <input
-                  type="checkbox"
-                  checked={watermarkEnabled}
-                  onChange={(e) => setWatermarkEnabled(e.target.checked)}
-                  className="accent-blue-600 rounded"
-                />
-                Bật
-              </label>
+          {/* 4 TABS ĐIỀU KHIỂN CHUẨN TỪ STUDIOVDT: LOGO, PHỤ ĐỀ, CHỮ MỜ, OUTRO */}
+          <div className="bg-white rounded-xl border border-gray-200/90 shadow-xs overflow-hidden">
+            <div className="flex border-b border-gray-200 bg-slate-50 text-[11px] font-bold">
+              {[
+                { id: 'logo', label: '🏷️ Logo' },
+                { id: 'sub', label: '📝 Phụ đề' },
+                { id: 'wm', label: '🛡️ Chữ mờ' },
+                { id: 'outro', label: '🎬 Outro' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveOverlayTab(tab.id)}
+                  className={`flex-1 py-2 text-center transition cursor-pointer ${
+                    activeOverlayTab === tab.id
+                      ? 'bg-white text-blue-600 border-b-2 border-blue-600 font-extrabold shadow-2xs'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {watermarkEnabled && (
-              <div className="space-y-2 pt-1 border-t border-gray-100">
-                <div className="flex items-center justify-between text-[11px] text-gray-600 font-medium">
-                  <span>Kích thước logo: {logoSize}%</span>
-                  <input
-                    type="range"
-                    min="5"
-                    max="50"
-                    value={logoSize}
-                    onChange={(e) => setLogoSize(Number(e.target.value))}
-                    className="w-32 accent-blue-600"
-                  />
+            <div className="p-3 space-y-2.5">
+              {/* TAB 1: LOGO */}
+              {activeOverlayTab === 'logo' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+                    <span>Kích hoạt chèn Logo vào video:</span>
+                    <input
+                      type="checkbox"
+                      checked={watermarkEnabled}
+                      onChange={(e) => setWatermarkEnabled(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+
+                  {watermarkEnabled && (
+                    <>
+                      <div className="text-[11px] font-bold text-orange-600">Định vị nhanh 4 góc Logo:</div>
+                      <div className="grid grid-cols-5 gap-1">
+                        <button type="button" onClick={() => setLogoCorner(4, 4)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">↖ Trên Trái</button>
+                        <button type="button" onClick={() => setLogoCorner(78, 4)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">↗ Trên Phải</button>
+                        <button type="button" onClick={() => setLogoCorner(4, 78)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">↙ Dưới Trái</button>
+                        <button type="button" onClick={() => setLogoCorner(78, 78)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">↘ Dưới Phải</button>
+                        <button type="button" onClick={() => setLogoCorner(41, 41)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">⏺ Giữa</button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <label className="text-gray-600 font-semibold">Kích thước logo: {logoSize}%</label>
+                          <input type="range" min="6" max="45" value={logoSize} onChange={(e) => setLogoSize(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-semibold">Độ rõ nét: {logoOpacity}%</label>
+                          <input type="range" min="20" max="100" value={logoOpacity} onChange={(e) => setLogoOpacity(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-semibold">Tọa độ ngang X: {logoX}%</label>
+                          <input type="range" min="0" max="95" value={logoX} onChange={(e) => setLogoX(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-semibold">Tọa độ dọc Y: {logoY}%</label>
+                          <input type="range" min="0" max="95" value={logoY} onChange={(e) => setLogoY(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center text-[11px] text-gray-600 font-semibold">
+                          <span>Góc xoay: {logoRotation}°</span>
+                          <div className="flex gap-1">
+                            {[0, 90, 180, 270].map(deg => (
+                              <button key={deg} type="button" onClick={() => setLogoRotation(deg)} className="px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-[9px] font-bold rounded border border-slate-300">{deg}°</button>
+                            ))}
+                          </div>
+                        </div>
+                        <input type="range" min="0" max="360" value={logoRotation} onChange={(e) => setLogoRotation(Number(e.target.value))} className="w-full accent-blue-600 mt-1" />
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-600 font-medium">
-                  <span>Độ mờ đục: {logoOpacity}%</span>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={logoOpacity}
-                    onChange={(e) => setLogoOpacity(Number(e.target.value))}
-                    className="w-32 accent-blue-600"
-                  />
+              )}
+
+              {/* TAB 2: PHỤ ĐỀ */}
+              {activeOverlayTab === 'sub' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+                    <span>Khắc cứng phụ đề tiếng Việt (Hardsub):</span>
+                    <input
+                      type="checkbox"
+                      checked={burnSubtitles}
+                      onChange={(e) => setBurnSubtitles(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+
+                  {burnSubtitles && (
+                    <>
+                      <div>
+                        <label className="text-[11px] text-gray-600 font-semibold block mb-1">Kiểu dáng phụ đề:</label>
+                        <select
+                          value={subStyle}
+                          onChange={(e) => setSubStyle(e.target.value)}
+                          className="w-full bg-slate-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold text-gray-800 cursor-pointer"
+                        >
+                          <option value="white_outline">Viền trắng điện ảnh (Cinema White Outline)</option>
+                          <option value="glassmorphism">Nền kính mờ trong suốt (Glassmorphism)</option>
+                          <option value="yellow_outline">Nổi bật (Yellow Text Outline)</option>
+                          <option value="black_box">Nền hộp đen (Cinema Black Box)</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <label className="text-gray-600 font-semibold">Cỡ chữ: {subFontSize}px</label>
+                          <input type="range" min="14" max="90" step="2" value={subFontSize} onChange={(e) => setSubFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-semibold">Khoảng cách đáy Y: {subBottomPct}%</label>
+                          <input type="range" min="1" max="85" value={subBottomPct} onChange={(e) => setSubBottomPct(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] text-gray-600 font-semibold block mb-1">Câu mẫu hiển thị trên video:</label>
+                        <input
+                          type="text"
+                          value={previewSubText}
+                          onChange={(e) => setPreviewSubText(e.target.value)}
+                          className="w-full bg-slate-50 border border-gray-200 rounded-lg px-2 py-1 text-xs"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* TAB 3: CHỮ MỜ BẢO VỆ BẢN QUYỀN */}
+              {activeOverlayTab === 'wm' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+                    <span>Kích hoạt Chữ mờ chạy bảo vệ bản quyền:</span>
+                    <input
+                      type="checkbox"
+                      checked={enableFloatWm}
+                      onChange={(e) => setEnableFloatWm(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+
+                  {enableFloatWm && (
+                    <>
+                      <div>
+                        <label className="text-[11px] text-gray-600 font-semibold block mb-1">Nội dung chữ mờ (Kênh/Hotline):</label>
+                        <input
+                          type="text"
+                          value={floatWmText}
+                          onChange={(e) => setFloatWmText(e.target.value)}
+                          placeholder="@gocphimcuon"
+                          className="w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-sky-700"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <label className="text-gray-600 font-semibold">Kích cỡ chữ: {floatWmSize}px</label>
+                          <input type="range" min="10" max="45" value={floatWmSize} onChange={(e) => setFloatWmSize(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                        <div>
+                          <label className="text-gray-600 font-semibold">Độ mờ tàng hình: {floatWmOpacity}%</label>
+                          <input type="range" min="10" max="80" step="5" value={floatWmOpacity} onChange={(e) => setFloatWmOpacity(Number(e.target.value))} className="w-full accent-blue-600" />
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-gray-400 italic">
+                        Chữ mờ sẽ lướt ngẫu nhiên toàn màn hình video một cách êm ái, chống cắt ghép lại video 100%.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: OUTRO KẾT THÚC */}
+              {activeOverlayTab === 'outro' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+                    <span>Kích hoạt Video Outro kết thúc:</span>
+                    <input
+                      type="checkbox"
+                      checked={enableOutro}
+                      onChange={(e) => setEnableOutro(e.target.checked)}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+
+                  {enableOutro && (
+                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                      <div className="text-[11px] text-slate-700 font-medium">
+                        🎬 Đang sử dụng Outro mặc định: <strong>assets/endgpc.mp4</strong> (Kêu gọi follow Góc Phim Cuốn)
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        Tự động nối video outro vào ngay sau khi kết thúc lời thoại lồng tiếng, giúp video liền mạch chuẩn kênh chuyên nghiệp.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* CỘT 2: CANVAS STUDIO & VIDEO PLAYER */}
+        {/* CỘT 2: CANVAS STUDIO & VIDEO PREVIEW */}
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-3">
           <div className="bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -410,6 +619,58 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   </div>
                 </div>
               )}
+
+              {/* Phụ đề mẫu trên mặt video theo Style được chọn */}
+              {burnSubtitles && videoUrl && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: `${subBottomPct}%`,
+                    left: '5%',
+                    right: '5%',
+                    fontSize: `${subFontSize * 0.55}px`
+                  }}
+                  className="text-center font-bold pointer-events-none select-none transition-all"
+                >
+                  {subStyle === 'glassmorphism' && (
+                    <span className="bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md">
+                      {previewSubText}
+                    </span>
+                  )}
+                  {subStyle === 'yellow_outline' && (
+                    <span className="text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black" style={{ WebkitTextStroke: '1px black' }}>
+                      {previewSubText}
+                    </span>
+                  )}
+                  {subStyle === 'black_box' && (
+                    <span className="bg-black text-white px-3 py-1 rounded">
+                      {previewSubText}
+                    </span>
+                  )}
+                  {subStyle === 'white_outline' && (
+                    <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" style={{ WebkitTextStroke: '1px black' }}>
+                      {previewSubText}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Chữ mờ bảo vệ bản quyền trên mặt video */}
+              {enableFloatWm && videoUrl && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '45%',
+                    left: '30%',
+                    fontSize: `${floatWmSize}px`,
+                    opacity: floatWmOpacity / 100,
+                    transform: 'rotate(-20deg)'
+                  }}
+                  className="text-white font-black pointer-events-none select-none drop-shadow"
+                >
+                  {floatWmText}
+                </div>
+              )}
             </div>
 
             {/* Nút Khởi Chạy Lồng Tiếng AI */}
@@ -429,14 +690,14 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 </>
               ) : (
                 <>
-                  <Sparkles size={18} /> BẮT ĐẦU LỒNG TIẾNG VIDEO AI
+                  <Sparkles size={18} /> BẮT ĐẦU LỒNG TIẾNG VIDEO AI TỰ ĐỘNG
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* CỘT 3: TIẾN TRÌNH & THÀNH PHẨM */}
+        {/* CỘT 3: TIẾN TRÌNH REALTIME & THÀNH PHẨM */}
         <div className="col-span-12 lg:col-span-3 flex flex-col gap-3">
           <div className="bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3">
             <h3 className="text-xs font-black text-gray-900 uppercase">
@@ -446,7 +707,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             {isDubbingProcessing && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
                 <div className="flex justify-between items-center text-xs font-bold text-blue-900">
-                  <span>{dubProgress?.step || dubProgress?.message || 'Đang lồng tiếng...'}</span>
+                  <span className="truncate pr-2">{dubProgress?.step || dubProgress?.message || 'Đang lồng tiếng...'}</span>
                   <span>{dubProgress?.percent || dubProgress?.pct || 15}%</span>
                 </div>
                 <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">

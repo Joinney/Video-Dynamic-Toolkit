@@ -35,7 +35,11 @@ def emit_progress(status, pct, message, extra=None):
         payload.update(extra)
     print(f"__PROGRESS__{json.dumps(payload, ensure_ascii=False)}__PROGRESS__", flush=True)
 
-def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="base", burn_subtitles=True, source_lang="auto", target_lang="vi"):
+def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="base", burn_subtitles=True, source_lang="auto", target_lang="vi",
+                enable_logo=False, logo_path=None, logo_x=0.80, logo_y=0.05, logo_scale=0.18, logo_opacity=0.90, logo_rotation=0.0,
+                subtitle_style="white_outline", subtitle_font_size=42,
+                enable_float_wm=False, float_wm_text="@gocphimcuon", float_wm_opacity=0.30,
+                enable_outro=True, outro_path=None):
     input_path = Path(input_video).resolve()
     if not input_path.exists():
         emit_progress("error", 0, f"File video đầu vào không tồn tại: {input_video}")
@@ -60,6 +64,20 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             tts_rate=speed,
             original_audio_volume=orig_volume,
             burn_subtitles=burn_subtitles,
+            subtitle_font_size=subtitle_font_size,
+            subtitle_style=subtitle_style,
+            enable_logo=enable_logo,
+            logo_path=logo_path,
+            logo_x_pct=logo_x,
+            logo_y_pct=logo_y,
+            logo_scale=logo_scale,
+            logo_opacity=logo_opacity,
+            logo_rotation=logo_rotation,
+            enable_floating_watermark=enable_float_wm,
+            floating_watermark_text=float_wm_text,
+            floating_watermark_opacity=float_wm_opacity,
+            enable_outro=enable_outro,
+            outro_video_path=outro_path,
             temp_dir=out_path.parent / ".temp_dub",
             output_dir=out_path.parent
         )
@@ -231,6 +249,20 @@ def main():
     parser.add_argument("--burn-subtitles", action="store_true", default=True, help="Chèn phụ đề cứng vào video")
     parser.add_argument("--source-lang", default="auto", help="Ngôn ngữ gốc (auto, zh, en)")
     parser.add_argument("--target-lang", default="vi", help="Ngôn ngữ dịch (vi)")
+    parser.add_argument("--enable-logo", action="store_true", default=False, help="Chèn logo vào video")
+    parser.add_argument("--logo-path", default=None, help="Đường dẫn file logo")
+    parser.add_argument("--logo-x", type=float, default=0.80, help="Tọa độ X logo (%)")
+    parser.add_argument("--logo-y", type=float, default=0.05, help="Tọa độ Y logo (%)")
+    parser.add_argument("--logo-scale", type=float, default=0.18, help="Tỷ lệ kích thước logo (%)")
+    parser.add_argument("--logo-opacity", type=float, default=0.90, help="Độ mờ logo (%)")
+    parser.add_argument("--logo-rotation", type=float, default=0.0, help="Góc xoay logo (độ)")
+    parser.add_argument("--sub-style", default="white_outline", help="Kiểu phụ đề (glassmorphism, yellow_outline, black_box, white_outline)")
+    parser.add_argument("--sub-font-size", type=int, default=42, help="Cỡ chữ phụ đề")
+    parser.add_argument("--enable-float-wm", action="store_true", default=False, help="Chữ mờ bảo vệ bản quyền")
+    parser.add_argument("--float-wm-text", default="@gocphimcuon", help="Nội dung chữ mờ")
+    parser.add_argument("--float-wm-opacity", type=float, default=0.30, help="Độ mờ chữ mờ")
+    parser.add_argument("--enable-outro", action="store_true", default=True, help="Ghép video Outro")
+    parser.add_argument("--outro-path", default=None, help="Đường dẫn file Outro")
 
     args = parser.parse_args()
     success = run_dubbing(
@@ -242,7 +274,21 @@ def main():
         whisper_model_size=args.whisper_model,
         burn_subtitles=args.burn_subtitles,
         source_lang=args.source_lang,
-        target_lang=args.target_lang
+        target_lang=args.target_lang,
+        enable_logo=args.enable_logo,
+        logo_path=args.logo_path,
+        logo_x=args.logo_x,
+        logo_y=args.logo_y,
+        logo_scale=args.logo_scale,
+        logo_opacity=args.logo_opacity,
+        logo_rotation=args.logo_rotation,
+        subtitle_style=args.sub_style,
+        subtitle_font_size=args.sub_font_size,
+        enable_float_wm=args.enable_float_wm,
+        float_wm_text=args.float_wm_text,
+        float_wm_opacity=args.float_wm_opacity,
+        enable_outro=args.enable_outro,
+        outro_path=args.outro_path
     )
     sys.exit(0 if success else 1)
 

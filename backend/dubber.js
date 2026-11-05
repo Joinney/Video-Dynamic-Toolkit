@@ -52,6 +52,30 @@ function startDubbingJob(inputVideoPath, options = {}) {
   if (burnSub) {
     args.push('--burn-subtitles');
   }
+  if (options.enableLogo) {
+    args.push('--enable-logo');
+    if (options.logoPath) args.push('--logo-path', options.logoPath);
+    if (options.logoXPct !== undefined) args.push('--logo-x', String(options.logoXPct / 100));
+    if (options.logoYPct !== undefined) args.push('--logo-y', String(options.logoYPct / 100));
+    if (options.logoScale !== undefined) args.push('--logo-scale', String(options.logoScale / 100));
+    if (options.logoOpacity !== undefined) args.push('--logo-opacity', String(options.logoOpacity / 100));
+    if (options.logoRotation !== undefined) args.push('--logo-rotation', String(options.logoRotation));
+  }
+  if (options.subStyle) {
+    args.push('--sub-style', options.subStyle);
+  }
+  if (options.subFontSize) {
+    args.push('--sub-font-size', String(options.subFontSize));
+  }
+  if (options.enableFloatingWatermark) {
+    args.push('--enable-float-wm');
+    if (options.floatingWatermarkText) args.push('--float-wm-text', options.floatingWatermarkText);
+    if (options.floatingWatermarkOpacity) args.push('--float-wm-opacity', String(options.floatingWatermarkOpacity / 100));
+  }
+  if (options.enableOutro !== false) {
+    args.push('--enable-outro');
+    if (options.outroPath) args.push('--outro-path', options.outroPath);
+  }
 
   try {
     const proc = spawn(pythonCmd, args);

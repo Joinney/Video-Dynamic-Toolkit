@@ -23104,7 +23104,7 @@
               unmarkContainerAsRoot(container2);
             }
           };
-          function createRoot(container2, options2) {
+          function createRoot2(container2, options2) {
             if (!isValidContainer(container2)) {
               throw new Error("createRoot(...): Target container is not a DOM element.");
             }
@@ -23487,7 +23487,7 @@
                 error('You are importing createRoot from "react-dom" which is not supported. You should instead import it from "react-dom/client".');
               }
             }
-            return createRoot(container2, options2);
+            return createRoot2(container2, options2);
           }
           function hydrateRoot$1(container2, initialChildren, options2) {
             {
@@ -23672,6 +23672,9 @@
     ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
   ]);
 
+  // node_modules/lucide-react/dist/esm/icons/check.js
+  var Check = createLucideIcon("Check", [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]]);
+
   // node_modules/lucide-react/dist/esm/icons/clapperboard.js
   var Clapperboard = createLucideIcon("Clapperboard", [
     [
@@ -23688,6 +23691,12 @@
     ["path", { d: "M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242", key: "1pljnt" }],
     ["path", { d: "M12 12v9", key: "192myk" }],
     ["path", { d: "m8 17 4 4 4-4", key: "1ul180" }]
+  ]);
+
+  // node_modules/lucide-react/dist/esm/icons/copy.js
+  var Copy = createLucideIcon("Copy", [
+    ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
+    ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
   ]);
 
   // node_modules/lucide-react/dist/esm/icons/download.js
@@ -23781,19 +23790,6 @@
     ["path", { d: "M8 16H3v5", key: "1cv678" }]
   ]);
 
-  // node_modules/lucide-react/dist/esm/icons/sliders-vertical.js
-  var SlidersVertical = createLucideIcon("SlidersVertical", [
-    ["line", { x1: "4", x2: "4", y1: "21", y2: "14", key: "1p332r" }],
-    ["line", { x1: "4", x2: "4", y1: "10", y2: "3", key: "gb41h5" }],
-    ["line", { x1: "12", x2: "12", y1: "21", y2: "12", key: "hf2csr" }],
-    ["line", { x1: "12", x2: "12", y1: "8", y2: "3", key: "1kfi7u" }],
-    ["line", { x1: "20", x2: "20", y1: "21", y2: "16", key: "1lhrwl" }],
-    ["line", { x1: "20", x2: "20", y1: "12", y2: "3", key: "16vvfq" }],
-    ["line", { x1: "2", x2: "6", y1: "14", y2: "14", key: "1uebub" }],
-    ["line", { x1: "10", x2: "14", y1: "8", y2: "8", key: "1yglbp" }],
-    ["line", { x1: "18", x2: "22", y1: "16", y2: "16", key: "1jxqpz" }]
-  ]);
-
   // node_modules/lucide-react/dist/esm/icons/sparkles.js
   var Sparkles = createLucideIcon("Sparkles", [
     [
@@ -23814,24 +23810,6 @@
     ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
     ["polyline", { points: "17 8 12 3 7 8", key: "t8dd8p" }],
     ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
-  ]);
-
-  // node_modules/lucide-react/dist/esm/icons/wand-sparkles.js
-  var WandSparkles = createLucideIcon("WandSparkles", [
-    [
-      "path",
-      {
-        d: "m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72",
-        key: "ul74o6"
-      }
-    ],
-    ["path", { d: "m14 7 3 3", key: "1r5n42" }],
-    ["path", { d: "M5 6v4", key: "ilb8ba" }],
-    ["path", { d: "M19 14v4", key: "blhpug" }],
-    ["path", { d: "M10 2v2", key: "7u0qdc" }],
-    ["path", { d: "M7 8H3", key: "zfb6yr" }],
-    ["path", { d: "M21 16h-4", key: "1cnmox" }],
-    ["path", { d: "M11 3H9", key: "1obp7u" }]
   ]);
 
   // node_modules/lucide-react/dist/esm/icons/x.js
@@ -24087,13 +24065,24 @@
     const [localDramas, setLocalDramas] = (0, import_react6.useState)(backendData?.localDramas || []);
     const [sourceLang, setSourceLang] = (0, import_react6.useState)("auto");
     const [targetLang, setTargetLang] = (0, import_react6.useState)("vi");
-    const [watermarkEnabled, setWatermarkEnabled] = (0, import_react6.useState)(true);
     const [activeOverlayTab, setActiveOverlayTab] = (0, import_react6.useState)("logo");
+    const [watermarkEnabled, setWatermarkEnabled] = (0, import_react6.useState)(true);
     const [logoSize, setLogoSize] = (0, import_react6.useState)(18);
     const [logoX, setLogoX] = (0, import_react6.useState)(80);
     const [logoY, setLogoY] = (0, import_react6.useState)(5);
     const [logoOpacity, setLogoOpacity] = (0, import_react6.useState)(90);
     const [logoRotation, setLogoRotation] = (0, import_react6.useState)(0);
+    const [burnSubtitles, setBurnSubtitles] = (0, import_react6.useState)(true);
+    const [subStyle, setSubStyle] = (0, import_react6.useState)("white_outline");
+    const [subFontSize, setSubFontSize] = (0, import_react6.useState)(28);
+    const [subBottomPct, setSubBottomPct] = (0, import_react6.useState)(7);
+    const [previewSubText, setPreviewSubText] = (0, import_react6.useState)("Studio VDT \u2014 L\u1ED3ng ti\u1EBFng phim AI \u0111\u1EC9nh cao");
+    const [enableFloatWm, setEnableFloatWm] = (0, import_react6.useState)(true);
+    const [floatWmText, setFloatWmText] = (0, import_react6.useState)("@gocphimcuon");
+    const [floatWmSize, setFloatWmSize] = (0, import_react6.useState)(18);
+    const [floatWmOpacity, setFloatWmOpacity] = (0, import_react6.useState)(30);
+    const [enableOutro, setEnableOutro] = (0, import_react6.useState)(true);
+    const [outroPath, setOutroPath] = (0, import_react6.useState)("assets/endgpc.mp4");
     const [isDubbingProcessing, setIsDubbingProcessing] = (0, import_react6.useState)(false);
     const [dubbingCompleted, setDubbingCompleted] = (0, import_react6.useState)(false);
     const [dubJobId, setDubJobId] = (0, import_react6.useState)(null);
@@ -24161,14 +24150,27 @@
             voice: selectedVoice,
             sourceLang,
             targetLang,
-            burnSubtitles: true,
+            burnSubtitles,
+            subStyle,
+            subFontSize,
+            enableLogo: watermarkEnabled,
+            logoXPct: logoX,
+            logoYPct: logoY,
+            logoScale: logoSize,
+            logoOpacity,
+            logoRotation,
+            enableFloatingWatermark: enableFloatWm,
+            floatingWatermarkText: floatWmText,
+            floatingWatermarkOpacity: floatWmOpacity,
+            enableOutro,
+            outroPath,
             bgmVolume: 0.15
           })
         });
         const data = await res.json();
         if (data.success && data.job) {
           setDubJobId(data.job.id);
-          setDubProgress({ status: "starting", pct: 5, message: "\u0110ang chu\u1EA9n b\u1ECB lu\u1ED3ng l\u1ED3ng ti\u1EBFng AI..." });
+          setDubProgress({ status: "starting", pct: 5, message: "\u0110ang chu\u1EA9n b\u1ECB lu\u1ED3ng StudioVDT Pipeline..." });
         } else {
           alert("L\u1ED7i kh\u1EDFi \u0111\u1ED9ng: " + (data.message || "Kh\xF4ng th\xE0nh c\xF4ng"));
           setIsDubbingProcessing(false);
@@ -24178,10 +24180,14 @@
         setIsDubbingProcessing(false);
       }
     };
+    const setLogoCorner = (x, y) => {
+      setLogoX(x);
+      setLogoY(y);
+    };
     return /* @__PURE__ */ import_react6.default.createElement(
       "div",
       {
-        className: "min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative",
+        className: "min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative pb-10",
         style: {
           backgroundColor: "#f6f9fc",
           backgroundImage: "linear-gradient(to right, rgba(0, 114, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 114, 255, 0.05) 1px, transparent 1px)",
@@ -24192,13 +24198,13 @@
         Header,
         {
           title: "Studio VDT",
-          badge: "AI VIDEO DUBBING",
+          badge: "AI VIDEO DUBBING PRO",
           showBackButton: true,
           onBackHome,
           backendData
         }
       )),
-      /* @__PURE__ */ import_react6.default.createElement("main", { className: "p-3.5 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 items-start mt-1" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-4 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-2 truncate" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-orange-500 text-sm" }, "\u{1F525}"), /* @__PURE__ */ import_react6.default.createElement(
+      /* @__PURE__ */ import_react6.default.createElement("main", { className: "p-3.5 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 items-start mt-1" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-4 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-2 truncate w-full" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-orange-500 text-sm" }, "\u{1F525}"), /* @__PURE__ */ import_react6.default.createElement(
         "select",
         {
           value: selectedVoice,
@@ -24209,7 +24215,7 @@
           },
           className: "bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
         },
-        voicesCatalog && voicesCatalog.length > 0 ? voicesCatalog.map((cat) => /* @__PURE__ */ import_react6.default.createElement("optgroup", { key: cat.category, label: cat.category }, cat.voices.map((v) => /* @__PURE__ */ import_react6.default.createElement("option", { key: v.id, value: v.id }, v.gender === "N\u1EEF" ? "\u{1F469}" : "\u{1F468}", " ", v.name, " (", v.style, ")")))) : /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:Adam T\u1ED1p T\u1ED1p" }, "\u{1F525} Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:Adam b\u1EF1a" }, "\u{1F525} Adam b\u1EF1a (Review Phim d\xED d\u1ECFm, t\u1EA5u h\xE0i)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vi-VN-HoaiMyNeural" }, "\u{1F469} Ho\xE0i My (N\u1EEF B\u1EAFc ng\u1ECDt ng\xE0o, truy\u1EC1n c\u1EA3m)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vi-VN-NamMinhNeural" }, "\u{1F468} Nam Minh (Nam B\u1EAFc tr\u1EA7m \u1EA5m, tin t\u1EE9c)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:H\u1EA3i \u0110\u0103ng" }, "\u{1F399}\uFE0F H\u1EA3i \u0110\u0103ng (Nam B\u1EAFc chu\u1EA9n ph\xE1t thanh)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:Tr\xFAc Ly" }, "\u{1F399}\uFE0F Tr\xFAc Ly (N\u1EEF B\u1EAFc t\u1EF1 nhi\xEAn, tr\u1EBB trung)"))
+        voicesCatalog && voicesCatalog.length > 0 ? voicesCatalog.map((cat) => /* @__PURE__ */ import_react6.default.createElement("optgroup", { key: cat.category, label: cat.category }, cat.voices.map((v) => /* @__PURE__ */ import_react6.default.createElement("option", { key: v.id, value: v.id }, v.gender === "N\u1EEF" ? "\u{1F469}" : "\u{1F468}", " ", v.name, " (", v.style, ")")))) : /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:Adam T\u1ED1p T\u1ED1p" }, "\u{1F525} Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vieneu:Adam b\u1EF1a" }, "\u{1F525} Adam b\u1EF1a (Review Phim d\xED d\u1ECFm, t\u1EA5u h\xE0i)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vi-VN-HoaiMyNeural" }, "\u{1F469} Ho\xE0i My (N\u1EEF B\u1EAFc ng\u1ECDt ng\xE0o, truy\u1EC1n c\u1EA3m)"), /* @__PURE__ */ import_react6.default.createElement("option", { value: "vi-VN-NamMinhNeural" }, "\u{1F468} Nam Minh (Nam B\u1EAFc tr\u1EA7m \u1EA5m, tin t\u1EE9c)"))
       ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "mt-2.5 bg-gradient-to-br from-slate-50 to-orange-50/20 rounded-xl p-3 border border-orange-100 flex gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200" }, /* @__PURE__ */ import_react6.default.createElement(
         "img",
         {
@@ -24285,35 +24291,81 @@
         },
         /* @__PURE__ */ import_react6.default.createElement(Upload, { size: 14 }),
         " T\u1EA3i file MP4/MKV kh\xE1c"
-      ), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] text-gray-400 font-medium truncate max-w-full" }, videoFile ? `\u0110\xE3 ch\u1ECDn: ${videoFile.name}` : serverVideoPath ? `\u0110ang d\xF9ng: ${serverVideoPath}` : "H\u1ED7 tr\u1EE3 MP4, MKV, MOV"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement(SlidersVertical, { size: 14, className: "text-blue-600" }), " T\xF9y Ch\u1EC9nh Watermark & Ph\u1EE5 \u0110\u1EC1"), /* @__PURE__ */ import_react6.default.createElement("label", { className: "flex items-center gap-1 cursor-pointer text-[11px] text-blue-600" }, /* @__PURE__ */ import_react6.default.createElement(
+      ), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] text-gray-400 font-medium truncate max-w-full" }, videoFile ? `\u0110\xE3 ch\u1ECDn: ${videoFile.name}` : serverVideoPath ? `\u0110ang d\xF9ng: ${serverVideoPath}` : "H\u1ED7 tr\u1EE3 MP4, MKV, MOV"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl border border-gray-200/90 shadow-xs overflow-hidden" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex border-b border-gray-200 bg-slate-50 text-[11px] font-bold" }, [
+        { id: "logo", label: "\u{1F3F7}\uFE0F Logo" },
+        { id: "sub", label: "\u{1F4DD} Ph\u1EE5 \u0111\u1EC1" },
+        { id: "wm", label: "\u{1F6E1}\uFE0F Ch\u1EEF m\u1EDD" },
+        { id: "outro", label: "\u{1F3AC} Outro" }
+      ].map((tab) => /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          key: tab.id,
+          type: "button",
+          onClick: () => setActiveOverlayTab(tab.id),
+          className: `flex-1 py-2 text-center transition cursor-pointer ${activeOverlayTab === tab.id ? "bg-white text-blue-600 border-b-2 border-blue-600 font-extrabold shadow-2xs" : "text-gray-500 hover:text-gray-800"}`
+        },
+        tab.label
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 space-y-2.5" }, activeOverlayTab === "logo" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t ch\xE8n Logo v\xE0o video:"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
           type: "checkbox",
           checked: watermarkEnabled,
           onChange: (e) => setWatermarkEnabled(e.target.checked),
-          className: "accent-blue-600 rounded"
+          className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
-      ), "B\u1EADt")), watermarkEnabled && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2 pt-1 border-t border-gray-100" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] text-gray-600 font-medium" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch th\u01B0\u1EDBc logo: ", logoSize, "%"), /* @__PURE__ */ import_react6.default.createElement(
+      )), watermarkEnabled && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] font-bold text-orange-600" }, "\u0110\u1ECBnh v\u1ECB nhanh 4 g\xF3c Logo:"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-5 gap-1" }, /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2196 Tr\xEAn Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2197 Tr\xEAn Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2199 D\u01B0\u1EDBi Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2198 D\u01B0\u1EDBi Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(41, 41), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u23FA Gi\u1EEFa")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch th\u01B0\u1EDBc logo: ", logoSize, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "6", max: "45", value: logoSize, onChange: (e) => setLogoSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 r\xF5 n\xE9t: ", logoOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "20", max: "100", value: logoOpacity, onChange: (e) => setLogoOpacity(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 ngang X: ", logoX, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoX, onChange: (e) => setLogoX(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 d\u1ECDc Y: ", logoY, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoY, onChange: (e) => setLogoY(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-[11px] text-gray-600 font-semibold" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "G\xF3c xoay: ", logoRotation, "\xB0"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex gap-1" }, [0, 90, 180, 270].map((deg) => /* @__PURE__ */ import_react6.default.createElement("button", { key: deg, type: "button", onClick: () => setLogoRotation(deg), className: "px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-[9px] font-bold rounded border border-slate-300" }, deg, "\xB0")))), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "360", value: logoRotation, onChange: (e) => setLogoRotation(Number(e.target.value)), className: "w-full accent-blue-600 mt-1" })))), activeOverlayTab === "sub" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "Kh\u1EAFc c\u1EE9ng ph\u1EE5 \u0111\u1EC1 ti\u1EBFng Vi\u1EC7t (Hardsub):"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
-          type: "range",
-          min: "5",
-          max: "50",
-          value: logoSize,
-          onChange: (e) => setLogoSize(Number(e.target.value)),
-          className: "w-32 accent-blue-600"
+          type: "checkbox",
+          checked: burnSubtitles,
+          onChange: (e) => setBurnSubtitles(e.target.checked),
+          className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
-      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] text-gray-600 font-medium" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u0110\u1ED9 m\u1EDD \u0111\u1EE5c: ", logoOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement(
+      )), burnSubtitles && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "Ki\u1EC3u d\xE1ng ph\u1EE5 \u0111\u1EC1:"), /* @__PURE__ */ import_react6.default.createElement(
+        "select",
+        {
+          value: subStyle,
+          onChange: (e) => setSubStyle(e.target.value),
+          className: "w-full bg-slate-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold text-gray-800 cursor-pointer"
+        },
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "white_outline" }, "Vi\u1EC1n tr\u1EAFng \u0111i\u1EC7n \u1EA3nh (Cinema White Outline)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "glassmorphism" }, "N\u1EC1n k\xEDnh m\u1EDD trong su\u1ED1t (Glassmorphism)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "yellow_outline" }, "N\u1ED5i b\u1EADt (Yellow Text Outline)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "black_box" }, "N\u1EC1n h\u1ED9p \u0111en (Cinema Black Box)")
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "C\u1EE1 ch\u1EEF: ", subFontSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "14", max: "90", step: "2", value: subFontSize, onChange: (e) => setSubFontSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "Kho\u1EA3ng c\xE1ch \u0111\xE1y Y: ", subBottomPct, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "1", max: "85", value: subBottomPct, onChange: (e) => setSubBottomPct(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "C\xE2u m\u1EABu hi\u1EC3n th\u1ECB tr\xEAn video:"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
-          type: "range",
-          min: "10",
-          max: "100",
-          value: logoOpacity,
-          onChange: (e) => setLogoOpacity(Number(e.target.value)),
-          className: "w-32 accent-blue-600"
+          type: "text",
+          value: previewSubText,
+          onChange: (e) => setPreviewSubText(e.target.value),
+          className: "w-full bg-slate-50 border border-gray-200 rounded-lg px-2 py-1 text-xs"
         }
-      ))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group" }, videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
+      )))), activeOverlayTab === "wm" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t Ch\u1EEF m\u1EDD ch\u1EA1y b\u1EA3o v\u1EC7 b\u1EA3n quy\u1EC1n:"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "checkbox",
+          checked: enableFloatWm,
+          onChange: (e) => setEnableFloatWm(e.target.checked),
+          className: "accent-blue-600 w-4 h-4 cursor-pointer"
+        }
+      )), enableFloatWm && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "N\u1ED9i dung ch\u1EEF m\u1EDD (K\xEAnh/Hotline):"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "text",
+          value: floatWmText,
+          onChange: (e) => setFloatWmText(e.target.value),
+          placeholder: "@gocphimcuon",
+          className: "w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-sky-700"
+        }
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch c\u1EE1 ch\u1EEF: ", floatWmSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "45", value: floatWmSize, onChange: (e) => setFloatWmSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 m\u1EDD t\xE0ng h\xECnh: ", floatWmOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "80", step: "5", value: floatWmOpacity, onChange: (e) => setFloatWmOpacity(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-400 italic" }, "Ch\u1EEF m\u1EDD s\u1EBD l\u01B0\u1EDBt ng\u1EABu nhi\xEAn to\xE0n m\xE0n h\xECnh video m\u1ED9t c\xE1ch \xEAm \xE1i, ch\u1ED1ng c\u1EAFt gh\xE9p l\u1EA1i video 100%."))), activeOverlayTab === "outro" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t Video Outro k\u1EBFt th\xFAc:"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "checkbox",
+          checked: enableOutro,
+          onChange: (e) => setEnableOutro(e.target.checked),
+          className: "accent-blue-600 w-4 h-4 cursor-pointer"
+        }
+      )), enableOutro && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] text-slate-700 font-medium" }, "\u{1F3AC} \u0110ang s\u1EED d\u1EE5ng Outro m\u1EB7c \u0111\u1ECBnh: ", /* @__PURE__ */ import_react6.default.createElement("strong", null, "assets/endgpc.mp4"), " (K\xEAu g\u1ECDi follow G\xF3c Phim Cu\u1ED1n)"), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[10px] text-slate-500" }, "T\u1EF1 \u0111\u1ED9ng n\u1ED1i video outro v\xE0o ngay sau khi k\u1EBFt th\xFAc l\u1EDDi tho\u1EA1i l\u1ED3ng ti\u1EBFng, gi\xFAp video li\u1EC1n m\u1EA1ch chu\u1EA9n k\xEAnh chuy\xEAn nghi\u1EC7p.")))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group" }, videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
         "video",
         {
           src: videoUrl,
@@ -24335,6 +24387,36 @@
           title: "K\xE9o th\u1EA3 \u0111\u1EC3 \u0111i\u1EC1u ch\u1EC9nh v\u1ECB tr\xED logo"
         },
         /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-blue-600/90 text-white font-black text-[10px] px-1.5 py-0.5 rounded shadow text-center truncate" }, "VDT Studio")
+      ), burnSubtitles && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+        "div",
+        {
+          style: {
+            position: "absolute",
+            bottom: `${subBottomPct}%`,
+            left: "5%",
+            right: "5%",
+            fontSize: `${subFontSize * 0.55}px`
+          },
+          className: "text-center font-bold pointer-events-none select-none transition-all"
+        },
+        subStyle === "glassmorphism" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md" }, previewSubText),
+        subStyle === "yellow_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black", style: { WebkitTextStroke: "1px black" } }, previewSubText),
+        subStyle === "black_box" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black text-white px-3 py-1 rounded" }, previewSubText),
+        subStyle === "white_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]", style: { WebkitTextStroke: "1px black" } }, previewSubText)
+      ), enableFloatWm && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+        "div",
+        {
+          style: {
+            position: "absolute",
+            top: "45%",
+            left: "30%",
+            fontSize: `${floatWmSize}px`,
+            opacity: floatWmOpacity / 100,
+            transform: "rotate(-20deg)"
+          },
+          className: "text-white font-black pointer-events-none select-none drop-shadow"
+        },
+        floatWmText
       )), /* @__PURE__ */ import_react6.default.createElement(
         "button",
         {
@@ -24343,8 +24425,8 @@
           disabled: isDubbingProcessing || !videoUrl && !serverVideoPath,
           className: `w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer ${isDubbingProcessing ? "bg-slate-400 text-white cursor-not-allowed" : "bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white active:scale-[0.99]"}`
         },
-        isDubbingProcessing ? /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(RefreshCw, { size: 18, className: "animate-spin" }), " \u0110ANG X\u1EEC L\xDD L\u1ED2NG TI\u1EBENG AI...") : /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(Sparkles, { size: 18 }), " B\u1EAET \u0110\u1EA6U L\u1ED2NG TI\u1EBENG VIDEO AI")
-      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-3 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("h3", { className: "text-xs font-black text-gray-900 uppercase" }, "\u{1F4CA} Tr\u1EA1ng Th\xE1i Lu\u1ED3ng L\u1ED3ng Ti\u1EBFng"), isDubbingProcessing && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-xs font-bold text-blue-900" }, /* @__PURE__ */ import_react6.default.createElement("span", null, dubProgress?.step || dubProgress?.message || "\u0110ang l\u1ED3ng ti\u1EBFng..."), /* @__PURE__ */ import_react6.default.createElement("span", null, dubProgress?.percent || dubProgress?.pct || 15, "%")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-full h-2 bg-blue-200 rounded-full overflow-hidden" }, /* @__PURE__ */ import_react6.default.createElement(
+        isDubbingProcessing ? /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(RefreshCw, { size: 18, className: "animate-spin" }), " \u0110ANG X\u1EEC L\xDD L\u1ED2NG TI\u1EBENG AI...") : /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(Sparkles, { size: 18 }), " B\u1EAET \u0110\u1EA6U L\u1ED2NG TI\u1EBENG VIDEO AI T\u1EF0 \u0110\u1ED8NG")
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-3 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("h3", { className: "text-xs font-black text-gray-900 uppercase" }, "\u{1F4CA} Tr\u1EA1ng Th\xE1i Lu\u1ED3ng L\u1ED3ng Ti\u1EBFng"), isDubbingProcessing && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-xs font-bold text-blue-900" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "truncate pr-2" }, dubProgress?.step || dubProgress?.message || "\u0110ang l\u1ED3ng ti\u1EBFng..."), /* @__PURE__ */ import_react6.default.createElement("span", null, dubProgress?.percent || dubProgress?.pct || 15, "%")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-full h-2 bg-blue-200 rounded-full overflow-hidden" }, /* @__PURE__ */ import_react6.default.createElement(
         "div",
         {
           className: "h-full bg-blue-600 transition-all duration-300 rounded-full",
@@ -24365,21 +24447,113 @@
 
   // src/pages/TextLongTieng.jsx
   var import_react7 = __toESM(require_react());
+  var EMOTION_TABLE_DATA = [
+    ["[crying]", "hu hu", "[sneezes]", "\xE1ch x\xEC"],
+    ["[coughs]", "kh\u1EE5 kh\u1EE5", "[hesitant]", "\u1EEBm..."],
+    ["[lip smacks]", "ch\u1EB9p ch\u1EB9p", "[chuckles]", "he he he"],
+    ["[annoyed]", "ch\u1EADc", "[shouting]", "g\xF4\xF4\xF4\xF4\xF4"],
+    ["[screaming]", "\xE1aaaa", "[sighs]", "haizzz"],
+    ["[yelling]", "\xCAeeee", "[surprised]", "\xE1 h\xE1"],
+    ["[affirmative]", "\u1EEB h\u1EE9", "[awkward laugh]", "h\u01A1 h\u01A1 h\u01A1"],
+    ["[realization]", "\xF4ooo", "[laughing]", "hahaha"],
+    ["[giggles]", "h\xED h\xED h\xED", "[yawns]", "ng\xE1ppp"],
+    ["[thinking]", "hmmm", "[whispering]", "psst..."],
+    ["[gasps]", "h\u1EF1", "[shocked]", "tr\u1EDDi \u01A1i!"],
+    ["[excited]", "wowww", "[amazed]", "\xF4i wow"],
+    ["[relieved]", "ph\xF9uu", "[frustrated]", "tr\u1EDDi \u0111\u1EA5t \u01A1i"],
+    ["[confused]", "h\u1EA3?", "[doubtful]", "th\u1EADt kh\xF4ng v\u1EADy?"],
+    ["[agreeing]", "\u0111\xFAng r\u1ED3i", "[disagreeing]", "kh\xF4ng \u0111\xE2u"],
+    ["[cheering]", "yeahhhh", "[applause]", "b\u1ED1p b\u1ED1p b\u1ED1p"],
+    ["[groans]", "\xF4i tr\u1EDDi \u01A1i...", "[nervous laugh]", "h\u01A1 h\u01A1..."],
+    ["[embarrassed]", "\xF4i ng\u1EA1i qu\xE1", "[disappointed]", "\xF4i th\xF4i r\u1ED3i"],
+    ["[angry]", "t\u1EE9c qu\xE1!", "[worried]", "ch\u1EBFt r\u1ED3i"],
+    ["[curious]", "\u1EE7a?", "[teasing]", "\xEA nhaaa"],
+    ["[sarcastic]", "gh\xEA ch\u01B0a", "[proud]", "tuy\u1EC7t v\u1EDDi"],
+    ["[happy]", "vui qu\xE1", "[sad]", "bu\u1ED3n gh\xEA"],
+    ["[celebrating]", "yooooo", "[apologetic]", "anh xin l\u1ED7i nh\xE9"],
+    ["[pleading]", "l\xE0m \u01A1n \u0111i", "[determined]", "nh\u1EA5t \u0111\u1ECBnh r\u1ED3i"],
+    ["[confident]", "ch\u1EAFc ch\u1EAFn lu\xF4n", "[excited gasp]", "\xF4iiii kh\xF4ng"],
+    ["[grunts]", "h\u1EF1! C\u1ED1 l\xEAn", "[clears throat]", "h\xE8m h\xE8m"],
+    ["[snickers]", "kh\xEC kh\xEC", "[smug]", "bi\u1EBFt ngay m\xE0"],
+    ["[panicked]", "ch\u1EBFt ch\u1EBFt ch\u1EBFt!", "", ""]
+  ];
+  var EMOTION_CATEGORIES = [
+    {
+      name: "K\u1ECBch b\u1EA3n c\u1EA3m x\xFAc",
+      tags: ["[c\u01B0\u1EDDi]", "[g\xE0o]", "[\u0111\u1EC9nh kout]", "[h\xE9t l\u1EDBn]", "[\u0111au \u0111\u1EDBn]", "[excited]", "[laughing]"]
+    },
+    {
+      name: "T\u1ED5n th\u01B0\u01A1ng & x\xFAc \u0111\u1ED9ng",
+      tags: ["[kh\xF3c]", "[u\u1EA5t \u1EE9c]", "[h\u1ED1i h\u1EADn]", "[ngh\u1EB9n ng\xE0o]", "[th\xEC th\u1EA7m]", "[crying]", "[sighs]"]
+    },
+    {
+      name: "Xem tr\u1EF1c di\u1EC7n (nghe s\u01B0\u1EDBng)",
+      tags: ["[h\u1EA3?]", "[th\u1EDF d\u1ED1c]", "[th\u1EDF d\xE0i]", "[t\u1EB7c l\u01B0\u1EE1i]", "[n\u1EA5c]", "[shocked]", "[lip smacks]"]
+    },
+    {
+      name: "T\u0103ng nh\u1ECBp ng\u1EAFt nhanh",
+      tags: ["[ngh\u1EC9 0.3s]", "[ngh\u1EC9 0.5s]", "[ngh\u1EC9 1s]", "[ngh\u1EC9 2s]", "[clears throat]"]
+    }
+  ];
+  var SAMPLE_SCRIPTS = {
+    review: `Ch\xE0o c\u1EA3 nh\xE0 \u0111\xE3 quay tr\u1EDF l\u1EA1i v\u1EDBi k\xEAnh G\xF3c Phim Cu\u1ED1n! [lip smacks] H\xF4m nay m\xECnh s\u1EBD t\xF3m t\u1EAFt cho anh em m\u1ED9t si\xEAu ph\u1EA9m \u0111i\u1EC7n \u1EA3nh \u0111\u1EC9nh c\u1EE7a ch\xF3p! [ngh\u1EC9 0.5s] C\xE1i k\u1EBFt khi\u1EBFn ai xem xong c\u0169ng ph\u1EA3i [screaming] th\u1ED1t l\xEAn kinh ng\u1EA1c v\xEC qu\xE1 b\u1EA5t ng\u1EDD! [\u0111\u1EC9nh kout] C\xF9ng xem h\u1EBFt video nh\xE9! [chuckles]`,
+    story: `\u0110\xEAm h\xF4m \u0111\xF3 tr\u1EDDi m\u01B0a t\u1EA7m t\xE3. [th\xEC th\u1EA7m] Ti\u1EBFng b\u01B0\u1EDBc ch\xE2n ngo\xE0i h\xE0nh lang m\u1ED7i l\xFAc m\u1ED9t g\u1EA7n h\u01A1n... [ngh\u1EC9 1s] H\u1EAFn m\u1EDF h\xE9 c\u1EEDa v\xE0 b\xE0ng ho\xE0ng ph\xE1t hi\u1EC7n: [shocked] Kh\xF4ng c\xF3 m\u1ED9t b\xF3ng ng\u01B0\u1EDDi n\xE0o c\u1EA3! [sighs]`,
+    podcast: `Cu\u1ED9c s\u1ED1ng n\xE0y \u0111\xF4i khi kh\xF4ng di\u1EC5n ra nh\u01B0 nh\u1EEFng g\xEC ch\xFAng ta mong \u0111\u1EE3i. [sighs] Nh\u01B0ng c\xF3 m\u1ED9t \u0111i\u1EC1u ch\u1EAFc ch\u1EAFn r\u1EB1ng, m\u1ED7i v\u1EA5p ng\xE3 \u0111\u1EC1u l\xE0 m\u1ED9t b\xE0i h\u1ECDc \u0111\u1EAFt gi\xE1. [ngh\u1EC9 0.5s] H\xE3y m\u1EC9m c\u01B0\u1EDDi v\xE0 b\u01B0\u1EDBc ti\u1EBFp! [happy]`,
+    news: `B\u1EA3n tin c\xF4ng ngh\u1EC7 h\xF4m nay: Tr\xED tu\u1EC7 nh\xE2n t\u1EA1o th\u1EBF h\u1EC7 m\u1EDBi v\u1EEBa \u0111\u01B0\u1EE3c ra m\u1EAFt v\u1EDBi kh\u1EA3 n\u0103ng l\u1ED3ng ti\u1EBFng ch\xE2n th\u1EF1c \u0111\u1EBFn kinh ng\u1EA1c! [excited] T\u1ED1c \u0111\u1ED9 x\u1EED l\xFD nhanh h\u01A1n 300% v\xE0 bi\u1EC3u c\u1EA3m v\xF4 c\xF9ng s\u1ED1ng \u0111\u1ED9ng.`
+  };
+  var EMOTION_PROMPT_TEMPLATE = `D\u01B0\u1EDBi \u0111\xE2y l\xE0 B\u1EA3ng m\xE3 l\u1EC7nh c\u1EA3m x\xFAc (sound FX / acoustic tags) h\u1ED7 tr\u1EE3 b\u1EDFi gi\u1ECDng \u0111\u1ECDc AI VieNeu-TTS (Studio VDT):
+
+| M\xE3 l\u1EC7nh (Ti\u1EBFng Anh) | \xC2m thanh ph\xE1t ra | M\xE3 l\u1EC7nh (Ti\u1EBFng Anh) | \xC2m thanh ph\xE1t ra |
+| :--- | :--- | :--- | :--- |
+| [crying] | hu hu | [sneezes] | \xE1ch x\xEC |
+| [coughs] | kh\u1EE5 kh\u1EE5 | [hesitant] | \u1EEBm... |
+| [lip smacks] | ch\u1EB9p ch\u1EB9p | [chuckles] | he he he |
+| [annoyed] | ch\u1EADc | [shouting] | g\xF4\xF4\xF4\xF4\xF4 |
+| [screaming] | \xE1aaaa | [sighs] | haizzz |
+| [yelling] | \xCAeeee | [surprised] | \xE1 h\xE1 |
+| [affirmative] | \u1EEB h\u1EE9 | [awkward laugh] | h\u01A1 h\u01A1 h\u01A1 |
+| [realization] | \xF4ooo | [laughing] | hahaha |
+| [giggles] | h\xED h\xED h\xED | [yawns] | ng\xE1ppp |
+| [thinking] | hmmm | [whispering] | psst... |
+| [gasps] | h\u1EF1 | [shocked] | tr\u1EDDi \u01A1i! |
+| [excited] | wowww | [amazed] | \xF4i wow |
+| [relieved] | ph\xF9uu | [frustrated] | tr\u1EDDi \u0111\u1EA5t \u01A1i |
+| [confused] | h\u1EA3? | [doubtful] | th\u1EADt kh\xF4ng v\u1EADy? |
+| [agreeing] | \u0111\xFAng r\u1ED3i | [disagreeing] | kh\xF4ng \u0111\xE2u |
+| [cheering] | yeahhhh | [applause] | b\u1ED1p b\u1ED1p b\u1ED1p |
+| [groans] | \xF4i tr\u1EDDi \u01A1i... | [nervous laugh] | h\u01A1 h\u01A1... |
+| [embarrassed] | \xF4i ng\u1EA1i qu\xE1 | [disappointed] | \xF4i th\xF4i r\u1ED3i |
+| [angry] | t\u1EE9c qu\xE1! | [worried] | ch\u1EBFt r\u1ED3i |
+| [curious] | \u1EE7a? | [teasing] | \xEA nhaaa |
+| [sarcastic] | gh\xEA ch\u01B0a | [proud] | tuy\u1EC7t v\u1EDDi |
+| [happy] | vui qu\xE1 | [sad] | bu\u1ED3n gh\xEA |
+| [celebrating] | yooooo | [apologetic] | anh xin l\u1ED7i nh\xE9 |
+| [pleading] | l\xE0m \u01A1n \u0111i | [determined] | nh\u1EA5t \u0111\u1ECBnh r\u1ED3i |
+| [confident] | ch\u1EAFc ch\u1EAFn lu\xF4n | [excited gasp] | \xF4iiii kh\xF4ng |
+| [grunts] | h\u1EF1! C\u1ED1 l\xEAn | [clears throat] | h\xE8m h\xE8m |
+| [snickers] | kh\xEC kh\xEC | [smug] | bi\u1EBFt ngay m\xE0 |
+| [panicked] | ch\u1EBFt ch\u1EBFt ch\u1EBFt! | | |
+
+\u{1F4CC} H\u01AF\u1EDANG D\u1EAAN D\xC0NH CHO B\u1EA0N (AI):
+H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\u1EDDi s\u1ED1ng / qu\u1EA3ng c\xE1o...) th\u1EADt t\u1EF1 nhi\xEAn, l\xF4i cu\u1ED1n v\xE0 kh\xE9o l\xE9o l\u1ED3ng gh\xE9p c\xE1c m\xE3 l\u1EC7nh c\u1EA3m x\xFAc \u1EDF b\u1EA3ng tr\xEAn (\u0111\u1EB7t trong d\u1EA5u ngo\u1EB7c vu\xF4ng []) v\xE0o c\xE1c c\xE2u tho\u1EA1i th\xEDch h\u1EE3p \u0111\u1EC3 khi \u0111\u01B0a v\xE0o ph\u1EA7n m\u1EC1m Studio VDT, gi\u1ECDng \u0111\u1ECDc AI s\u1EBD t\u1EF1 \u0111\u1ED9ng ph\xE1t ra c\u1EA3m x\xFAc, ti\u1EBFng c\u01B0\u1EDDi, ti\u1EBFng th\u1EDF d\xE0i, ho, th\xE1n ph\u1EE5c... ch\xE2n th\u1EF1c v\xE0 s\u1ED1ng \u0111\u1ED9ng nh\u1EA5t!`;
   function TextLongTieng({ onBackHome, backendData }) {
-    const [scriptText, setScriptText] = (0, import_react7.useState)(
-      "Ch\xE0o c\u1EA3 nh\xE0 \u0111\xE3 quay tr\u1EDF l\u1EA1i v\u1EDBi k\xEAnh! [H\u1EAFng gi\u1ECDng] H\xF4m nay m\xECnh s\u1EBD t\xF3m t\u1EAFt cho anh em m\u1ED9t si\xEAu ph\u1EA9m \u0111i\u1EC7n \u1EA3nh \u0111\u1EC9nh c\u1EE7a ch\xF3p! [Ngh\u1EC9 0.5s] C\xE1i k\u1EBFt khi\u1EBFn ai xem xong c\u0169ng ph\u1EA3i [G\u1EA7m] th\u1ED1t l\xEAn kinh ng\u1EA1c v\xEC qu\xE1 b\u1EA5t ng\u1EDD! [\u0110\u1EC9nh kout] C\xF9ng xem h\u1EBFt video nh\xE9!"
-    );
+    const [scriptText, setScriptText] = (0, import_react7.useState)(SAMPLE_SCRIPTS.review);
     const [isPlaying, setIsPlaying] = (0, import_react7.useState)(false);
     const [currentTime, setCurrentTime] = (0, import_react7.useState)(0);
     const [duration, setDuration] = (0, import_react7.useState)(14.5);
     const [isRendering, setIsRendering] = (0, import_react7.useState)(false);
     const [selectedSpeed, setSelectedSpeed] = (0, import_react7.useState)("1.0");
+    const [speedSlider, setSpeedSlider] = (0, import_react7.useState)(0);
     const [emotionIntensity, setEmotionIntensity] = (0, import_react7.useState)(65);
-    const [pitchValue, setPitchValue] = (0, import_react7.useState)(6);
+    const [pitchValue, setPitchValue] = (0, import_react7.useState)(0);
+    const [selectedAcousticFx, setSelectedAcousticFx] = (0, import_react7.useState)("Studio Dry");
     const [selectedVoice, setSelectedVoice] = (0, import_react7.useState)("vieneu:Adam T\u1ED1p T\u1ED1p");
     const [selectedVoiceLabel, setSelectedVoiceLabel] = (0, import_react7.useState)("Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)");
     const [voicesCatalog, setVoicesCatalog] = (0, import_react7.useState)([]);
     const [audioUrl, setAudioUrl] = (0, import_react7.useState)(null);
+    const [copiedPrompt, setCopiedPrompt] = (0, import_react7.useState)(false);
+    const [showEmotionTableModal, setShowEmotionTableModal] = (0, import_react7.useState)(false);
+    const [selectedCaretTag, setSelectedCaretTag] = (0, import_react7.useState)("[lip smacks]");
     const textareaRef = (0, import_react7.useRef)(null);
     const audioRef = (0, import_react7.useRef)(null);
     (0, import_react7.useEffect)(() => {
@@ -24408,14 +24582,19 @@
       if (!textarea) return;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const currentText = textarea.value;
-      const newText = currentText.substring(0, start) + ` ${tag} ` + currentText.substring(end);
-      setScriptText(newText);
+      const currentVal = textarea.value;
+      const newVal = currentVal.substring(0, start) + ` ${tag} ` + currentVal.substring(end);
+      setScriptText(newVal);
       setTimeout(() => {
         textarea.focus();
         const nextPos = start + tag.length + 2;
         textarea.setSelectionRange(nextPos, nextPos);
       }, 10);
+    };
+    const handleCopyPrompt = () => {
+      navigator.clipboard.writeText(EMOTION_PROMPT_TEMPLATE);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
     };
     const handleRenderAudio = async () => {
       if (!scriptText.trim()) return;
@@ -24427,7 +24606,7 @@
           body: JSON.stringify({
             text: scriptText.replace(/\[.*?\]/g, "").trim(),
             voice: selectedVoice,
-            rate: `${selectedSpeed === "1.0" ? "+0%" : selectedSpeed === "0.8" ? "-20%" : selectedSpeed === "1.15" ? "+15%" : "+30%"}`
+            rate: `${speedSlider >= 0 ? "+" : ""}${speedSlider}%`
           })
         });
         const data = await res.json();
@@ -24455,20 +24634,18 @@
       const cleaned = scriptText.replace(/\s*(\[[^\]]+\])\s*/g, " $1 ");
       setScriptText(cleaned.trim());
     };
-    const emotionTags = [
-      { label: "[ G\u1EA7m ]", color: "bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300" },
-      { label: "[ \u0110\u1EC9nh kout ]", color: "bg-orange-100 hover:bg-orange-200 text-orange-900 border-orange-300" },
-      { label: "[ \u0110\xF9a ]", color: "bg-yellow-100 hover:bg-yellow-200 text-yellow-900 border-yellow-300" },
-      { label: "[ T\u1EF1 khen ]", color: "bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300" },
-      { label: "[ Th\u1EDF d\xE0i ]", color: "bg-blue-100 hover:bg-blue-200 text-blue-900 border-blue-300" },
-      { label: "[ D\u1ED7i ]", color: "bg-rose-100 hover:bg-rose-200 text-rose-900 border-rose-300" },
-      { label: "[ H\u1EAFng gi\u1ECDng ]", color: "bg-pink-100 hover:bg-pink-200 text-pink-900 border-pink-300" },
-      { label: "[ \xD4i heo ]", color: "bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300" },
-      { label: "[ H\xE8 ]", color: "bg-cyan-100 hover:bg-cyan-200 text-cyan-900 border-cyan-300" },
-      { label: "[ D\u0129a ]", color: "bg-teal-100 hover:bg-teal-200 text-teal-900 border-teal-300" },
-      { label: "[ Th\u1EDF g\xF2n ]", color: "bg-lime-100 hover:bg-lime-200 text-lime-900 border-lime-300" },
-      { label: "[ N\xED la ]", color: "bg-red-100 hover:bg-red-200 text-red-900 border-red-300" }
-    ];
+    const setQuickVoice = (keyword) => {
+      if (!voicesCatalog || voicesCatalog.length === 0) return;
+      for (const group of voicesCatalog) {
+        for (const item of group.voices) {
+          if (item.name.toLowerCase().includes(keyword.toLowerCase())) {
+            setSelectedVoice(item.id);
+            setSelectedVoiceLabel(item.name);
+            return;
+          }
+        }
+      }
+    };
     return /* @__PURE__ */ import_react7.default.createElement(
       "div",
       {
@@ -24500,27 +24677,98 @@
           },
           className: "bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
         },
-        voicesCatalog && voicesCatalog.length > 0 ? voicesCatalog.map((cat) => /* @__PURE__ */ import_react7.default.createElement("optgroup", { key: cat.category, label: cat.category }, cat.voices.map((v) => /* @__PURE__ */ import_react7.default.createElement("option", { key: v.id, value: v.id }, v.gender === "N\u1EEF" ? "\u{1F469}" : "\u{1F468}", " ", v.name, " (", v.style, ")")))) : /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Adam T\u1ED1p T\u1ED1p" }, "\u{1F525} Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Adam b\u1EF1a" }, "\u{1F525} Adam b\u1EF1a (Review Phim d\xED d\u1ECFm)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vi-VN-HoaiMyNeural" }, "\u{1F469} Ho\xE0i My (N\u1EEF B\u1EAFc ng\u1ECDt ng\xE0o)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vi-VN-NamMinhNeural" }, "\u{1F468} Nam Minh (Nam B\u1EAFc tr\u1EA7m \u1EA5m)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Tr\xFAc Ly" }, "\u{1F399}\uFE0F Tr\xFAc Ly (N\u1EEF B\u1EAFc t\u1EF1 nhi\xEAn)"))
-      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-3 bg-gradient-to-br from-slate-50 to-orange-50/30 rounded-xl p-3 border border-orange-100/70 flex gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-sm bg-indigo-50" }, /* @__PURE__ */ import_react7.default.createElement(
-        "img",
+        voicesCatalog && voicesCatalog.length > 0 ? voicesCatalog.map((group) => /* @__PURE__ */ import_react7.default.createElement("optgroup", { key: group.category, label: group.category }, group.voices.map((v) => /* @__PURE__ */ import_react7.default.createElement("option", { key: v.id, value: v.id }, v.name)))) : /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Adam T\u1ED1p T\u1ED1p" }, "\u{1F525} Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:H\u1EA3i \u0110\u0103ng" }, "\u{1F399}\uFE0F H\u1EA3i \u0110\u0103ng (VieNeu - Nam B\u1EAFc Th\u1EDDi S\u1EF1 VTV)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Thi\u1EC7n Minh" }, "\u{1F47B} Th\u1EA7y B\u1EA3y (VieNeu - Chuy\u1EC7n Ma R\xF9ng R\u1EE3n)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Th\xF9y Dung" }, "\u2728 M\u1EF9 Linh (VieNeu - N\u1EEF S\xE0i G\xF2n Podcast)"))
+      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-2.5 p-2.5 bg-gradient-to-r from-slate-50 to-blue-50/40 rounded-xl border border-blue-100 flex items-center gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "w-12 h-14 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xs shrink-0" }, "\u{1F399}\uFE0F"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "font-extrabold text-sm text-slate-900 truncate" }, selectedVoiceLabel.split("(")[0].replace("\u{1F525}", "").trim()), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded" }, "HOT REVIEW")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "text-[11px] text-slate-500 truncate mt-0.5" }, "VieNeu High-Fidelity 48kHz Acoustic Vocal"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[10px] text-slate-400" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "Acoustic 48kHz"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-sky-600 font-bold" }, "Studio Master")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] font-bold text-slate-600 block mb-1.5" }, "Hi\u1EC3n th\u1ECB danh t\xEDnh nhanh:"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-2 gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(
+        "button",
         {
-          src: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80",
-          alt: "Adam T\u1ED1p T\u1ED1p",
-          className: "w-full h-full object-cover"
+          type: "button",
+          onClick: () => setQuickVoice("Adam"),
+          className: "p-1.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-left transition cursor-pointer"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-xs font-bold text-slate-800" }, "\u{1F399}\uFE0F Adam Review"),
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-[10px] text-slate-500" }, "K\u1ECBch t\xEDnh, h\u1EC1 h\u01B0\u1EDBc")
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setQuickVoice("Th\u1EA7y B\u1EA3y"),
+          className: "p-1.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-lg text-left transition cursor-pointer"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-xs font-bold text-slate-800" }, "\u{1F47B} Th\u1EA7y B\u1EA3y"),
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-[10px] text-slate-500" }, "Chuy\u1EC7n ma r\xF9ng r\u1EE3n")
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setQuickVoice("H\u1EA3i \u0110\u0103ng"),
+          className: "p-1.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-left transition cursor-pointer"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-xs font-bold text-slate-800" }, "\u{1F464} Tu\u1EA5n R\u1EA7n VTV"),
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-[10px] text-slate-500" }, "Th\u1EDDi s\u1EF1 chu\u1EA9n m\u1EF1c")
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setQuickVoice("Th\xF9y Dung"),
+          className: "p-1.5 bg-slate-50 hover:bg-pink-50 border border-slate-200 hover:border-pink-300 rounded-lg text-left transition cursor-pointer"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-xs font-bold text-slate-800" }, "\u2728 M\u1EF9 Linh"),
+        /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-[10px] text-slate-500" }, "Podcast S\xE0i G\xF2n")
+      )))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm flex flex-col gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between text-xs mb-1.5 font-bold text-slate-800" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "\u26A1 T\u1ED1c \u0111\u1ED9 n\xF3i (Tempo):"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-sky-50 text-sky-600 border border-sky-200 px-2 py-0.5 rounded text-[11px] font-extrabold" }, speedSlider === 0 ? "1.00x (G\u1ED1c)" : `${(1 + speedSlider / 100).toFixed(2)}x (${speedSlider >= 0 ? "+" : ""}${speedSlider}%)`)), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-4 gap-1 mb-2" }, [
+        { label: "0.8x", val: -20 },
+        { label: "1.0x", val: 0 },
+        { label: "1.15x", val: 15 },
+        { label: "1.3x", val: 30 }
+      ].map((s) => /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          key: s.label,
+          type: "button",
+          onClick: () => setSpeedSlider(s.val),
+          className: `py-1 text-xs font-bold rounded border transition cursor-pointer ${speedSlider === s.val ? "bg-blue-600 text-white border-blue-600 shadow-xs" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"}`
+        },
+        s.label
+      ))), /* @__PURE__ */ import_react7.default.createElement(
+        "input",
+        {
+          type: "range",
+          min: "-50",
+          max: "50",
+          step: "5",
+          value: speedSlider,
+          onChange: (e) => setSpeedSlider(parseInt(e.target.value)),
+          className: "w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
         }
-      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex-1" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement("h3", { className: "font-bold text-sm text-gray-900" }, selectedVoiceLabel.split(" (")[0]), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded" }, "HOT REVIEW")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "text-[11px] text-gray-500 mt-0.5" }, "Acoustic 48kHz \u2022 C\u1EF1c c\u1EA3m x\xFAc")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-sm flex flex-col gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between text-xs mb-1.5 font-semibold text-gray-700" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "T\u1ED1c \u0111\u1ED9 n\xF3i (tempo):")), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-4 gap-1.5" }, ["0.8x", "1.0x", "1.15s", "1.3s"].map((speedVal, idx) => {
-        const valKey = ["0.8", "1.0", "1.15", "1.3"][idx];
-        return /* @__PURE__ */ import_react7.default.createElement(
-          "button",
-          {
-            key: speedVal,
-            type: "button",
-            onClick: () => setSelectedSpeed(valKey),
-            className: `py-1 rounded-md text-xs font-bold border transition cursor-pointer ${selectedSpeed === valKey ? "bg-blue-600 text-white border-blue-600 shadow-xs" : "bg-white text-gray-700 border-gray-300"}`
-          },
-          speedVal
-        );
-      }))))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "col-span-12 lg:col-span-6 flex flex-col gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-xl border border-gray-200/90 shadow-sm flex flex-col flex-1 overflow-hidden" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "px-3.5 py-2.5 bg-slate-50 border-b border-gray-200 flex items-center justify-between" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-xs font-bold text-gray-800 flex items-center gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(FileText, { size: 15, className: "text-blue-600" }), " So\u1EA1n Th\u1EA3o K\u1ECBch B\u1EA3n (Live Syntax)"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(
+      ), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex justify-between text-[10px] text-slate-400 mt-1" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "0.5x Ch\u1EADm"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-sky-600 font-semibold" }, "Chu\u1EA9n l\xE0m phim (0.95 - 1.15)"), /* @__PURE__ */ import_react7.default.createElement("span", null, "1.5x Nhanh"))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-2 gap-2 pt-2 border-t border-slate-100" }, /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex justify-between text-[11px] font-bold text-slate-700 mb-1" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "C\u1EA3m x\xFAc:"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-sky-600" }, emotionIntensity, "%")), /* @__PURE__ */ import_react7.default.createElement(
+        "input",
+        {
+          type: "range",
+          min: "0",
+          max: "100",
+          value: emotionIntensity,
+          onChange: (e) => setEmotionIntensity(parseInt(e.target.value)),
+          className: "w-full accent-sky-500 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+        }
+      )), /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex justify-between text-[11px] font-bold text-slate-700 mb-1" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "Cao \u0111\u1ED9:"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-sky-600" }, pitchValue > 0 ? `+${pitchValue}` : pitchValue)), /* @__PURE__ */ import_react7.default.createElement(
+        "input",
+        {
+          type: "range",
+          min: "-12",
+          max: "12",
+          value: pitchValue,
+          onChange: (e) => setPitchValue(parseInt(e.target.value)),
+          className: "w-full accent-sky-500 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+        }
+      ))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "pt-2 border-t border-slate-100" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] font-bold text-slate-700 block mb-1.5" }, "Hi\u1EC7u \u1EE9ng bu\u1ED3ng thu \xE2m (Acoustic Booth):"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-3 gap-1.5" }, ["Studio Dry", "Room Reverb", "AI Denoise"].map((fx) => /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          key: fx,
+          type: "button",
+          onClick: () => setSelectedAcousticFx(fx),
+          className: `py-1 text-xs font-bold rounded-lg border transition cursor-pointer text-center ${selectedAcousticFx === fx ? "bg-blue-600 text-white border-blue-600 shadow-xs" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"}`
+        },
+        fx === "Studio Dry" ? "\u{1F399}\uFE0F Dry" : fx === "Room Reverb" ? "\u{1F3DB}\uFE0F Reverb" : "\u{1F3A7} Denoise"
+      )))))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "col-span-12 lg:col-span-6 flex flex-col gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-xl border border-gray-200/90 shadow-sm flex flex-col flex-1 overflow-hidden" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "px-3.5 py-2.5 bg-slate-50 border-b border-gray-200 flex items-center justify-between" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-xs font-bold text-gray-800 flex items-center gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(FileText, { size: 15, className: "text-blue-600" }), " K\u1ECBch B\u1EA3n \u0110ang X\u1EED L\xFD (Live Syntax Mode)"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react7.default.createElement(
         "button",
         {
           type: "button",
@@ -24532,30 +24780,153 @@
         "button",
         {
           type: "button",
-          onClick: () => alert("\u0110ang k\xEDch ho\u1EA1t AI vi\u1EBFt l\u1EA1i \u0111o\u1EA1n v\u0103n c\u1EA3m x\xFAc..."),
-          className: "bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 text-xs font-bold px-2.5 py-1 rounded shadow-xs flex items-center gap-1 transition cursor-pointer"
+          onClick: handleCopyPrompt,
+          className: "bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 text-xs font-bold px-2.5 py-1 rounded shadow-xs flex items-center gap-1 transition cursor-pointer"
         },
-        /* @__PURE__ */ import_react7.default.createElement(WandSparkles, { size: 13 }),
-        " AI Rewrite"
-      ))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "p-3.5 flex-1 flex flex-col min-h-[300px]" }, /* @__PURE__ */ import_react7.default.createElement(
+        copiedPrompt ? /* @__PURE__ */ import_react7.default.createElement(Check, { size: 13, className: "text-emerald-600" }) : /* @__PURE__ */ import_react7.default.createElement(Copy, { size: 13 }),
+        /* @__PURE__ */ import_react7.default.createElement("span", null, copiedPrompt ? "\u0110\xE3 Copy Prompt!" : "Copy Prompt AI")
+      ))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "p-3.5 flex-1 flex flex-col min-h-[320px]" }, /* @__PURE__ */ import_react7.default.createElement(
         "textarea",
         {
           ref: textareaRef,
           value: scriptText,
           onChange: (e) => setScriptText(e.target.value),
-          className: "w-full flex-1 resize-none outline-none font-normal text-sm leading-relaxed text-gray-800 bg-transparent"
+          placeholder: "Nh\u1EADp ho\u1EB7c d\xE1n k\u1ECBch b\u1EA3n l\u1ED3ng ti\u1EBFng t\u1EA1i \u0111\xE2y...",
+          className: "w-full flex-1 resize-none outline-none font-normal text-sm leading-relaxed text-gray-800 bg-transparent placeholder-slate-400"
         }
-      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "px-3.5 py-2 bg-slate-50 border-t border-gray-200 text-xs text-gray-600 flex justify-between" }, /* @__PURE__ */ import_react7.default.createElement("div", null, wordCount, " t\u1EEB \u2022 ", charCount, " k\xFD t\u1EF1 \u2022 ", estimatedSeconds, "s \u01B0\u1EDBc t\xEDnh"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-blue-200" }, tagCount, " Tags Ph\xE1t hi\u1EC7n")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "col-span-12 lg:col-span-3 bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm flex flex-col" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-xs font-bold text-gray-900 block mb-2" }, "B\u1EA4M CH\xC8N TH\u1EBA C\u1EA2M X\xDAC:"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-2 gap-1.5 overflow-y-auto max-h-[340px] pr-1" }, emotionTags.map((tag, i) => /* @__PURE__ */ import_react7.default.createElement(
+      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "px-3.5 py-2 bg-slate-50 border-t border-gray-200 text-xs text-gray-600 flex flex-wrap justify-between items-center gap-2" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react7.default.createElement("span", null, /* @__PURE__ */ import_react7.default.createElement("strong", null, wordCount), " t\u1EEB"), /* @__PURE__ */ import_react7.default.createElement("span", null, "\u2022"), /* @__PURE__ */ import_react7.default.createElement("span", null, /* @__PURE__ */ import_react7.default.createElement("strong", null, charCount), " k\xFD t\u1EF1"), /* @__PURE__ */ import_react7.default.createElement("span", null, "\u2022"), /* @__PURE__ */ import_react7.default.createElement("span", null, "\u23F1\uFE0F D\u1EF1 ki\u1EBFn: ", /* @__PURE__ */ import_react7.default.createElement("strong", null, estimatedSeconds, "s"))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-blue-200" }, tagCount, " Tags Ph\xE1t Hi\u1EC7n"), /* @__PURE__ */ import_react7.default.createElement(
         "button",
         {
-          key: i,
           type: "button",
-          onClick: () => insertTagAtCursor(tag.label),
-          className: `text-left text-[11px] font-bold px-2 py-1.5 rounded-md border shadow-xs transition truncate active:scale-95 cursor-pointer ${tag.color}`
+          onClick: () => setShowEmotionTableModal(true),
+          className: "text-sky-600 hover:text-sky-700 font-bold text-xs underline cursor-pointer"
         },
-        tag.label
-      ))))),
-      /* @__PURE__ */ import_react7.default.createElement("footer", { className: "fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "max-w-[1740px] mx-auto px-4 py-2 flex flex-col gap-2" }, audioUrl && /* @__PURE__ */ import_react7.default.createElement(
+        "\u{1F4D6} Xem B\u1EA3ng 55+ M\xE3"
+      )))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm flex items-center justify-between gap-3" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-xs font-bold text-slate-700 shrink-0" }, "\u{1F4A7} Preset K\u1ECBch B\u1EA3n Tri\u1EC7u View:"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setScriptText(SAMPLE_SCRIPTS.review),
+          className: "px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-lg text-xs font-bold border border-slate-200 transition cursor-pointer"
+        },
+        "\u{1F3AC} Review Phim"
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setScriptText(SAMPLE_SCRIPTS.story),
+          className: "px-2.5 py-1 bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 rounded-lg text-xs font-bold border border-slate-200 transition cursor-pointer"
+        },
+        "\u{1F47B} Chuy\u1EC7n Ma"
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setScriptText(SAMPLE_SCRIPTS.podcast),
+          className: "px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-lg text-xs font-bold border border-slate-200 transition cursor-pointer"
+        },
+        "\u{1F399}\uFE0F Podcast Tri\u1EBFt L\xFD"
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => setScriptText(SAMPLE_SCRIPTS.news),
+          className: "px-2.5 py-1 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 rounded-lg text-xs font-bold border border-slate-200 transition cursor-pointer"
+        },
+        "\u{1F4F0} Tin T\u1EE9c Nhanh"
+      )))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "col-span-12 lg:col-span-3 bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-sm flex flex-col gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between pb-2 border-b border-slate-100" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-xs font-black text-slate-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "w-2 h-2 rounded-full bg-sky-500" }), " B\u1EA4M CH\xC8N TH\u1EBA C\u1EA2M X\xDAC:"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[10px] text-slate-400" }, "Ch\xE8n t\u1EA1i con tr\u1ECF")), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex flex-col gap-2.5 overflow-y-auto max-h-[290px] pr-1" }, EMOTION_CATEGORIES.map((cat) => /* @__PURE__ */ import_react7.default.createElement("div", { key: cat.name }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "text-[10px] font-bold text-slate-500 mb-1" }, cat.name, ":"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex flex-wrap gap-1" }, cat.tags.map((tag) => /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          key: tag,
+          type: "button",
+          onClick: () => insertTagAtCursor(tag),
+          className: "px-2 py-0.5 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-700 border border-sky-200 rounded text-[11px] font-bold transition cursor-pointer"
+        },
+        tag
+      )))))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "pt-2.5 border-t border-slate-200 flex flex-col gap-2" }, /* @__PURE__ */ import_react7.default.createElement(
+        "select",
+        {
+          value: selectedCaretTag,
+          onChange: (e) => setSelectedCaretTag(e.target.value),
+          className: "w-full bg-slate-50 text-slate-800 border border-slate-300 rounded-lg p-2 text-xs font-semibold outline-none cursor-pointer"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[lip smacks]" }, "\u{1F60B} [lip smacks] - ch\u1EB9p ch\u1EB9p (th\xE8m thu\u1ED3ng)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[crying]" }, "\u{1F62D} [crying] - hu hu (x\xFAc \u0111\u1ED9ng/kh\xF3c l\xF3c)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[screaming]" }, "\u{1F631} [screaming] - \xE1aaaa (th\xE9t l\u1EDBn)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[chuckles]" }, "\u{1F606} [chuckles] - he he he (c\u01B0\u1EDDi kh\xFAc kh\xEDch)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[laughing]" }, "\u{1F923} [laughing] - hahaha (c\u01B0\u1EDDi s\u1EA3ng kho\xE1i)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[sighs]" }, "\u{1F62E}\u200D\u{1F4A8} [sighs] - haizzz... (th\u1EDF d\xE0i)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[shocked]" }, "\u26A1 [shocked] - tr\u1EDDi \u01A1i! (b\xE0ng ho\xE0ng)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[excited]" }, "\u{1F929} [excited] - wowww (ph\u1EA5n kh\xEDch)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[panicked]" }, "\u{1F3C3} [panicked] - ch\u1EBFt ch\u1EBFt ch\u1EBFt!"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[whispering]" }, "\u{1F92B} [whispering] - psst... (th\xEC th\u1EA7m)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[yawns]" }, "\u{1F971} [yawns] - ng\xE1ppp"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[thinking]" }, "\u{1F914} [thinking] - hmmm... (\u0111\u0103m chi\xEAu)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[confused]" }, "\u{1F928} [confused] - h\u1EA3? (b\u1ED1i r\u1ED1i)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[angry]" }, "\u{1F621} [angry] - t\u1EE9c qu\xE1! (gi\u1EADn d\u1EEF)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[coughs]" }, "\u{1F637} [coughs] - kh\u1EE5 kh\u1EE5 (ho)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[sneezes]" }, "\u{1F927} [sneezes] - \xE1ch x\xEC! (h\u1EAFt x\xEC)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[clears throat]" }, "\u{1F5E3}\uFE0F [clears throat] - h\xE8m h\xE8m (h\u1EAFng gi\u1ECDng)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[applause]" }, "\u{1F44F} [applause] - b\u1ED1p b\u1ED1p b\u1ED1p (v\u1ED7 tay)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[cheering]" }, "\u{1F389} [cheering] - yeahhhh (reo h\xF2)"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[ngh\u1EC9 0.3s]" }, "\u23F1\uFE0F [ngh\u1EC9 0.3s] - Ng\u1EAFt 0.3s"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[ngh\u1EC9 0.5s]" }, "\u23F8\uFE0F [ngh\u1EC9 0.5s] - Ng\u1EAFt 0.5s"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[ngh\u1EC9 1s]" }, "\u23F3 [ngh\u1EC9 1s] - Ng\u1EAFt 1.0s"),
+        /* @__PURE__ */ import_react7.default.createElement("option", { value: "[ngh\u1EC9 2s]" }, "\u{1F6D1} [ngh\u1EC9 2s] - Ng\u1EAFt 2.0s")
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => insertTagAtCursor(selectedCaretTag),
+          className: "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+        },
+        /* @__PURE__ */ import_react7.default.createElement("span", null, "\u2795"),
+        " Ch\xE8n t\u1EA1i v\u1ECB tr\xED con tr\u1ECF chu\u1ED9t"
+      )))),
+      showEmotionTableModal && /* @__PURE__ */ import_react7.default.createElement("div", { className: "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between" }, /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("h3", { className: "font-black text-slate-900 text-base flex items-center gap-2" }, /* @__PURE__ */ import_react7.default.createElement(Sparkles, { size: 16, className: "text-sky-500" }), " B\u1EA3ng 55+ M\xE3 L\u1EC7nh C\u1EA3m X\xFAc VieNeu-TTS"), /* @__PURE__ */ import_react7.default.createElement("p", { className: "text-xs text-slate-500" }, "B\u1EA5m v\xE0o m\xE3 l\u1EC7nh b\u1EA5t k\u1EF3 \u0111\u1EC3 ch\xE8n tr\u1EF1c ti\u1EBFp v\xE0o k\u1ECBch b\u1EA3n \u0111ang so\u1EA1n th\u1EA3o.")), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          onClick: () => setShowEmotionTableModal(false),
+          className: "p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200 transition"
+        },
+        /* @__PURE__ */ import_react7.default.createElement(X, { size: 18 })
+      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "p-4 overflow-y-auto flex-1" }, /* @__PURE__ */ import_react7.default.createElement("table", { className: "w-full text-xs text-center border-collapse" }, /* @__PURE__ */ import_react7.default.createElement("thead", null, /* @__PURE__ */ import_react7.default.createElement("tr", { className: "bg-slate-100 text-slate-700 font-bold border-b border-slate-200" }, /* @__PURE__ */ import_react7.default.createElement("th", { className: "p-2 border border-slate-200" }, "M\xE3 l\u1EC7nh"), /* @__PURE__ */ import_react7.default.createElement("th", { className: "p-2 border border-slate-200" }, "\xC2m thanh ph\xE1t ra"), /* @__PURE__ */ import_react7.default.createElement("th", { className: "p-2 border border-slate-200" }, "M\xE3 l\u1EC7nh"), /* @__PURE__ */ import_react7.default.createElement("th", { className: "p-2 border border-slate-200" }, "\xC2m thanh ph\xE1t ra"))), /* @__PURE__ */ import_react7.default.createElement("tbody", null, EMOTION_TABLE_DATA.map((row, idx) => /* @__PURE__ */ import_react7.default.createElement("tr", { key: idx, className: idx % 2 === 0 ? "bg-white" : "bg-slate-50/70" }, /* @__PURE__ */ import_react7.default.createElement("td", { className: "p-1.5 border border-slate-200" }, row[0] && /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          onClick: () => {
+            insertTagAtCursor(row[0]);
+            setShowEmotionTableModal(false);
+          },
+          className: "text-sky-600 hover:text-sky-800 font-bold hover:underline"
+        },
+        row[0]
+      )), /* @__PURE__ */ import_react7.default.createElement("td", { className: "p-1.5 border border-slate-200 text-slate-600" }, row[1]), /* @__PURE__ */ import_react7.default.createElement("td", { className: "p-1.5 border border-slate-200" }, row[2] && /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          onClick: () => {
+            insertTagAtCursor(row[2]);
+            setShowEmotionTableModal(false);
+          },
+          className: "text-sky-600 hover:text-sky-800 font-bold hover:underline"
+        },
+        row[2]
+      )), /* @__PURE__ */ import_react7.default.createElement("td", { className: "p-1.5 border border-slate-200 text-slate-600" }, row[3])))))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2" }, /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          onClick: handleCopyPrompt,
+          className: "px-4 py-2 bg-sky-50 text-sky-700 border border-sky-300 font-bold text-xs rounded-xl hover:bg-sky-100 transition flex items-center gap-1.5"
+        },
+        copiedPrompt ? /* @__PURE__ */ import_react7.default.createElement(Check, { size: 14 }) : /* @__PURE__ */ import_react7.default.createElement(Copy, { size: 14 }),
+        " Copy Prompt AI K\xE8m B\u1EA3ng N\xE0y"
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          onClick: () => setShowEmotionTableModal(false),
+          className: "px-4 py-2 bg-slate-800 text-white font-bold text-xs rounded-xl hover:bg-slate-700 transition"
+        },
+        "\u0110\xF3ng"
+      )))),
+      /* @__PURE__ */ import_react7.default.createElement("footer", { className: "fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "max-w-[1740px] mx-auto px-4 py-2.5 flex flex-col gap-2" }, audioUrl && /* @__PURE__ */ import_react7.default.createElement(
         "audio",
         {
           ref: audioRef,
@@ -24573,10 +24944,10 @@
         {
           type: "button",
           onClick: togglePlayAudio,
-          className: "w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition cursor-pointer"
+          className: "w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition cursor-pointer"
         },
-        isPlaying ? /* @__PURE__ */ import_react7.default.createElement(Pause, { size: 17 }) : /* @__PURE__ */ import_react7.default.createElement(Play, { size: 17, className: "ml-0.5" })
-      ), /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("span", { className: "font-bold text-xs text-gray-900 block truncate max-w-xs" }, selectedVoiceLabel, "_Master"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] text-gray-500 font-mono" }, Math.floor(currentTime / 60), ":", String(Math.floor(currentTime % 60)).padStart(2, "0"), " / ", Math.floor(duration / 60), ":", String(Math.floor(duration % 60)).padStart(2, "0")))), audioUrl ? /* @__PURE__ */ import_react7.default.createElement(
+        isPlaying ? /* @__PURE__ */ import_react7.default.createElement(Pause, { size: 18 }) : /* @__PURE__ */ import_react7.default.createElement(Play, { size: 18, className: "ml-0.5" })
+      ), /* @__PURE__ */ import_react7.default.createElement("div", null, /* @__PURE__ */ import_react7.default.createElement("span", { className: "font-bold text-xs text-gray-900 block truncate max-w-xs" }, selectedVoiceLabel.split("(")[0], "_Master_48kHz"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] text-gray-500 font-mono" }, Math.floor(currentTime / 60), ":", String(Math.floor(currentTime % 60)).padStart(2, "0"), " /", " ", Math.floor(duration / 60), ":", String(Math.floor(duration % 60)).padStart(2, "0")))), audioUrl ? /* @__PURE__ */ import_react7.default.createElement(
         "a",
         {
           href: audioUrl,
@@ -24590,7 +24961,7 @@
         {
           type: "button",
           onClick: handleRenderAudio,
-          className: "bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+          className: "bg-slate-200 text-slate-700 hover:bg-slate-300 text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
         },
         /* @__PURE__ */ import_react7.default.createElement(Download, { size: 14 }),
         " T\u1EA2I WAV/MP3 MASTER (48kHz)"
@@ -24600,9 +24971,9 @@
           type: "button",
           onClick: handleRenderAudio,
           disabled: isRendering,
-          className: "w-full bg-gradient-to-r from-sky-400 via-blue-500 to-blue-600 hover:from-sky-500 hover:to-blue-700 text-white text-sm font-extrabold py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer"
+          className: "w-full bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white text-sm font-black py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer"
         },
-        isRendering ? /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement(RefreshCw, { size: 16, className: "animate-spin" }), " \u0110ANG T\u1ED4NG H\u1EE2P GI\u1ECCNG \u0110\u1ECCC AI...") : /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement("span", null, "\uFF0B"), " T\u1EA0O GI\u1ECCNG \u0110\u1ECCC AI NGAY (RENDER AUDIO) - Ctrl + Enter")
+        isRendering ? /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement(RefreshCw, { size: 16, className: "animate-spin" }), " \u0110ANG T\u1ED4NG H\u1EE2P GI\u1ECCNG \u0110\u1ECCC AI (VIENEU ACOUSTIC)...") : /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement("span", null, "\uFF0B"), " T\u1EA0O GI\u1ECCNG \u0110\u1ECCC AI NGAY (RENDER AUDIO) - Ctrl + Enter")
       )))
     );
   }
@@ -25284,7 +25655,7 @@
   // src/main.jsx
   var container = document.getElementById("root");
   if (container) {
-    const root = import_client.default.createRoot(container);
+    const root = (0, import_client.createRoot)(container);
     root.render(/* @__PURE__ */ import_react10.default.createElement(App, null));
   }
 })();
@@ -25341,8 +25712,10 @@ lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
 lucide-react/dist/esm/icons/arrow-right.js:
+lucide-react/dist/esm/icons/check.js:
 lucide-react/dist/esm/icons/clapperboard.js:
 lucide-react/dist/esm/icons/cloud-download.js:
+lucide-react/dist/esm/icons/copy.js:
 lucide-react/dist/esm/icons/download.js:
 lucide-react/dist/esm/icons/file-text.js:
 lucide-react/dist/esm/icons/folder-open.js:
@@ -25354,10 +25727,8 @@ lucide-react/dist/esm/icons/mic.js:
 lucide-react/dist/esm/icons/pause.js:
 lucide-react/dist/esm/icons/play.js:
 lucide-react/dist/esm/icons/refresh-cw.js:
-lucide-react/dist/esm/icons/sliders-vertical.js:
 lucide-react/dist/esm/icons/sparkles.js:
 lucide-react/dist/esm/icons/upload.js:
-lucide-react/dist/esm/icons/wand-sparkles.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

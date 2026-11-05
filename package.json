@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:ui": "node -e \"const babel=require('@babel/standalone');const fs=require('fs');fs.writeFileSync('frontend/js/app.js',babel.transform(fs.readFileSync('frontend/js/app.jsx','utf8'),{presets:['react']}).code);console.log('UI bundle compiled!');\""
+    "build:ui": "node -e \"const babel=require('@babel/standalone');const fs=require('fs');fs.writeFileSync('frontend/js/app.js',babel.transform(fs.readFileSync('frontend/js/app.jsx','utf8'),{presets:[['react',{runtime:'classic'}]]}).code);console.log('UI bundle compiled (classic runtime)!');\""
   },
   "dependencies": {
     "lucide-react": "^0.395.0",

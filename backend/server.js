@@ -60,7 +60,10 @@ function serveStaticFile(res, filePath, contentType) {
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
     const type = contentType || MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type });
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
     fs.createReadStream(filePath).pipe(res);
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

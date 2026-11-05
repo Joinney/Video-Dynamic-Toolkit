@@ -1,0 +1,9 @@
+Soda_Reels_Videos/
+.temp_preview/
+scratch/
+.git/
+node_modules/
+*.mp4
+*.png
+*.jpg
+*.log

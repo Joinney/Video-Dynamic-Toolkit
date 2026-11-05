@@ -17,12 +17,31 @@ function formatDuration(seconds) {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+// Voices Catalog from StudioVDT
+const TTS_VOICES = [
+  { id: 'vi-VN-HoaiMyNeural', name: 'Hoài My', lang: 'vi', desc: 'Nữ Bắc ngọt ngào, truyền cảm (Thuyết minh phim)', flag: '🇻🇳' },
+  { id: 'vi-VN-NamMinhNeural', name: 'Nam Minh', lang: 'vi', desc: 'Nam Bắc trầm ấm, chững chạc (Review, tin tức)', flag: '🇻🇳' },
+  { id: 'en-US-JennyNeural', name: 'Jenny', lang: 'en', desc: 'Nữ Mỹ tự nhiên, trẻ trung', flag: '🇺🇸' },
+  { id: 'en-US-GuyNeural', name: 'Guy', lang: 'en', desc: 'Nam Mỹ điềm đạm, rõ ràng', flag: '🇺🇸' },
+  { id: 'zh-CN-XiaoxiaoNeural', name: 'Xiaoxiao', lang: 'zh', desc: 'Nữ Trung Quốc giọng chuẩn Bắc Kinh', flag: '🇨🇳' },
+  { id: 'zh-CN-YunxiNeural', name: 'Yunxi', lang: 'zh', desc: 'Nam Trung Quốc hoạt bát, lôi cuốn', flag: '🇨🇳' },
+  { id: 'ja-JP-NanamiNeural', name: 'Nanami', lang: 'ja', desc: 'Nữ Nhật Bản nhẹ nhàng, anime', flag: '🇯🇵' },
+  { id: 'ko-KR-SunHiNeural', name: 'SunHi', lang: 'ko', desc: 'Nữ Hàn Quốc tự nhiên, phim Hàn', flag: '🇰🇷' },
+];
+
+// Sample Scripts for Quick Testing
+const SAMPLE_SCRIPTS = [
+  { label: 'Review Phim Ngắn', text: 'Chào mừng các bạn đã quay trở lại với góc review phim ngắn. Hôm nay chúng ta sẽ cùng theo dõi một câu chuyện vô cùng kịch tính và bất ngờ!' },
+  { label: 'Thuyết Minh Kịch Tính', text: 'Người đàn ông bí ẩn bước vào căn phòng tối. Hắn không hề biết rằng, mọi hành động của mình đều đã nằm trong kế hoạch của đối phương từ trước.' },
+  { label: 'Giới Thiệu Tập Phim', text: 'Mời quý vị và các bạn tiếp tục theo dõi diễn biến gay cấn của tập tiếp theo. Liệu sự thật có được phơi bày ra ánh sáng hay không?' }
+];
+
 // --- Main App Component ---
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [status, setStatus] = useState(null);
   const [directEpisodes, setDirectEpisodes] = useState(null);
-  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' (safe) or 'h265'
+  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' or 'h265'
   const [loading, setLoading] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -37,7 +56,7 @@ function App() {
   const [batchDownloading, setBatchDownloading] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, activeEp: 0, percent: 0 });
 
-  // Dubbing studio state
+  // Dubbing studio state (from StudioVDT)
   const [dubbingTarget, setDubbingTarget] = useState(null);
   const [dubVoice, setDubVoice] = useState('vi-VN-HoaiMyNeural');
   const [dubSpeed, setDubSpeed] = useState('+0%');
@@ -47,10 +66,17 @@ function App() {
   const [dubProgress, setDubProgress] = useState(null);
   const [dubResultVideo, setDubResultVideo] = useState(null);
 
+  // TTS Studio state (from StudioVDT)
+  const [ttsText, setTtsText] = useState('');
+  const [ttsVoice, setTtsVoice] = useState('vi-VN-HoaiMyNeural');
+  const [ttsRate, setTtsRate] = useState('+0%');
+  const [ttsGenerating, setTtsGenerating] = useState(false);
+  const [ttsAudioResult, setTtsAudioResult] = useState(null);
+
   // Library state
   const [selectedDramaName, setSelectedDramaName] = useState(null);
 
-  // ADB Connect input
+  // ADB Connect state
   const [adbHostInput, setAdbHostInput] = useState('127.0.0.1:5555');
   const [adbConnecting, setAdbConnecting] = useState(false);
 
@@ -74,7 +100,7 @@ function App() {
     }
   };
 
-  // Fetch direct episodes from MinuteDrama
+  // Fetch direct episodes
   const fetchDirectEpisodes = async (dramaTitle = '') => {
     setDirectLoading(true);
     try {
@@ -267,7 +293,7 @@ function App() {
     }
   };
 
-  // Auto Swipe Start / Stop
+  // Auto Swipe Toggle
   const handleToggleAutoSwipe = async () => {
     if (autoSwipeStatus && autoSwipeStatus.isRunning) {
       await fetch('/api/auto-swipe/stop', { method: 'POST' });
@@ -313,7 +339,7 @@ function App() {
     } catch (e) {}
   };
 
-  // Start dubbing
+  // Start Video Dubbing (StudioVDT Engine)
   const handleStartDubbing = async () => {
     if (!dubbingTarget) {
       showToast('Vui lòng chọn video cần lồng tiếng!', 'error');
@@ -344,7 +370,38 @@ function App() {
     }
   };
 
-  // Total stats calculations
+  // Generate TTS Audio (StudioVDT TTS Studio)
+  const handleGenerateTTS = async () => {
+    if (!ttsText || !ttsText.trim()) {
+      showToast('Vui lòng nhập văn bản kịch bản cần đọc!', 'error');
+      return;
+    }
+    setTtsGenerating(true);
+    try {
+      const res = await fetch('/api/tts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: ttsText.trim(),
+          voice: ttsVoice,
+          rate: ttsRate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTtsAudioResult(data);
+        showToast('🎉 Đã tạo giọng đọc AI thành công!', 'success');
+      } else {
+        showToast(`Lỗi tạo TTS: ${data.message}`, 'error');
+      }
+    } catch (e) {
+      showToast('Lỗi gửi yêu cầu tạo giọng đọc', 'error');
+    } finally {
+      setTtsGenerating(false);
+    }
+  };
+
+  // Stats calculations
   const totalLocalDramas = status?.localDramas?.length || 0;
   let totalLocalVideos = 0;
   let totalDubbedVideos = 0;
@@ -359,6 +416,17 @@ function App() {
 
   const currentDrama = status?.currentDrama;
   const isConnected = !!status?.connected;
+
+  // Dedicated Tool Tabs Definition
+  const TOOLS_NAV = [
+    { id: 'home', label: 'Trang Chủ', icon: '🏠', badge: null, desc: 'Tổng quan hệ thống' },
+    { id: 'direct', label: 'Tải Trực Tiếp CDN', icon: '⚡', badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null, desc: 'Tải 1s/tập chuẩn H.264' },
+    { id: 'cache', label: 'Giả Lập & Quét Cache', icon: '🔄', badge: status?.remoteCacheCount ? `${status.remoteCacheCount}` : null, desc: 'Tua tập & bóc tách máy ảo' },
+    { id: 'library', label: 'Kho Phim & Video', icon: '🎬', badge: totalLocalVideos ? `${totalLocalVideos}` : null, desc: 'Quản lý & xem video' },
+    { id: 'dubbing', label: 'Lồng Tiếng Video AI', icon: '🎬', badge: dubJobId ? 'Đang chạy' : null, desc: 'StudioVDT Video Pipeline' },
+    { id: 'tts', label: 'Phòng Thu Giọng Đọc AI', icon: '🎙️', badge: 'Mới', desc: 'StudioVDT TTS Studio' },
+    { id: 'settings', label: 'Cài Đặt Hệ Thống', icon: '⚙️', badge: null, desc: 'ADB & Hướng dẫn' }
+  ];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -376,10 +444,10 @@ function App() {
       )}
 
       {/* --- TOP NAVBAR --- */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           
-          {/* Logo & App title */}
+          {/* Logo & App Title */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-brand-500/25">
               ⚡
@@ -391,12 +459,12 @@ function App() {
               <div className="text-xs text-slate-400 flex items-center gap-1.5">
                 <span>Soda Reels & MinuteDrama</span>
                 <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                <span className="text-brand-400 font-medium">StudioVDT AI</span>
+                <span className="text-brand-400 font-semibold">Tích Hợp StudioVDT</span>
               </div>
             </div>
           </div>
 
-          {/* Quick App Switcher */}
+          {/* App Switcher */}
           <div className="hidden md:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
             <button
               onClick={() => handleSwitchApp('auto')}
@@ -452,23 +520,16 @@ function App() {
           </div>
         </div>
 
-        {/* --- MAIN NAVIGATION TABS --- */}
+        {/* --- DEDICATED TOOL TABS NAVIGATION --- */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 overflow-x-auto">
-          <nav className="flex space-x-1 py-2">
-            {[
-              { id: 'home', label: 'Trang Chủ', icon: '🏠', badge: null },
-              { id: 'direct', label: 'Tải Trực Tiếp CDN', icon: '⚡', badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null },
-              { id: 'cache', label: 'Giả Lập & Quét Cache', icon: '🔄', badge: status?.remoteCacheCount ? `${status.remoteCacheCount}` : null },
-              { id: 'library', label: 'Kho Phim & Video', icon: '🎬', badge: totalLocalVideos ? `${totalLocalVideos}` : null },
-              { id: 'dubbing', label: 'Studio Lồng Tiếng AI', icon: '🎙️', badge: dubJobId ? 'Đang chạy' : null },
-              { id: 'settings', label: 'Cài Đặt & Hướng Dẫn', icon: '⚙️', badge: null }
-            ].map((tab) => {
+          <nav className="flex space-x-1.5 py-2">
+            {TOOLS_NAV.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 ${
                     isActive
                       ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -494,42 +555,47 @@ function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
         {/* ======================================================== */}
-        {/* TAB 1: TRANG CHỦ (OVERVIEW / DASHBOARD) */}
+        {/* TAB 1: 🏠 TRANG CHỦ (DASHBOARD TỔNG QUAN) */}
         {/* ======================================================== */}
         {activeTab === 'home' && (
           <div className="space-y-6">
             
             {/* Hero Banner */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-brand-950 p-6 md:p-8 border border-slate-800 shadow-xl">
-              <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-brand-600/10 to-transparent pointer-events-none"></div>
-              <div className="relative z-10 max-w-2xl">
+              <div className="relative z-10 max-w-3xl">
                 <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30 mb-3">
-                  🚀 Video Dynamic Toolkit v2.0
+                  🚀 Kết Hợp Hoàn Hảo: Downloader & StudioVDT AI Suite
                 </span>
                 <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                  Trung Tâm Tải Phim Ngắn & Phòng Lồng Tiếng AI
+                  Bộ Công Cụ Tải Phim Ngắn & Studio Sáng Tạo AI
                 </h1>
                 <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                  Tải cả bộ phim siêu tốc 1-2s/tập từ link CDN trực tiếp, quét bộ nhớ đệm giả lập Android, phát mượt mà chuẩn H.264 và tự động lồng tiếng tiếng Việt bằng công nghệ AI từ StudioVDT.
+                  Tải cả bộ phim siêu tốc 1s/tập chuẩn H.264, quét bộ nhớ đệm giả lập Android, phát video không lỗi codec, tự động lồng tiếng video bằng Whisper và thu âm giọng đọc AI từ công nghệ StudioVDT.
                 </p>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => setActiveTab('direct')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all"
+                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
                   >
-                    <span>⚡ Tải Trực Tiếp Cả Bộ (1s/tập)</span>
+                    <span>⚡ Tải Trực Tiếp CDN (1s/tập)</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('dubbing')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 transition-all"
+                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all"
                   >
-                    <span>🎙️ Studio Lồng Tiếng AI</span>
+                    <span>🎬 Lồng Tiếng Video AI</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('tts')}
+                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all"
+                  >
+                    <span>🎙️ Phòng Thu Giọng Đọc AI</span>
                   </button>
                   <button
                     onClick={() => handleOpenFolder()}
-                    className="px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-800 transition-all"
+                    className="px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
                   >
-                    📂 Mở Thư Mục Video
+                    📂 Mở Kho Video
                   </button>
                 </div>
               </div>
@@ -554,7 +620,7 @@ function App() {
 
               <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Phim Đang Xem</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">Phim Trên Máy Ảo</span>
                   <span className="text-lg">🎭</span>
                 </div>
                 <div className="mt-2">
@@ -573,18 +639,18 @@ function App() {
                   <span className="text-lg">💾</span>
                 </div>
                 <div className="mt-2">
-                  <div className="text-xl font-bold text-brand-400">
+                  <div className="text-xl font-bold text-amber-400">
                     {totalLocalVideos} Tập Phim
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5">
-                    {totalLocalDramas} Bộ phim đã lưu trữ
+                    {totalLocalDramas} Bộ phim trong máy
                   </div>
                 </div>
               </div>
 
               <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
                 <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Đã Lồng Tiếng AI</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">Video Đã Lồng Tiếng</span>
                   <span className="text-lg">🎙️</span>
                 </div>
                 <div className="mt-2">
@@ -592,35 +658,37 @@ function App() {
                     {totalDubbedVideos} Tập Lồng Tiếng
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5">
-                    Giọng đọc tiếng Việt StudioVDT
+                    Giọng đọc StudioVDT AI
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Feature Launchers */}
+            {/* Clean Division of Tools Section */}
             <div>
-              <h2 className="text-base font-bold text-slate-300 mb-3 flex items-center gap-2">
-                <span>🛠️ Các Công Cụ Chính</span>
-                <span className="text-xs font-normal text-slate-500">(Bấm vào từng thẻ để mở trang công cụ riêng)</span>
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>🛠️ Danh Sách Các Công Cụ Chuyên Biệt</span>
+                </h2>
+                <span className="text-xs text-slate-400">Mỗi công cụ được chia thành một trang làm việc riêng biệt</span>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 
-                {/* Feature 1: Direct CDN */}
+                {/* Tool 1 */}
                 <div
                   onClick={() => setActiveTab('direct')}
-                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-brand-500/50 transition-all flex flex-col justify-between"
+                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-amber-500/50 transition-all flex flex-col justify-between"
                 >
                   <div>
                     <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                       ⚡
                     </div>
                     <h3 className="font-bold text-base text-white mt-4 group-hover:text-amber-400 transition-colors">
-                      Tải Trực Tiếp CDN (1s/tập)
+                      1. Tải Trực Tiếp CDN Siêu Tốc
                     </h3>
                     <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Lấy toàn bộ danh sách tập từ database. Tải trực tiếp siêu tốc qua CDN không cần chờ máy ảo tua. Chuẩn H.264 xem ngay không lỗi.
+                      Lấy toàn bộ link CDN cả bộ phim từ database MinuteDrama. Tải 1-2s / tập chuẩn H.264 xem ngay trên Windows Media Player.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between">
@@ -629,7 +697,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* Feature 2: Cache & Auto-Swipe */}
+                {/* Tool 2 */}
                 <div
                   onClick={() => setActiveTab('cache')}
                   className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-blue-500/50 transition-all flex flex-col justify-between"
@@ -639,7 +707,7 @@ function App() {
                       🔄
                     </div>
                     <h3 className="font-bold text-base text-white mt-4 group-hover:text-blue-400 transition-colors">
-                      Giả Lập & Quét Cache
+                      2. Giả Lập & Quét Cache ADB
                     </h3>
                     <p className="text-xs text-slate-400 mt-2 leading-relaxed">
                       Tự động lướt tập trên Android emulator, nhận diện tập thông minh tránh bị ngược tập 1 và 3, xuất video an toàn khi đã cache 100%.
@@ -651,75 +719,113 @@ function App() {
                   </div>
                 </div>
 
-                {/* Feature 3: Dubbing Studio */}
+                {/* Tool 3 */}
+                <div
+                  onClick={() => setActiveTab('library')}
+                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-emerald-500/50 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🎬
+                    </div>
+                    <h3 className="font-bold text-base text-white mt-4 group-hover:text-emerald-400 transition-colors">
+                      3. Kho Phim & Trình Chiếu
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      Quản lý tất cả tập phim đã tải, xem video trực tiếp bằng trình phát tích hợp, mở nhanh thư mục lưu trữ trong Windows Explorer.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-emerald-400 flex items-center justify-between">
+                    <span>Mở kho phim</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+                </div>
+
+                {/* Tool 4: Dubbing */}
                 <div
                   onClick={() => setActiveTab('dubbing')}
                   className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-purple-500/50 transition-all flex flex-col justify-between"
                 >
                   <div>
                     <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🎙️
+                      🎬
                     </div>
                     <h3 className="font-bold text-base text-white mt-4 group-hover:text-purple-400 transition-colors">
-                      Studio Lồng Tiếng AI
+                      4. Lồng Tiếng Video AI (StudioVDT)
                     </h3>
                     <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Tích hợp từ dự án StudioVDT: Whisper nhận diện lời thoại, tự dịch sang tiếng Việt, lồng tiếng cảm xúc bằng Edge-TTS và trộn âm thanh.
+                      Bóc tách âm thanh video, nhận diện Whisper, tự dịch tiếng Việt, lồng tiếng Edge-TTS, khớp khẩu hình timeline và hòa trộn nhạc nền.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-purple-400 flex items-center justify-between">
-                    <span>Mở phòng lồng tiếng</span>
+                    <span>Mở phòng lồng tiếng video</span>
                     <span className="group-hover:translate-x-1 transition-transform">→</span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Current Active Drama Quick Card */}
-            {directEpisodes && (
-              <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  {directEpisodes.coverUrl ? (
-                    <img src={directEpisodes.coverUrl} alt="Cover" className="w-16 h-22 object-cover rounded-xl shadow-md border border-slate-700" />
-                  ) : (
-                    <div className="w-16 h-22 rounded-xl bg-slate-800 flex items-center justify-center text-2xl border border-slate-700">🎬</div>
-                  )}
+                {/* Tool 5: TTS */}
+                <div
+                  onClick={() => setActiveTab('tts')}
+                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-indigo-500/50 transition-all flex flex-col justify-between"
+                >
                   <div>
-                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Phim Sẵn Sàng Tải Trực Tiếp</span>
-                    <h3 className="text-lg font-bold text-white mt-0.5">{directEpisodes.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Tổng số: <span className="font-semibold text-white">{directEpisodes.totalEpisodes || directEpisodes.episodes.length}</span> tập phim có link CDN
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      🎙️
+                    </div>
+                    <h3 className="font-bold text-base text-white mt-4 group-hover:text-indigo-400 transition-colors">
+                      5. Phòng Thu Giọng Đọc AI (TTS Studio)
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      Chuyển đổi văn bản kịch bản thành giọng nói MP3 chuyên nghiệp. Đa dạng giọng đọc Hoài My, Nam Minh, Jenny với tốc độ tùy chỉnh.
                     </p>
                   </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-indigo-400 flex items-center justify-between">
+                    <span>Mở phòng thu giọng đọc</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <button
-                    onClick={() => setActiveTab('direct')}
-                    className="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-md"
-                  >
-                    ⚡ Xem Danh Sách & Tải Ngay
-                  </button>
+
+                {/* Tool 6: Settings */}
+                <div
+                  onClick={() => setActiveTab('settings')}
+                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-slate-500/50 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                      ⚙️
+                    </div>
+                    <h3 className="font-bold text-base text-white mt-4 group-hover:text-slate-300 transition-colors">
+                      6. Cài Đặt & Hướng Dẫn Sửa Lỗi
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                      Cấu hình kết nối ADB giả lập, sửa lỗi 0xC00D36C4 của Windows Media Player và hướng dẫn khởi chạy bằng Docker.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-slate-400 flex items-center justify-between">
+                    <span>Mở cài đặt</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </div>
+
               </div>
-            )}
+            </div>
 
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* TAB 2: TẢI TRỰC TIẾP CDN (DIRECT CDN DOWNLOADER) */}
+        {/* TAB 2: ⚡ TẢI TRỰC TIẾP CDN */}
         {/* ======================================================== */}
         {activeTab === 'direct' && (
           <div className="space-y-6">
             
-            {/* Header Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl">
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>⚡ Tải Phim Siêu Tốc Từ Link Trực Tiếp CDN</span>
+                  <span>⚡ Công Cụ Tải Phim Siêu Tốc Từ Link Trực Tiếp CDN</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  Bắt link trực tiếp từ database MinuteDrama. Tải toàn bộ tập phim chỉ mất 1-2 giây / tập (tốc độ ~35-50 Mbps).
+                  Trích xuất link CDN từ database MinuteDrama. Tải toàn bộ phim chỉ mất 1-2 giây / tập (tốc độ ~35-50 Mbps).
                 </p>
               </div>
 
@@ -746,7 +852,6 @@ function App() {
               </div>
             </div>
 
-            {/* Batch Download Progress Bar */}
             {batchDownloading && (
               <div className="glass-card p-4 rounded-2xl border border-amber-500/30">
                 <div className="flex items-center justify-between text-xs font-bold text-amber-400 mb-2">
@@ -762,7 +867,6 @@ function App() {
               </div>
             )}
 
-            {/* Codec Selection Notice */}
             <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
               <div className="text-xs">
                 <span className="font-bold text-emerald-400 text-sm block">💡 Chọn Chuẩn Video Khi Tải:</span>
@@ -794,11 +898,8 @@ function App() {
               </div>
             </div>
 
-            {/* Drama Details & Episode Grid */}
             {directEpisodes ? (
               <div className="space-y-4">
-                
-                {/* Drama Info Header */}
                 <div className="glass-panel p-4 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🎬</span>
@@ -810,16 +911,13 @@ function App() {
                     </div>
                   </div>
                   <div className="text-xs text-slate-400">
-                    Thư mục lưu: <code className="text-brand-300">Soda_Reels_Videos/{directEpisodes.title}/</code>
+                    Lưu tại: <code className="text-brand-300">Soda_Reels_Videos/{directEpisodes.title}/</code>
                   </div>
                 </div>
 
-                {/* Episodes Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {directEpisodes.episodes.map((ep) => {
                     const activeUrl = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
-                    
-                    // Check if this episode is already downloaded in local library
                     let isDownloaded = false;
                     if (status?.localDramas) {
                       const matched = status.localDramas.find(d => 
@@ -892,7 +990,6 @@ function App() {
                     );
                   })}
                 </div>
-
               </div>
             ) : (
               <div className="glass-panel p-12 text-center rounded-2xl border border-slate-800">
@@ -914,20 +1011,19 @@ function App() {
         )}
 
         {/* ======================================================== */}
-        {/* TAB 3: GIẢ LẬP & QUÉT CACHE (EMULATOR CACHE & SWIPE) */}
+        {/* TAB 3: 🔄 GIẢ LẬP & QUÉT CACHE */}
         {/* ======================================================== */}
         {activeTab === 'cache' && (
           <div className="space-y-6">
             
-            {/* Control Strip */}
             <div className="glass-panel p-5 rounded-2xl space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span>🔄 Quét Cache Giả Lập & Tự Động Lướt Tập</span>
+                    <span>🔄 Công Cụ Quét Cache Giả Lập & Tự Động Lướt Tập</span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Bắt các file video được ứng dụng lưu tạm trên máy ảo Android. Tự động lướt tập thông minh.
+                    Bắt các file video được ứng dụng lưu tạm trên máy ảo Android. Nhận diện tập thông minh và tự động lướt tập.
                   </p>
                 </div>
 
@@ -951,7 +1047,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Auto Swipe Controller */}
               <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
                 <div className="text-xs font-semibold text-slate-300 flex items-center gap-2">
                   <span>📱 Tự Động Lướt Tập:</span>
@@ -1001,7 +1096,6 @@ function App() {
               </div>
             </div>
 
-            {/* Remote Cache Table */}
             {status?.remoteList && status.remoteList.length > 0 ? (
               <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
                 <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
@@ -1080,16 +1174,15 @@ function App() {
         )}
 
         {/* ======================================================== */}
-        {/* TAB 4: KHO PHIM & TRÌNH CHIẾU (LOCAL LIBRARY & PLAYER) */}
+        {/* TAB 4: 🎬 KHO PHIM & TRÌNH CHIẾU */}
         {/* ======================================================== */}
         {activeTab === 'library' && (
           <div className="space-y-6">
             
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl">
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>🎬 Kho Phim Đã Lưu Trên Máy Tính</span>
+                  <span>🎬 Kho Phim & Video Đã Lưu Trên Máy Tính</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   Thư mục lưu trữ: <code className="text-brand-300">Soda_Reels_Videos/</code>. Xem video trực tiếp trên web không lo lỗi thiếu codec.
@@ -1113,7 +1206,6 @@ function App() {
               </div>
             </div>
 
-            {/* Drama List & Video Details */}
             {status?.localDramas && status.localDramas.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 
@@ -1249,24 +1341,23 @@ function App() {
         )}
 
         {/* ======================================================== */}
-        {/* TAB 5: STUDIO LỒNG TIẾNG AI (AI DUBBING STUDIO) */}
+        {/* TAB 5: 🎬 LỒNG TIẾNG VIDEO AI (STUDIOVDT VIDEO DUBBING) */}
         {/* ======================================================== */}
         {activeTab === 'dubbing' && (
           <div className="space-y-6">
             
-            {/* Header */}
             <div className="glass-panel p-5 rounded-2xl">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <span>🎙️ Phòng Lồng Tiếng Phim AI (StudioVDT Engine)</span>
+                <span>🎬 Công Cụ Lồng Tiếng Video AI Tự Động (StudioVDT Engine)</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Tự động nhận diện giọng nói gốc bằng Faster-Whisper, dịch kịch bản sang tiếng Việt và tạo giọng đọc truyền cảm xúc bằng Edge-TTS.
+                Quy trình tự động hóa: Bóc tách âm thanh video ➜ Faster-Whisper nhận diện lời thoại ➜ Dịch thuật sang tiếng Việt ➜ Edge-TTS tạo giọng đọc cảm xúc ➜ Khớp timeline ➜ Hòa âm Audio Ducking.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              {/* Left Column: Configuration Form */}
+              {/* Left Column: Form */}
               <div className="md:col-span-2 glass-panel p-6 rounded-2xl space-y-5">
                 
                 {/* 1. Video Selection */}
@@ -1331,8 +1422,8 @@ function App() {
                       onChange={(e) => setDubVoice(e.target.value)}
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
                     >
-                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ nhẹ nhàng, truyền cảm)</option>
-                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh)</option>
+                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý)</option>
+                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh - Phim hành động)</option>
                     </select>
                   </div>
 
@@ -1432,7 +1523,6 @@ function App() {
                   )}
                 </div>
 
-                {/* Result Video Card if completed */}
                 {dubResultVideo && (
                   <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3">
                     <div className="font-bold text-xs text-emerald-400 flex items-center gap-1.5">
@@ -1468,12 +1558,168 @@ function App() {
         )}
 
         {/* ======================================================== */}
-        {/* TAB 6: CÀI ĐẶT & HƯỚNG DẪN (SETTINGS & DIAGNOSTICS) */}
+        {/* TAB 6: 🎙️ PHÒNG THU GIỌNG ĐỌC AI (STUDIOVDT TTS STUDIO) */}
+        {/* ======================================================== */}
+        {activeTab === 'tts' && (
+          <div className="space-y-6">
+            
+            <div className="glass-panel p-5 rounded-2xl">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <span>🎙️ Phòng Thu Giọng Đọc AI (TTS Studio từ StudioVDT)</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Tạo giọng đọc thuyết minh, review phim ngắn hoặc video quảng cáo từ văn bản kịch bản bằng công nghệ Edge-TTS chất lượng cao.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Left Column: Script Input & Voice Options */}
+              <div className="md:col-span-2 glass-panel p-6 rounded-2xl space-y-5">
+                
+                {/* Script Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold uppercase text-slate-400">
+                      1. Nhập Kịch Bản Cần Thu Âm:
+                    </label>
+                    <span className="text-[11px] text-slate-500">
+                      {ttsText.length} ký tự
+                    </span>
+                  </div>
+
+                  {/* Sample Script Buttons */}
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-[11px] text-slate-400">Mẫu kịch bản:</span>
+                    {SAMPLE_SCRIPTS.map((s, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setTtsText(s.text)}
+                        className="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-brand-300 border border-slate-700 transition-all"
+                      >
+                        + {s.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows="6"
+                    value={ttsText}
+                    onChange={(e) => setTtsText(e.target.value)}
+                    placeholder="Nhập hoặc dán văn bản kịch bản tại đây... Ví dụ: Chào mừng các bạn đã quay trở lại với bộ phim hôm nay..."
+                    className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
+                  ></textarea>
+                </div>
+
+                {/* Voice Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                      2. Giọng Đọc Tuyển Chọn:
+                    </label>
+                    <select
+                      value={ttsVoice}
+                      onChange={(e) => setTtsVoice(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+                    >
+                      {TTS_VOICES.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.flag} {v.name} ({v.desc})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                      3. Tốc Độ Nói (Rate):
+                    </label>
+                    <select
+                      value={ttsRate}
+                      onChange={(e) => setTtsRate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+                    >
+                      <option value="-20%">0.8x (Chậm rãi, truyền cảm)</option>
+                      <option value="-10%">0.9x (Hơi chậm)</option>
+                      <option value="+0%">1.0x (Tốc độ bình thường)</option>
+                      <option value="+10%">1.1x (Nhanh nhẹn - Review)</option>
+                      <option value="+20%">1.2x (Kịch tính, nhanh)</option>
+                      <option value="+30%">1.3x (Rất nhanh)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Generate Button */}
+                <button
+                  onClick={handleGenerateTTS}
+                  disabled={ttsGenerating || !ttsText.trim()}
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <span>{ttsGenerating ? '⏳' : '🎙️'}</span>
+                  <span>{ttsGenerating ? 'Đang Thu Âm Giọng Đọc AI...' : 'Tạo Giọng Đọc AI Ngay (Render Audio)'}</span>
+                </button>
+
+              </div>
+
+              {/* Right Column: Audio Preview & Output */}
+              <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4">
+                <div>
+                  <h3 className="font-bold text-sm text-white mb-3 flex items-center gap-2">
+                    <span>🎧 Nghe Thử & Tải File Âm Thanh</span>
+                  </h3>
+
+                  {ttsAudioResult ? (
+                    <div className="space-y-4 p-4 rounded-xl bg-indigo-950/30 border border-indigo-500/40">
+                      <div className="text-xs text-indigo-300 font-semibold flex items-center gap-2">
+                        <span>✅ Đã tạo file thành công:</span>
+                        <span className="font-mono text-white text-[11px]">{ttsAudioResult.filename}</span>
+                      </div>
+
+                      {/* HTML5 Audio Player */}
+                      <audio
+                        controls
+                        src={ttsAudioResult.url}
+                        className="w-full rounded-lg"
+                      ></audio>
+
+                      <div className="text-[11px] text-slate-400">
+                        Dung lượng: <strong className="text-white">{formatBytes(ttsAudioResult.sizeBytes)}</strong>
+                      </div>
+
+                      <a
+                        href={ttsAudioResult.url}
+                        download={ttsAudioResult.filename}
+                        className="w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center justify-center gap-1.5 shadow-md"
+                      >
+                        <span>📥 Tải File MP3 Về Máy</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl space-y-2">
+                      <div className="text-3xl">🎙️</div>
+                      <div>Nhập kịch bản và nhấn <strong>Tạo Giọng Đọc AI Ngay</strong> để nghe thử file âm thanh tại đây.</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
+                  💡 <strong>Gợi ý:</strong> File MP3 tạo ra có thể dùng làm voiceover cho các video phim ngắn, review TikTok, Reels hoặc YouTube Shorts.
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 7: ⚙️ CÀI ĐẶT & CHẨN ĐOÁN */}
         {/* ======================================================== */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
             
-            {/* ADB Device Setup */}
+            {/* ADB Setup */}
             <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <span>📱 Kết Nối Thiết Bị Giả Lập Android (ADB)</span>
@@ -1506,7 +1752,7 @@ function App() {
               </div>
             </div>
 
-            {/* Error 0xC00D36C4 Explanation and Fix Guide */}
+            {/* Error 0xC00D36C4 Guide */}
             <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
               <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
                 <span>💡 Hướng Dẫn Khắc Phục Lỗi 0xC00D36C4 Trên Windows Media Player</span>
@@ -1529,7 +1775,7 @@ function App() {
                       ✅ <strong>Cách 2:</strong> Xem video trực tiếp trong tab <strong>Kho Phim & Video</strong> trên giao diện web của tool. Trình phát web đã tích hợp bộ giải mã tương thích.
                     </div>
                     <div>
-                      ✅ <strong>Cách 3:</strong> Khi bạn đưa video vào <strong>Studio Lồng Tiếng AI</strong>, hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo.
+                      ✅ <strong>Cách 3:</strong> Khi bạn đưa video vào <strong>Lồng Tiếng Video AI</strong>, hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo.
                     </div>
                   </div>
                 </div>
@@ -1583,7 +1829,7 @@ function App() {
 
       {/* --- FOOTER --- */}
       <footer className="mt-auto border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        Video Dynamic Toolkit • Soda Reels & MinuteDrama Downloader & AI Dubbing Studio • 2026
+        Video Dynamic Toolkit • Kết Hợp Hoàn Hảo Soda Reels, MinuteDrama & StudioVDT AI Suite • 2026
       </footer>
 
     </div>
@@ -1592,4 +1838,4 @@ function App() {
 
 // Render React App
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(React.createElement(App));

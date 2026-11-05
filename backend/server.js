@@ -17,7 +17,7 @@ const {
 const { checkAdbDevice, resolveActiveApp, pullRemoteFile } = require('./adb');
 const { getRemoteCacheList } = require('./cache');
 const { startAutoSwipe, stopAutoSwipe, getAutoSwipeStatus } = require('./auto_swipe');
-const { startDubbingJob, getDubbingJob } = require('./dubber');
+const { startDubbingJob, getDubbingJob, generateTTSAudio } = require('./dubber');
 const {
   sanitizeFolderName,
   getDramaInfoFromDevice,
@@ -369,6 +369,43 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ success: true, job }));
+    return;
+  }
+
+  // 9.1 API TTS Audio Generation (StudioVDT Engine)
+  if (url.pathname === '/api/tts/generate' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      if (!payload.text || !payload.text.trim()) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Vui lòng nhập văn bản kịch bản cần đọc!' }));
+        return;
+      }
+      const result = await generateTTSAudio(payload.text.trim(), payload);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, ...result }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  // 9.2 Serve Temp TTS Audio
+  if (url.pathname.startsWith('/audio/temp/')) {
+    const filename = path.basename(url.pathname);
+    const audioPath = path.join(TEMP_DIR, filename);
+    if (fs.existsSync(audioPath)) {
+      res.writeHead(200, {
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': fs.statSync(audioPath).size,
+        'Cache-Control': 'no-cache'
+      });
+      fs.createReadStream(audioPath).pipe(res);
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Audio not found');
+    }
     return;
   }
 

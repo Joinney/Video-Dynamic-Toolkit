@@ -107,7 +107,54 @@ function getDubbingJob(jobId) {
   return dubJobs.get(jobId) || null;
 }
 
+function generateTTSAudio(text, options = {}) {
+  const { TEMP_DIR } = require('./config');
+  return new Promise((resolve, reject) => {
+    const voice = options.voice || 'vi-VN-HoaiMyNeural';
+    const rate = options.rate || '+0%';
+    const volume = options.volume || '+0%';
+    const filename = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.mp3`;
+    const outputPath = path.join(TEMP_DIR, filename);
+
+    const scriptPath = path.join(__dirname, 'dubber', 'tts.py');
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const args = [
+      scriptPath,
+      '--text', text,
+      '--voice', voice,
+      '--rate', rate,
+      '--volume', volume,
+      '--output', outputPath
+    ];
+
+    try {
+      const proc = spawn(pythonCmd, args);
+      let stderr = '';
+      proc.stderr.on('data', d => { stderr += d.toString(); });
+      proc.on('close', code => {
+        if (code === 0 && fs.existsSync(outputPath)) {
+          resolve({
+            success: true,
+            outputPath,
+            filename,
+            url: `/audio/temp/${filename}`,
+            sizeBytes: fs.statSync(outputPath).size
+          });
+        } else {
+          reject(new Error(stderr || 'Lỗi khi tạo audio TTS (Exit code ' + code + ')'));
+        }
+      });
+      proc.on('error', err => {
+        reject(new Error('Không thể chạy lệnh Python: ' + err.message));
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 module.exports = {
   startDubbingJob,
-  getDubbingJob
+  getDubbingJob,
+  generateTTSAudio
 };

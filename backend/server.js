@@ -73,13 +73,26 @@ function serveStaticFile(res, filePath, contentType) {
 
 function streamVideoFile(req, res, filePath) {
   if (!fs.existsSync(filePath)) {
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.writeHead(404, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Access-Control-Allow-Origin': '*'
+    });
     res.end('File not found');
     return;
   }
 
-  const stat = fs.statSync(filePath);
-  const total = stat.size;
+  let total = 0;
+  try {
+    const stat = fs.statSync(filePath);
+    total = stat.size;
+  } catch (err) {
+    res.writeHead(404, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end('File not found or locked');
+    return;
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -97,7 +110,9 @@ function streamVideoFile(req, res, filePath) {
       'Content-Length': total,
       'Content-Type': 'video/mp4',
       'Accept-Ranges': 'bytes',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cache-Control': 'no-cache'
     });
     res.end();
     return;
@@ -120,11 +135,9 @@ function streamVideoFile(req, res, filePath) {
     let end = match[2] ? parseInt(match[2], 10) : NaN;
 
     if (isNaN(start)) {
-      // Suffix range (e.g. bytes=-500)
       start = total - end;
       end = total - 1;
     } else if (isNaN(end)) {
-      // Open range (e.g. bytes=500-)
       end = total - 1;
     }
 
@@ -146,17 +159,40 @@ function streamVideoFile(req, res, filePath) {
       'Accept-Ranges': 'bytes',
       'Content-Length': chunksize,
       'Content-Type': 'video/mp4',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cache-Control': 'no-cache'
     });
-    fs.createReadStream(filePath, { start, end }).pipe(res);
+
+    const fileStream = fs.createReadStream(filePath, { start, end });
+    fileStream.on('error', (streamErr) => {
+      console.warn('Video stream error:', streamErr.message);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+    res.on('close', () => {
+      fileStream.destroy();
+    });
+    fileStream.pipe(res);
   } else {
     res.writeHead(200, {
       'Content-Length': total,
       'Content-Type': 'video/mp4',
       'Accept-Ranges': 'bytes',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cache-Control': 'no-cache'
     });
-    fs.createReadStream(filePath).pipe(res);
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (streamErr) => {
+      console.warn('Video stream error:', streamErr.message);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    });
+    res.on('close', () => {
+      fileStream.destroy();
+    });
+    fileStream.pipe(res);
   }
 }
 

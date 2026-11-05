@@ -263,14 +263,15 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
         if (jobData.status === 'completed' || jobData.done) {
           setIsDubbingProcessing(false);
           setDubbingCompleted(true);
+          const tStamp = Date.now();
           if (jobData.videoUrl) {
-            setResultVideoUrl(jobData.videoUrl);
+            setResultVideoUrl(`${jobData.videoUrl}${jobData.videoUrl.includes('?') ? '&' : '?'}t=${tStamp}`);
           } else {
             const outPath = (jobData.outputVideo || jobData.output_video || '').replace(/\\/g, '/');
             const cleanRel = outPath.includes('Soda_Reels_Videos/')
               ? outPath.split('Soda_Reels_Videos/').pop()
               : outPath.split('/').slice(-2).join('/');
-            setResultVideoUrl(`/video/${encodeURIComponent(cleanRel).replace(/%2F/g, '/')}`);
+            setResultVideoUrl(`/video/${encodeURIComponent(cleanRel).replace(/%2F/g, '/')}?t=${tStamp}`);
           }
           setDubJobId(null);
         } else if (jobData.status === 'error' || jobData.status === 'failed') {
@@ -1185,11 +1186,18 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   <span>✓</span> Lồng tiếng hoàn tất 100%!
                 </div>
                 <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden border border-emerald-200">
-                  <video src={resultVideoUrl} controls preload="metadata" className="w-full h-full object-contain" />
+                  <video
+                    key={resultVideoUrl}
+                    src={resultVideoUrl}
+                    controls
+                    preload="auto"
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <a
                   href={resultVideoUrl}
-                  download={decodeURIComponent(resultVideoUrl.split('/').pop() || 'Video_LongTieng_Viet.mp4')}
+                  download={decodeURIComponent(resultVideoUrl.split('?')[0].split('/').pop() || 'Video_LongTieng_Viet.mp4')}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <Download size={14} /> TẢI VIDEO THÀNH PHẨM (.MP4)

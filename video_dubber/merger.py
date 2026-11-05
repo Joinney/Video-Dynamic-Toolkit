@@ -149,6 +149,22 @@ def get_video_dimensions(video_path: Union[str, Path]) -> tuple[int, int]:
     return 1280, 720
 
 
+def check_has_audio(file_path: Union[str, Path]) -> bool:
+    """Checks whether the media file contains at least one audio stream."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "a",
+            "-show_entries", "stream=codec_type",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(file_path)
+        ]
+        out = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore').strip()
+        return "audio" in out
+    except Exception:
+        return True
+
+
 def srt_to_ass(
     srt_path: Union[str, Path],
     ass_path: Union[str, Path],
@@ -567,6 +583,11 @@ class VideoMerger:
         output_mixed_audio_path.parent.mkdir(parents=True, exist_ok=True)
 
         dubbed_sound = AudioSegment.from_file(dubbed_audio_path)
+        try:
+            from pydub.effects import normalize
+            dubbed_sound = normalize(dubbed_sound, headroom=0.8)
+        except Exception:
+            pass
 
         vol_fraction = self.original_audio_volume if self.original_audio_volume <= 1.0 else self.original_audio_volume / 100.0
         vol_fraction = max(0.0, min(0.60, vol_fraction))
@@ -586,7 +607,7 @@ class VideoMerger:
             # Tự động triệt tiêu giọng thoại gốc trong các khoảng thời gian nhân vật nói thoại
             # (Auto-Ducking / Zero Bleed: triệt tiêu 100% tình trạng hai thứ tiếng chồng lên nhau)
             if mute_original_dialogue and segments:
-                duck_extra_attenuation = -24.0  # Giảm thêm 24dB trong lúc có lời thoại
+                duck_extra_attenuation = -32.0  # Triệt tiêu giọng gốc trong lúc có lời thoại lồng tiếng
                 orig_len = len(attenuated_orig)
                 
                 # Tạo mask ducking cho âm thanh gốc
@@ -1214,14 +1235,36 @@ class VideoMerger:
         if ffmpeg_bin:
             try:
                 target_w, target_h = get_video_dimensions(main_video_path)
+                has_a0 = check_has_audio(main_video_path)
+                has_a1 = check_has_audio(outro_video_path)
+
+                v_filters = [
+                    f"[0:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25[v0]",
+                    f"[1:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25[v1]"
+                ]
+
+                a_inputs = []
+                if has_a0:
+                    v_filters.append("[0:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a0]")
+                    a_inputs.append("[a0]")
+                else:
+                    v_filters.append("anullsrc=r=48000:cl=stereo[a0]")
+                    a_inputs.append("[a0]")
+
+                if has_a1:
+                    v_filters.append("[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a1]")
+                    a_inputs.append("[a1]")
+                else:
+                    v_filters.append("anullsrc=r=48000:cl=stereo[a1]")
+                    a_inputs.append("[a1]")
+
+                v_filters.append(f"[v0]{a_inputs[0]}[v1]{a_inputs[1]}concat=n=2:v=1:a=1[v_cat][a_cat]")
+
                 cmd_cat = [
                     ffmpeg_bin, "-y",
                     "-i", str(main_video_path),
                     "-i", str(outro_video_path),
-                    "-filter_complex",
-                    f"[0:v]setsar=1[v0];"
-                    f"[1:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
-                    f"[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[v_cat][a_cat]",
+                    "-filter_complex", ";".join(v_filters),
                     "-map", "[v_cat]",
                     "-map", "[a_cat]",
                     "-c:v", "libx264",

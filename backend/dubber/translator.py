@@ -65,21 +65,39 @@ def preprocess_source_text(text: str, source_lang: str = "auto") -> str:
 
     # Xử lý tiếng Trung (Sửa các từ đồng âm thường gặp trong phim truyền hình / drama)
     if is_chinese_text(t) or source_lang in ("zh", "zh-cn", "zh-tw", "chinese"):
-        # Sửa tên tiệm và nhân vật chính Tiệm Tạp Hóa Âm Dương
-        t = re.sub(r'阴阳杂货[库户]|阴阳砸火火', '阴阳杂货铺', t)
+        # 1. Đoạn niệm chú / bà già / tiểu quỷ
+        t = re.sub(r'三十岁.*阿伯小鬼.*|小鬼多了一[會会][兒儿]|阿伯小鬼过了会|三十岁.*小鬼.*', '衰衰衰，这小鬼扯了魂', t)
+        t = re.sub(r'谁叫我[，,\s]*老[伴板]', '谁叫我，老板', t)
+        t = re.sub(r'有我[，,\s]*有[犯飯]吗|有[犯飯]吗[，,\s]*小鬼', '小友，有饭吗', t)
+        t = re.sub(r'小悠悠[，,\s]*回去[吧]?', '小悠悠，快回去吧', t)
+
+        # 2. Đoạn thức dậy trong tiệm tối
+        t = re.sub(r'你瞎那儿试试[，,\s]*你[情况好问]+|你在哪儿试试[，,\s]*你请好|你瞎那儿试试', '有人在吗，请问有人在吗', t)
+        t = re.sub(r'你请[好好问]', '请问有人在吗', t)
+
+        # 3. Đoạn giấy trắng mực đen
+        t = re.sub(r'这[白纸]*黑字上面写得清清楚楚', '白纸黑字写得清清楚楚', t)
+        t = re.sub(r'你[ \s]*缘衣[，,\s]*是我阴阳[砸杂][火货][火库铺]+的[火伙][箭计]', '你袁役，是我阴阳杂货铺的伙计', t)
         t = re.sub(r'缘衣|原因', '袁役', t)
+        t = re.sub(r'阴阳[砸杂][火货][火库户]+', '阴阳杂货铺', t)
+
+        # 4. Đoạn xưng tên Chung Nhan và ông chủ
+        t = re.sub(r'我中正难暗[，,\s]*你叫我中[严颜][，,\s]*我[认是]*[你的]*老板', '我叫钟颜，你叫我钟颜，我是你的老板', t)
         t = re.sub(r'中严|钟严|中正南岸|中正难暗|中研|中阎', '钟颜', t)
+        t = re.sub(r'我[认任]为老板|我是老板|我中的老板', '我是你的老板', t)
+
+        # 5. Đoạn nét chữ và tin tưởng
+        t = re.sub(r'这上面的字迹[，,\s]*确实是我的[部部件][下件][，,\s]*但我怎么能[挺停][得在上]+你', '这上面的字迹，确实是我的字迹，但我怎么能信得了你', t)
+        t = re.sub(r'确实是我的[部部件][下件]', '确实是我的字迹', t)
         t = re.sub(r'字机', '字迹', t)
+        t = re.sub(r'挺得上你|停在上面', '信得了你', t)
+        t = re.sub(r'阴阳[砸杂][火货][火库铺]+[，,\s]*[你我]*怎么能[挺停][得在上]+你', '阴阳杂货铺，我怎么能信得了你', t)
+
+        # 6. Đoạn tên quán Âm Dương xui xẻo
+        t = re.sub(r'中[研严颜][，,\s]*这[瀑部铺]子[能你们叫]*阴阳[，,\s]*是不是太[会灰]气了', '钟颜，这铺子你们叫阴阳，是不是太晦气了', t)
+        t = re.sub(r'这[部瀑]子[能你们叫]*', '这铺子', t)
         t = re.sub(r'太[会灰]气[了]?', '太晦气了', t)
         t = re.sub(r'有[犯飯]吗|有[犯飯]嗎', '有饭吗', t)
-        t = re.sub(r'小鬼多了一[會会][兒儿]|阿伯小鬼过了会', '衰衰衰，这小鬼扯了魂', t)
-        t = re.sub(r'你在哪儿试试|你俩哪儿试试|你瞎那儿试试', '有人在吗', t)
-        t = re.sub(r'你请[好好问]', '请问有人在吗', t)
-        t = re.sub(r'这黑字上面', '白纸黑字上面', t)
-        t = re.sub(r'我[认任]为老板|我是老板|我中的老板', '我是你的老板', t)
-        t = re.sub(r'确实是我的[部部件][下件]', '确实是我的字迹', t)
-        t = re.sub(r'挺得上你|停在上面', '信得了你', t)
-        t = re.sub(r'这[部瀑]子[你们叫]*', '这铺子', t)
         # Sửa "火箭" (huǒjiàn) thành "伙计" (huǒji - nghĩa là nhân viên/tiểu nhị) khi đi cùng tiệm/ông chủ
         if any(k in t for k in ['杂货', '铺', '老板', '库']):
             t = re.sub(r'火箭', '伙计', t)
@@ -105,25 +123,34 @@ def refine_vietnamese_dialogue(text: str) -> str:
     t = text.strip()
 
     replacements = [
-        # --- Phim Tiệm Tạp Hóa Âm Dương & Phim Thần Thoại / Huyền Huyễn ---
+        # --- Phim Tiệm Tạp Hóa Âm Dương & Phim Thần Thoại / Huyền Huyễn (Key Scene Sentences) ---
+        (r".*(?:mất hồn|sa sút|người mất hồn|trẻ này mất hồn).*", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn!"),
+        (r"Ai gọi tôi (?:thế|đấy|vậy)[, \s]*(?:ông chủ|sếp|vợ)\??", "Ai gọi tôi đấy? Ông chủ à?"),
+        (r".*Có cơm ăn không\?.*Tiểu Du Du.*|.*Có đồ ăn không, nhóc.*", "Cậu bé, có cơm ăn không? Tiểu Du Du, mau về ăn thôi!"),
+        (r".*(?:Tình hình của bạn là gì|Có ai ở đây không\? Có ai ở đó không).*", "Có ai ở đây không? Xin hỏi có ai không?"),
+        (r".*(?:viết rõ ràng|giấy trắng|đen trắng|mực đen).*?(?:Viên Dịch|Yuanyi|Yuan Yi|ngươi|bạn).*?(?:nhân viên|tiệm|tạp hóa|âm dương|tên lửa).*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
+        (r".*Chung Nhan.*(?:ông chủ|sếp).*", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu."),
+        (r".*(?:nét chữ|chữ viết|chữ viết tay).*?(?:tin|dừng lại).*", "Nét chữ trên này quả thực là của tôi, nhưng làm sao tôi tin cậu được cơ chứ?"),
+        (r".*(?:Tiệm Tạp Hóa Âm Dương|âm dương va vào lửa).*?(?:tin|dừng lại).*", "Tiệm Tạp Hóa Âm Dương sao? Làm sao tôi tin cậu được cơ chứ?"),
+        (r".*Chung Nhan.*Âm Dương.*(?:xui xẻo|quá xui).*", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
         (r"Mẹ kiếp, thằng nhóc này mất hồn rồi.*", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy? Ông chủ à?"),
-        (r"\bChết tiệt, đứa trẻ này mất linh hồn rồi! Ai gọi tôi vậy, sếp\?\b", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy? Ông chủ à?"),
+        (r"\bChết tiệt, đứa trẻ này mất linh hồn rồi! Ai gọi tôi vậy, sếp\?", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy? Ông chủ à?"),
         (r"\bChết tiệt, đứa trẻ này mất linh hồn rồi\b", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn"),
         (r"\bĐứa trẻ này mất linh hồn rồi\b", "Sợ bị tiểu quỷ bắt mất hồn"),
-        (r"\bTiểu quỷ đã ở đây được một lúc rồi, Ai gọi tôi đấy, ông chủ\?\b", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy?"),
+        (r"\bTiểu quỷ đã ở đây được một lúc rồi, Ai gọi tôi đấy, ông chủ\?", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy?"),
         (r"\bTiểu quỷ đã ở đây được một lúc rồi\b", "Sợ bị tiểu quỷ bắt mất hồn"),
-        (r"\bCó thức ăn không\?\b", "Có cơm ăn không?"),
-        (r"\bCó đồ ăn không, nhóc\?\b", "Có cơm ăn không?"),
+        (r"\bCó thức ăn không\?", "Có cơm ăn không?"),
+        (r"\bCó đồ ăn không, nhóc\?", "Có cơm ăn không?"),
         (r"\bTiểu Hữu Hữu\b", "Tiểu Du Du"),
         (r"\bTiểu Du Du, quay lại đi!\b", "Tiểu Du Du, mau về ăn thôi!"),
         (r"\bTiểu Du Du, Về thôi nào đi\b", "Tiểu Du Du, mau về ăn thôi!"),
         (r"^Về thôi nào[!\.]?$", "Tiểu Du Du, mau về ăn thôi!"),
-        (r"\bCó ai ở đây không\? Có ai ở đây không\?\b", "Có ai ở đây không? Xin hỏi có ai không?"),
-        (r"\bCó ai ở đây không\? Có ai ở đó không\?\b", "Có ai ở đây không? Xin hỏi có ai không?"),
+        (r"\bCó ai ở đây không\? Có ai ở đây không\?", "Có ai ở đây không? Xin hỏi có ai không?"),
+        (r"\bCó ai ở đây không\? Có ai ở đó không\?", "Có ai ở đây không? Xin hỏi có ai không?"),
         (r"\bBạn có thể thử ở đâu cho mình xin\b", "Có ai ở đây không? Xin hỏi có ai không?"),
         (r"\bBạn cố gắng mù quáng đó, hoàn cảnh của bạn\b", "Có ai ở đây không? Xin hỏi có ai không?"),
         (r"\bBạn là ai\? Đó là nơi nào\? Tôi đi đây!\b", "Cậu là ai? Đây là nơi quái nào thế? Trời đất ơi!"),
-        (r"\bCậu là ai\? Đây là nơi quái nào thế\?\b", "Cậu là ai? Đây là nơi quái nào thế?"),
+        (r"\bCậu là ai\? Đây là nơi quái nào thế\?", "Cậu là ai? Đây là nơi quái nào thế?"),
         (r"\bCó giấy trắng\b", ""),
         (r"Được viết rõ ràng bằng màu đen trắng trên tờ giấy trắng,?\s*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. "),
         (r"\bMảnh giấy trắng này viết đen trắng rõ ràng, Viên Dịch ngươi là tên lửa âm dương của ta đập tan lửa\b", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi"),
@@ -134,16 +161,16 @@ def refine_vietnamese_dialogue(text: str) -> str:
         (r"\bTôi là Chung Nhan, bạn gọi tôi là Chung Nhan, tôi nghĩ ông chủ\b", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu."),
         (r"\btôi nghĩ ông chủ\b", "tôi là ông chủ của cậu"),
         (r"Chữ viết trên đây quả thực là chữ viết tay của tôi", "Nét chữ trên này quả thực là của tôi"),
-        (r"\blàm sao tôi có thể tin tưởng bạn\?*\b", "làm sao tôi có thể tin cậu được cơ chứ?"),
+        (r"\blàm sao tôi có thể tin tưởng bạn\?", "làm sao tôi có thể tin cậu được cơ chứ?"),
         (r"\bnhưng làm sao tôi có thể tin cậu được cơ chứ\?", "nhưng làm sao tôi tin cậu được cơ chứ?"),
-        (r"\bÂm dương va vào lửa, làm sao có thể dừng lại\?*\b", "Tiệm Tạp Hóa Âm Dương, làm sao mà tin được cơ chứ?"),
-        (r"\bÂm dương va vào lửa, bạn có thể đứng lên chống lại nó như thế nào\?*\b", "Tiệm Tạp Hóa Âm Dương, làm sao mà tin được cơ chứ?"),
+        (r"\bÂm dương va vào lửa, làm sao có thể dừng lại\?", "Tiệm Tạp Hóa Âm Dương, làm sao mà tin được cơ chứ?"),
+        (r"\bÂm dương va vào lửa, bạn có thể đứng lên chống lại nó như thế nào\?", "Tiệm Tạp Hóa Âm Dương, làm sao mà tin được cơ chứ?"),
         (r"\bÂm dương va vào lửa\b", "Tiệm Tạp Hóa Âm Dương"),
         (r"\bthác nước này có thể gọi là Âm Dương\b", "tiệm này đặt tên là Âm Dương"),
         (r"\bbạn gọi phim này là Âm Dương\b", "tiệm này các người đặt tên là Âm Dương"),
         (r"Chung Nhan[, \s]*quán này âm dương[, \s]*chẳng phải xui xẻo quá sao\?", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
-        (r"\bChung Nhan, bạn gọi phim này là Âm Dương. Bộ không thấy quá xui xẻo hay sao\?\b", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
-        (r"\bChung Nhan, thác nước này có thể gọi là Âm Dương, bộ không thấy quá xui xẻo hay sao\?\b", "Chung Nhan, tiệm này đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
+        (r"\bChung Nhan, bạn gọi phim này là Âm Dương\. Bộ không thấy quá xui xẻo hay sao\?", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
+        (r"\bChung Nhan, thác nước này có thể gọi là Âm Dương, bộ không thấy quá xui xẻo hay sao\?", "Chung Nhan, tiệm này đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
         (r"\bNguyên Nghị của bạn là tên lửa của Tiệm tạp hóa Âm Dương của tôi\b", "Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi"),
         (r"\bBạn, Yuan Yi, là nhân viên bán hàng của tôi tại Tiệm tạp hóa Âm Dương\b", "Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi"),
         (r"\bBạn, Yuan Yi, là nhân viên bán hàng của tôi tại Cửa hàng tạp hóa Yin Yang\b", "Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi"),

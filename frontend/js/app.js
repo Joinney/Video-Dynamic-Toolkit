@@ -805,9 +805,10 @@
                 <div class="ep-body">
                   <div class="ep-name">${v.name}</div>
                   <div class="ep-meta">Dung lượng: ${v.sizeMb} MB</div>
-                  <div class="ep-actions">
+                  <div class="ep-actions" style="display: flex; gap: 4px; flex-wrap: wrap;">
                     <button class="ep-btn ep-btn-play" onclick="playVideo('${v.relPath.replace(/'/g, "\\\'")}')">▶ Xem Full</button>
                     <button class="ep-btn ep-btn-copy" onclick="copyLink('${v.relPath.replace(/'/g, "\\\'")}')">📋 Copy</button>
+                    <button class="ep-btn" style="background: linear-gradient(135deg, #a855f7, #6366f1); color: #fff; border: none; font-weight: 700; padding: 4px 8px;" onclick="openDubModal('${v.relPath.replace(/'/g, "\\\'")}', '${v.name}')" title="Dùng AI nhận diện giọng nói, dịch sang tiếng Việt và lồng tiếng lại video này">🎙️ Lồng Tiếng AI</button>
                   </div>
                 </div>
               </div>
@@ -1011,3 +1012,100 @@
 
     loadStatus();
     setInterval(loadStatus, 4000);
+
+    let currentDubbingTarget = null;
+    let activeDubJobTimer = null;
+
+    function openDubModal(relPath, name) {
+      currentDubbingTarget = { relPath, name };
+      document.getElementById('dub-video-target').innerText = name || relPath;
+      const pBox = document.getElementById('dub-progress-box');
+      pBox.style.display = 'none';
+      const pMsg = document.getElementById('dub-progress-msg');
+      pMsg.style.color = '#38bdf8';
+      document.getElementById('btn-start-dub-action').disabled = false;
+      document.getElementById('dub-modal').style.display = 'flex';
+    }
+
+    function closeDubModal() {
+      if (activeDubJobTimer) {
+        clearInterval(activeDubJobTimer);
+        activeDubJobTimer = null;
+      }
+      document.getElementById('dub-modal').style.display = 'none';
+    }
+
+    async function submitDubbing() {
+      if (!currentDubbingTarget) return;
+      const voice = document.getElementById('dub-voice-select').value;
+      const speed = document.getElementById('dub-speed-select').value;
+      const origVol = parseFloat(document.getElementById('dub-orig-vol').value) || 0.15;
+      const whisperModel = document.getElementById('dub-whisper-model').value;
+
+      const btn = document.getElementById('btn-start-dub-action');
+      btn.disabled = true;
+
+      const pBox = document.getElementById('dub-progress-box');
+      const pMsg = document.getElementById('dub-progress-msg');
+      const pPct = document.getElementById('dub-progress-pct');
+      const pBar = document.getElementById('dub-progress-bar');
+      pBox.style.display = 'block';
+      pMsg.innerText = 'Đang khởi chạy luồng lồng tiếng AI...';
+      pMsg.style.color = '#38bdf8';
+      pPct.innerText = '5%';
+      pBar.style.width = '5%';
+
+      try {
+        const res = await fetch('/api/dub-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoPath: currentDubbingTarget.relPath,
+            voice,
+            speed,
+            origVol,
+            whisperModel
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.job) {
+          const jobId = data.job.id;
+          activeDubJobTimer = setInterval(async () => {
+            try {
+              const sRes = await fetch('/api/dub-status?id=' + encodeURIComponent(jobId));
+              const sData = await sRes.json();
+              if (sData.success && sData.job) {
+                const j = sData.job;
+                pMsg.innerText = j.message || 'Đang xử lý...';
+                pPct.innerText = j.pct + '%';
+                pBar.style.width = j.pct + '%';
+
+                if (j.done) {
+                  clearInterval(activeDubJobTimer);
+                  activeDubJobTimer = null;
+                  btn.disabled = false;
+                  if (j.error) {
+                    pMsg.innerText = '❌ Lỗi: ' + j.error;
+                    pMsg.style.color = '#f87171';
+                    showToast('❌ Lồng tiếng thất bại: ' + j.error, 'error');
+                  } else {
+                    pMsg.innerText = '🎉 ' + j.message;
+                    pMsg.style.color = '#34d399';
+                    showToast('🎉 Đã lồng tiếng hoàn tất cho video: ' + (j.outputFileName || ''), 'success');
+                    loadStatus();
+                  }
+                }
+              }
+            } catch (e) {}
+          }, 1200);
+        } else {
+          btn.disabled = false;
+          pMsg.innerText = '❌ Lỗi: ' + (data.message || 'Không thể bắt đầu');
+          showToast('❌ Lỗi: ' + data.message, 'error');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        pMsg.innerText = '❌ Lỗi: ' + err.message;
+        showToast('❌ Lỗi: ' + err.message, 'error');
+      }
+    }

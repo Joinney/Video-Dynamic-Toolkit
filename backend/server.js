@@ -17,6 +17,7 @@ const {
 const { checkAdbDevice, resolveActiveApp, pullRemoteFile } = require('./adb');
 const { getRemoteCacheList } = require('./cache');
 const { startAutoSwipe, stopAutoSwipe, getAutoSwipeStatus } = require('./auto_swipe');
+const { startDubbingJob, getDubbingJob } = require('./dubber');
 const {
   sanitizeFolderName,
   getDramaInfoFromDevice,
@@ -286,6 +287,48 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/auto-swipe/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(getAutoSwipeStatus()));
+    return;
+  }
+
+  // 9. API AI Video Dubbing
+  if (url.pathname === '/api/dub-video' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      if (!payload.videoPath) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Thiếu đường dẫn video cần lồng tiếng!' }));
+        return;
+      }
+      let fullPath = payload.videoPath;
+      if (!path.isAbsolute(fullPath)) {
+        fullPath = path.join(TARGET_DIR, fullPath);
+      }
+      if (!fs.existsSync(fullPath)) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Không tìm thấy file video trên hệ thống: ' + fullPath }));
+        return;
+      }
+
+      const job = startDubbingJob(fullPath, payload);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, job }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/dub-status' && req.method === 'GET') {
+    const jobId = url.searchParams.get('id');
+    const job = getDubbingJob(jobId);
+    if (!job) {
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: 'Không tìm thấy tiến trình lồng tiếng!' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, job }));
     return;
   }
 

@@ -6,7 +6,10 @@ import logging
 from pathlib import Path
 from typing import List, Union
 from pydub import AudioSegment
-from .transcriber import Segment
+try:
+    from .transcriber import Segment
+except ImportError:
+    from transcriber import Segment
 
 logger = logging.getLogger(__name__)
 

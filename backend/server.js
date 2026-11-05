@@ -395,6 +395,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       let fullPath = payload.videoPath;
+      if (fullPath.startsWith('/video/')) {
+        fullPath = decodeURIComponent(fullPath.replace('/video/', ''));
+      }
       if (!path.isAbsolute(fullPath)) {
         fullPath = path.join(TARGET_DIR, fullPath);
       }
@@ -570,9 +573,9 @@ const server = http.createServer(async (req, res) => {
       let resolvedVideoPath = videoPath;
       if (videoPath.startsWith('/video/')) {
         const decoded = decodeURIComponent(videoPath.replace('/video/', ''));
-        resolvedVideoPath = path.join(DOWNLOAD_DIR, decoded);
+        resolvedVideoPath = path.join(TARGET_DIR, decoded);
       } else if (!path.isAbsolute(videoPath)) {
-        resolvedVideoPath = path.join(DOWNLOAD_DIR, videoPath);
+        resolvedVideoPath = path.join(TARGET_DIR, videoPath);
       }
 
       if (!fs.existsSync(resolvedVideoPath)) {

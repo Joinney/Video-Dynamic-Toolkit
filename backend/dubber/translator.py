@@ -11,7 +11,10 @@ import time
 import urllib.parse
 import urllib.request
 from typing import List, Optional
-from .transcriber import Segment
+try:
+    from .transcriber import Segment
+except ImportError:
+    from transcriber import Segment
 
 logger = logging.getLogger(__name__)
 

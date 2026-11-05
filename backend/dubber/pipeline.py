@@ -7,12 +7,20 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from config import DubbingConfig
-from .extractor import extract_audio
-from .transcriber import Transcriber, Segment
-from .translator import Translator
-from .tts import TTSService
-from .synchronizer import AudioSynchronizer
-from .merger import VideoMerger
+try:
+    from .extractor import extract_audio
+    from .transcriber import Transcriber, Segment
+    from .translator import Translator
+    from .tts import TTSService
+    from .synchronizer import AudioSynchronizer
+    from .merger import VideoMerger
+except ImportError:
+    from extractor import extract_audio
+    from transcriber import Transcriber, Segment
+    from translator import Translator
+    from tts import TTSService
+    from synchronizer import AudioSynchronizer
+    from merger import VideoMerger
 
 logger = logging.getLogger(__name__)
 

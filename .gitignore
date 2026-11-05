@@ -10,6 +10,10 @@ scratch/
 *.png
 *.jpg
 *.log
+__pycache__/
+*.pyc
+temp/
+output/
 
 # OS generated
 .DS_Store

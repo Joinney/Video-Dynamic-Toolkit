@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 AI Video Dubbing Engine for Soda Reels & MinuteDrama
-Tự động tách âm -> Nhận diện giọng nói (Whisper) -> Dịch sang Tiếng Việt -> Lồng tiếng AI (Edge-TTS) -> Ghép Video
+Tích hợp toàn diện từ StudioVDT (Nhánh feature/video-dubbing)
+Bao gồm:
+- Faster-Whisper ASR Singleton
+- Dịch thuật kịch bản phim (Trung -> Việt, Anh -> Việt)
+- Sinh giọng AI (Edge-TTS, VieNeu-TTS, Adam Tốp Tốp, Hoài My, Nam Minh)
+- Đồng bộ khẩu hình (Smooth atempo time-stretching)
+- Hòa âm nền (Studio Audio Ducking)
+- Chèn phụ đề cứng (.srt Burn-in)
 """
 
 import sys
@@ -12,8 +19,11 @@ import asyncio
 import subprocess
 from pathlib import Path
 import tempfile
-import edge_tts
-from deep_translator import GoogleTranslator
+
+# Add project root to sys.path to access config and video_dubber
+root_dir = Path(__file__).resolve().parent.parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 def emit_progress(status, pct, message, extra=None):
     payload = {
@@ -25,11 +35,7 @@ def emit_progress(status, pct, message, extra=None):
         payload.update(extra)
     print(f"__PROGRESS__{json.dumps(payload, ensure_ascii=False)}__PROGRESS__", flush=True)
 
-async def generate_speech_edge(text, voice, output_path, speed="+0%"):
-    communicate = edge_tts.Communicate(text, voice, rate=speed)
-    await communicate.save(output_path)
-
-def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="base"):
+def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="base", burn_subtitles=True, source_lang="auto", target_lang="vi"):
     input_path = Path(input_video).resolve()
     if not input_path.exists():
         emit_progress("error", 0, f"File video đầu vào không tồn tại: {input_video}")
@@ -38,12 +44,55 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
     out_path = Path(output_video).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # 1. Thử chạy bằng VideoDubberPipeline từ StudioVDT
+    try:
+        from config import DubbingConfig
+        from video_dubber.pipeline import VideoDubberPipeline
+
+        emit_progress("starting", 5, "Đang khởi tạo StudioVDT VideoDubberPipeline...")
+
+        config = DubbingConfig(
+            whisper_model=whisper_model_size,
+            device="auto",
+            source_language=source_lang,
+            target_language=target_lang,
+            tts_voice=voice,
+            tts_rate=speed,
+            original_audio_volume=orig_volume,
+            burn_subtitles=burn_subtitles,
+            temp_dir=out_path.parent / ".temp_dub",
+            output_dir=out_path.parent
+        )
+
+        pipeline = VideoDubberPipeline(config)
+
+        def progress_callback(msg, progress_fraction):
+            pct = int(progress_fraction * 100)
+            emit_progress("running", pct, msg)
+
+        emit_progress("running", 15, "StudioVDT đang bóc tách âm thanh & xử lý video...")
+        result_path = pipeline.process(
+            video_path=input_path,
+            output_path=out_path,
+            progress_callback=progress_callback
+        )
+
+        emit_progress("completed", 100, "Lồng tiếng hoàn tất thành công bằng StudioVDT!", extra={
+            "outputPath": str(result_path),
+            "filename": Path(result_path).name
+        })
+        return True
+
+    except Exception as pipeline_err:
+        emit_progress("warning", 20, f"StudioVDT Pipeline: {str(pipeline_err)}. Đang chuyển sang chế độ lồng tiếng trực tiếp...")
+
+    # 2. Fallback trực tiếp bằng Faster-Whisper + Edge-TTS + Pydub + FFmpeg
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_dir = Path(tmpdir)
         extracted_audio = tmp_dir / "extracted_audio.wav"
 
-        # 1. Tách âm thanh từ video
-        emit_progress("extracting", 10, "Đang trích xuất âm thanh gốc từ video...")
+        # Tách âm thanh
+        emit_progress("extracting", 25, "Đang trích xuất âm thanh từ video...")
         cmd_extract = [
             "ffmpeg", "-y", "-i", str(input_path),
             "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
@@ -54,11 +103,10 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             emit_progress("error", 0, "Lỗi khi trích xuất âm thanh từ video bằng ffmpeg!")
             return False
 
-        # 2. Nhận diện giọng nói với Whisper
-        emit_progress("transcribing", 25, f"Đang nhận diện giọng nói bằng AI Whisper ({whisper_model_size})...")
+        # Nhận diện giọng nói
+        emit_progress("transcribing", 40, f"Đang nhận diện giọng nói bằng AI Whisper ({whisper_model_size})...")
         try:
             from faster_whisper import WhisperModel
-            # Chạy CPU hoặc GPU nếu có
             device = "cuda" if os.environ.get("USE_CUDA") == "1" else "cpu"
             compute_type = "float16" if device == "cuda" else "int8"
             model = WhisperModel(whisper_model_size, device=device, compute_type=compute_type)
@@ -68,51 +116,46 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             for seg in segments:
                 text = seg.text.strip()
                 if text:
-                    raw_segments.append({
-                        "start": seg.start,
-                        "end": seg.end,
-                        "text": text
-                    })
+                    raw_segments.append({"start": seg.start, "end": seg.end, "text": text})
         except Exception as e:
             emit_progress("error", 0, f"Lỗi khi nhận diện giọng nói: {str(e)}")
             return False
 
         if not raw_segments:
-            emit_progress("error", 0, "Không nhận diện được giọng nói trong video này (hoặc video không có lời thoại)!")
+            emit_progress("error", 0, "Không nhận diện được giọng nói trong video này!")
             return False
 
-        detected_lang = info.language if 'info' in locals() else "unknown"
-        emit_progress("transcribed", 45, f"Đã nhận diện {len(raw_segments)} câu thoại (Ngôn ngữ gốc: {detected_lang})")
-
-        # 3. Dịch thuật sang Tiếng Việt
-        emit_progress("translating", 50, f"Đang dịch {len(raw_segments)} câu sang tiếng Việt...")
-        translator = GoogleTranslator(source='auto', target='vi')
+        # Dịch thuật
+        emit_progress("translating", 55, f"Đang dịch {len(raw_segments)} câu sang tiếng Việt...")
+        from deep_translator import GoogleTranslator
+        translator = GoogleTranslator(source=source_lang, target=target_lang)
         
         translated_segments = []
         for idx, seg in enumerate(raw_segments):
             try:
                 vi_text = translator.translate(seg["text"])
-                translated_segments.append({
-                    "start": seg["start"],
-                    "end": seg["end"],
-                    "orig_text": seg["text"],
-                    "vi_text": vi_text
-                })
-            except Exception as tr_err:
-                translated_segments.append({
-                    "start": seg["start"],
-                    "end": seg["end"],
-                    "orig_text": seg["text"],
-                    "vi_text": seg["text"]
-                })
-            pct = 50 + int((idx + 1) / len(raw_segments) * 20)
-            if (idx + 1) % 5 == 0 or idx == len(raw_segments) - 1:
-                emit_progress("translating", pct, f"Đang dịch câu {idx + 1}/{len(raw_segments)}...")
+            except Exception:
+                vi_text = seg["text"]
+            translated_segments.append({
+                "start": seg["start"],
+                "end": seg["end"],
+                "orig_text": seg["text"],
+                "vi_text": vi_text
+            })
 
-        # 4. Lồng tiếng AI (TTS Edge-TTS)
-        emit_progress("generating_tts", 72, f"Đang tạo giọng đọc AI tiếng Việt ({voice})...")
+        # Tạo TTS Audio
+        emit_progress("generating_tts", 75, f"Đang tạo giọng đọc AI tiếng Việt ({voice})...")
+        import edge_tts
         tts_dir = tmp_dir / "tts_clips"
         tts_dir.mkdir(parents=True, exist_ok=True)
+
+        async def generate_speech_edge(text, voice_code, clip_path, spd="+0%"):
+            # Clean voice code if prefixed with vieneu
+            actual_voice = voice_code.replace("vieneu:", "") if "vieneu:" in voice_code else voice_code
+            if not actual_voice.endswith("Neural"):
+                actual_voice = "vi-VN-HoaiMyNeural"
+            communicate = edge_tts.Communicate(text, actual_voice, rate=spd)
+            await communicate.save(clip_path)
 
         async def build_all_tts():
             tasks = []
@@ -128,15 +171,11 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             emit_progress("error", 0, f"Lỗi tạo giọng đọc AI: {str(tts_err)}")
             return False
 
-        # 5. Ghép các đoạn thoại vào đúng mốc thời gian (Audio Timeline)
-        emit_progress("mixing", 85, "Đang khớp âm thanh lồng tiếng theo đúng mốc thời gian...")
+        # Ghép timeline
+        emit_progress("mixing", 88, "Đang ghép âm thanh lồng tiếng theo đúng mốc thời gian...")
         from pydub import AudioSegment
-
-        # Đọc độ dài audio gốc
         orig_audio_seg = AudioSegment.from_wav(str(extracted_audio))
         total_duration_ms = len(orig_audio_seg)
-
-        # Tạo track lồng tiếng tĩnh (silence)
         dub_track = AudioSegment.silent(duration=total_duration_ms)
 
         for seg in translated_segments:
@@ -152,13 +191,8 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
         dub_audio_wav = tmp_dir / "dub_voice_track.wav"
         dub_track.export(str(dub_audio_wav), format="wav")
 
-        # 6. Trộn nhạc nền gốc (ducking) + Giọng đọc AI + Video
-        emit_progress("merging", 92, "Đang hòa trộn âm thanh & xuất bản video lồng tiếng...")
-        
-        # Lệnh FFmpeg trộn âm thanh:
-        # [0:a] âm lượng gốc giảm xuống orig_volume
-        # [1:a] giọng đọc lồng tiếng giữ nguyên 1.0 (hoặc tăng nhẹ 1.2)
-        # amix trộn 2 track âm thanh lại
+        # Trộn nhạc nền & xuất video chuẩn H.264
+        emit_progress("merging", 95, "Đang hòa âm & hoàn thiện video chuẩn H.264...")
         cmd_merge = [
             "ffmpeg", "-y",
             "-i", str(input_path),
@@ -167,7 +201,9 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             f"[0:a]volume={orig_volume}[orig_bg];[1:a]volume=1.25[dub_fg];[orig_bg][dub_fg]amix=inputs=2:duration=first:dropout_transition=2[aout]",
             "-map", "0:v",
             "-map", "[aout]",
-            "-c:v", "copy",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "21",
             "-c:a", "aac",
             "-b:a", "192k",
             str(out_path)
@@ -175,57 +211,26 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
 
         ret_merge = subprocess.run(cmd_merge, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret_merge.returncode != 0:
-            # Fallback nếu copy video gặp trục trặc: Re-encode nhẹ video
-            cmd_fallback = [
-                "ffmpeg", "-y",
-                "-i", str(input_path),
-                "-i", str(dub_audio_wav),
-                "-filter_complex",
-                f"[0:a]volume={orig_volume}[orig_bg];[1:a]volume=1.25[dub_fg];[orig_bg][dub_fg]amix=inputs=2:duration=first:dropout_transition=2[aout]",
-                "-map", "0:v",
-                "-map", "[aout]",
-                "-c:v", "libx264",
-                "-preset", "veryfast",
-                "-crf", "22",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                str(out_path)
-            ]
-            ret_fallback = subprocess.run(cmd_fallback, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if ret_fallback.returncode != 0:
-                emit_progress("error", 0, "Lỗi khi ghép âm thanh và video bằng ffmpeg!")
-                return False
+            emit_progress("error", 0, "Lỗi khi ghép âm thanh và video bằng ffmpeg!")
+            return False
 
-        # Xuất file phụ đề .srt tiếng Việt chuẩn StudioVDT
-        srt_file = out_path.with_suffix(".srt")
-        try:
-            with open(srt_file, "w", encoding="utf-8") as f:
-                for i, seg in enumerate(translated_segments, 1):
-                    s_ms = int((seg["start"] % 1) * 1000)
-                    s_s = int(seg["start"])
-                    e_ms = int((seg["end"] % 1) * 1000)
-                    e_s = int(seg["end"])
-                    s_str = f"{s_s//3600:02d}:{(s_s%3600)//60:02d}:{s_s%60:02d},{s_ms:03d}"
-                    e_str = f"{e_s//3600:02d}:{(e_s%3600)//60:02d}:{e_s%60:02d},{e_ms:03d}"
-                    f.write(f"{i}\n{s_str} --> {e_str}\n{seg['vi_text']}\n\n")
-        except Exception as srt_err:
-            pass
-
-        emit_progress("completed", 100, f"Lồng tiếng hoàn tất! Đã lưu video thành công.", extra={
+        emit_progress("completed", 100, "Lồng tiếng hoàn tất! Đã lưu video thành công.", extra={
             "outputPath": str(out_path),
-            "srtPath": str(srt_file) if srt_file.exists() else None,
             "filename": out_path.name
         })
         return True
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Video Dubber for Short Dramas")
+    parser = argparse.ArgumentParser(description="AI Video Dubber Engine from StudioVDT")
     parser.add_argument("--input", required=True, help="Đường dẫn file video đầu vào (.mp4)")
     parser.add_argument("--output", required=True, help="Đường dẫn file video xuất ra (.mp4)")
-    parser.add_argument("--voice", default="vi-VN-HoaiMyNeural", help="Giọng đọc Edge-TTS (vi-VN-HoaiMyNeural hoặc vi-VN-NamMinhNeural)")
+    parser.add_argument("--voice", default="vi-VN-HoaiMyNeural", help="Giọng đọc AI (Hoài My, Nam Minh, Jenny...)")
     parser.add_argument("--speed", default="+0%", help="Tốc độ đọc (+0%, +10%, +20%)")
     parser.add_argument("--orig-vol", type=float, default=0.15, help="Âm lượng video gốc (0.1 đến 0.3)")
-    parser.add_argument("--whisper-model", default="base", help="Model Whisper (tiny, base, small)")
+    parser.add_argument("--whisper-model", default="base", help="Model Whisper (tiny, base, small, medium)")
+    parser.add_argument("--burn-subtitles", action="store_true", default=True, help="Chèn phụ đề cứng vào video")
+    parser.add_argument("--source-lang", default="auto", help="Ngôn ngữ gốc (auto, zh, en)")
+    parser.add_argument("--target-lang", default="vi", help="Ngôn ngữ dịch (vi)")
 
     args = parser.parse_args()
     success = run_dubbing(
@@ -234,7 +239,10 @@ def main():
         voice=args.voice,
         speed=args.speed,
         orig_volume=args.orig_vol,
-        whisper_model_size=args.whisper_model
+        whisper_model_size=args.whisper_model,
+        burn_subtitles=args.burn_subtitles,
+        source_lang=args.source_lang,
+        target_lang=args.target_lang
     )
     sys.exit(0 if success else 1)
 

@@ -34,6 +34,10 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const scriptPath = path.join(__dirname, 'dubber', 'dubber.py');
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
 
+  const burnSub = options.burnSubtitles !== undefined ? options.burnSubtitles : true;
+  const sourceLang = options.sourceLang || 'auto';
+  const targetLang = options.targetLang || 'vi';
+
   const args = [
     scriptPath,
     '--input', inputVideoPath,
@@ -41,8 +45,13 @@ function startDubbingJob(inputVideoPath, options = {}) {
     '--voice', voice,
     '--speed', speed,
     '--orig-vol', String(origVol),
-    '--whisper-model', whisperModel
+    '--whisper-model', whisperModel,
+    '--source-lang', sourceLang,
+    '--target-lang', targetLang
   ];
+  if (burnSub) {
+    args.push('--burn-subtitles');
+  }
 
   try {
     const proc = spawn(pythonCmd, args);

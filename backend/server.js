@@ -409,19 +409,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 9.3 Launch StudioVDT Streamlit Interface
-  if (url.pathname === '/api/studiovdt/launch-streamlit' && req.method === 'POST') {
-    try {
-      spawn('cmd.exe', ['/c', 'start', 'streamlit', 'run', 'studiovdt_app.py', '--server.port', '8501'], { detached: true });
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, url: 'http://localhost:8501' }));
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: false, message: e.message }));
-    }
-    return;
-  }
-
   // 8. API Restart App
   if (url.pathname === '/api/restart-app' && req.method === 'POST') {
     const device = checkAdbDevice();

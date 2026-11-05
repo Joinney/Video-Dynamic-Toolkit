@@ -122,6 +122,7 @@ function App() {
   const [dubSpeed, setDubSpeed] = useState('+0%');
   const [dubModel, setDubModel] = useState('base');
   const [dubBgmVol, setDubBgmVol] = useState(0.15);
+  const [dubSourceLang, setDubSourceLang] = useState('auto');
   const [dubBurnSub, setDubBurnSub] = useState(true);
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
@@ -450,7 +451,8 @@ function App() {
           rate: dubSpeed,
           whisperModel: dubModel,
           bgmVolume: parseFloat(dubBgmVol),
-          burnSubtitles: dubBurnSub
+          burnSubtitles: dubBurnSub,
+          sourceLang: dubSourceLang
         })
       });
       const data = await res.json();
@@ -888,17 +890,47 @@ function App() {
     className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "2. Giọng Đọc Lồng Tiếng:"), /*#__PURE__*/React.createElement("select", {
+  }, "2. Giọng Đọc Tuyển Chọn (StudioVDT):"), /*#__PURE__*/React.createElement("select", {
     value: dubVoice,
     onChange: e => setDubVoice(e.target.value),
     className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
   }, /*#__PURE__*/React.createElement("option", {
     value: "vi-VN-HoaiMyNeural"
-  }, "👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý)"), /*#__PURE__*/React.createElement("option", {
+  }, "👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý, tình cảm)"), /*#__PURE__*/React.createElement("option", {
     value: "vi-VN-NamMinhNeural"
-  }, "👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh - Phim hành động)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, "👨 Nam Minh (Nam trầm ấm, phát thanh - Phim hành động, kịch tính)"), /*#__PURE__*/React.createElement("option", {
+    value: "vieneu:Adam Tốp Tốp"
+  }, "🔥 Adam Tốp Tốp (Nam Miền Nam • Tấu hề, Review phim ngắn)"), /*#__PURE__*/React.createElement("option", {
+    value: "vieneu:Adam bựa"
+  }, "🔥 Adam bựa (Review phim dí dỏm, hài hước Tốp Tốp)"), /*#__PURE__*/React.createElement("option", {
+    value: "vieneu:Hải Đăng"
+  }, "🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh, tin tức)"), /*#__PURE__*/React.createElement("option", {
+    value: "vieneu:Trúc Ly"
+  }, "🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)"), /*#__PURE__*/React.createElement("option", {
+    value: "en-US-JennyNeural"
+  }, "🇺🇸 Jenny (Nữ Mỹ tự nhiên, quốc tế)"), /*#__PURE__*/React.createElement("option", {
+    value: "zh-CN-XiaoxiaoNeural"
+  }, "🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "3. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
+  }, "3. Ngôn Ngữ Gốc Của Video:"), /*#__PURE__*/React.createElement("select", {
+    value: dubSourceLang,
+    onChange: e => setDubSourceLang(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "auto"
+  }, "🌐 Tự Động Nhận Diện (Auto Detect)"), /*#__PURE__*/React.createElement("option", {
+    value: "zh"
+  }, "🇨🇳 Tiếng Trung (Phim ngắn Trung Quốc)"), /*#__PURE__*/React.createElement("option", {
+    value: "en"
+  }, "🇺🇸 Tiếng Anh (English)"), /*#__PURE__*/React.createElement("option", {
+    value: "ja"
+  }, "🇯🇵 Tiếng Nhật (Japanese)"), /*#__PURE__*/React.createElement("option", {
+    value: "ko"
+  }, "🇰🇷 Tiếng Hàn (Korean)")))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "4. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
     value: dubSpeed,
     onChange: e => setDubSpeed(e.target.value),
     className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
@@ -910,11 +942,9 @@ function App() {
     value: "+10%"
   }, "1.1x (Nhanh nhẹn)"), /*#__PURE__*/React.createElement("option", {
     value: "+20%"
-  }, "1.2x (Kịch tính)")))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, "1.2x (Kịch tính)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "4. Model Whisper Nhận Dạng:"), /*#__PURE__*/React.createElement("select", {
+  }, "5. Model Whisper Nhận Dạng:"), /*#__PURE__*/React.createElement("select", {
     value: dubModel,
     onChange: e => setDubModel(e.target.value),
     className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
@@ -926,9 +956,11 @@ function App() {
     value: "small"
   }, "small (Chính xác cao hơn)"), /*#__PURE__*/React.createElement("option", {
     value: "medium"
-  }, "medium (Rất chính xác)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, "medium (Rất chính xác)")))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-4 items-center"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "5. Âm Lượng Nhạc Nền Gốc (Ducking):"), /*#__PURE__*/React.createElement("select", {
+  }, "6. Âm Lượng Nhạc Nền Gốc (Ducking):"), /*#__PURE__*/React.createElement("select", {
     value: dubBgmVol,
     onChange: e => setDubBgmVol(parseFloat(e.target.value)),
     className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
@@ -940,7 +972,18 @@ function App() {
     value: "0.25"
   }, "25% (Nhạc nền vừa phải)"), /*#__PURE__*/React.createElement("option", {
     value: "0.35"
-  }, "35% (Nhạc nền lớn)")))), /*#__PURE__*/React.createElement("button", {
+  }, "35% (Nhạc nền lớn)"))), /*#__PURE__*/React.createElement("div", {
+    className: "pt-2 sm:pt-4"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-600 transition-colors"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: dubBurnSub,
+    onChange: e => setDubBurnSub(e.target.checked),
+    className: "w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-800 border-slate-700"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs font-bold text-slate-200"
+  }, "🔤 Chèn Phụ Đề Cứng (.srt Burn-in)")))), /*#__PURE__*/React.createElement("button", {
     onClick: handleStartDubbing,
     disabled: !!dubJobId || !dubbingTarget,
     className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider"
@@ -1363,30 +1406,7 @@ function App() {
     className: "text-xs text-slate-300 leading-relaxed"
   }, "Để chạy toàn bộ hệ thống (bao gồm Node.js, Python Faster-Whisper, FFmpeg, Edge-TTS) trong một môi trường cô lập không cần cài đặt phần mềm phụ trợ, bạn chỉ cần chạy:"), /*#__PURE__*/React.createElement("div", {
     className: "p-3 rounded-xl bg-slate-900 text-xs font-mono text-brand-300 border border-slate-800"
-  }, "Double click vào file ", /*#__PURE__*/React.createElement("strong", null, "CHAY_DOCKER.bat"), " hoặc chạy lệnh ", /*#__PURE__*/React.createElement("code", null, "docker compose up -d"))), /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-3"
-  }, /*#__PURE__*/React.createElement("h2", {
-    className: "text-lg font-bold text-indigo-400 flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🚀 Giao Diện Gốc StudioVDT Streamlit")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-300 leading-relaxed"
-  }, "Toàn bộ mã nguồn và tài nguyên gốc của dự án ", /*#__PURE__*/React.createElement("strong", null, "StudioVDT"), " (bao gồm ", /*#__PURE__*/React.createElement("code", null, "video_dubber/"), ", ", /*#__PURE__*/React.createElement("code", null, "assets/"), ", ", /*#__PURE__*/React.createElement("code", null, "studiovdt_app.py"), ") đã được mang qua và tích hợp đầy đủ. Bạn có thể mở giao diện Streamlit gốc nếu muốn:"), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3 flex-wrap"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: async () => {
-      showToast('Đang gửi lệnh khởi động Streamlit StudioVDT...', 'info');
-      try {
-        await fetch('/api/studiovdt/launch-streamlit', {
-          method: 'POST'
-        });
-        showToast('Đã khởi chạy! Hãy mở http://localhost:8501', 'success');
-      } catch (e) {
-        showToast('Lỗi khởi chạy Streamlit', 'error');
-      }
-    },
-    className: "px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "⚡ Mở Giao Diện Streamlit (Cổng 8501)")), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-400"
-  }, "Hoặc chạy file ", /*#__PURE__*/React.createElement("code", null, "CHAY_STUDIOVDT_STREAMLIT.bat"), " trong thư mục dự án."))))), videoModal && /*#__PURE__*/React.createElement("div", {
+  }, "Double click vào file ", /*#__PURE__*/React.createElement("strong", null, "CHAY_DOCKER.bat"), " hoặc chạy lệnh ", /*#__PURE__*/React.createElement("code", null, "docker compose up -d"))))), videoModal && /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
   }, /*#__PURE__*/React.createElement("div", {
     className: "relative w-full max-w-4xl bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl"

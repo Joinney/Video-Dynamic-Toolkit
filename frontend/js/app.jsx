@@ -68,6 +68,7 @@ function App() {
   const [dubSpeed, setDubSpeed] = useState('+0%');
   const [dubModel, setDubModel] = useState('base');
   const [dubBgmVol, setDubBgmVol] = useState(0.15);
+  const [dubSourceLang, setDubSourceLang] = useState('auto');
   const [dubBurnSub, setDubBurnSub] = useState(true);
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
@@ -363,7 +364,8 @@ function App() {
           rate: dubSpeed,
           whisperModel: dubModel,
           bgmVolume: parseFloat(dubBgmVol),
-          burnSubtitles: dubBurnSub
+          burnSubtitles: dubBurnSub,
+          sourceLang: dubSourceLang
         })
       });
       const data = await res.json();
@@ -994,25 +996,51 @@ function App() {
                   )}
                 </div>
 
-                {/* 2. Voice & Tone */}
+                {/* 2. Voice & Language */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      2. Giọng Đọc Lồng Tiếng:
+                      2. Giọng Đọc Tuyển Chọn (StudioVDT):
                     </label>
                     <select
                       value={dubVoice}
                       onChange={(e) => setDubVoice(e.target.value)}
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
                     >
-                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý)</option>
-                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh - Phim hành động)</option>
+                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý, tình cảm)</option>
+                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam trầm ấm, phát thanh - Phim hành động, kịch tính)</option>
+                      <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (Nam Miền Nam • Tấu hề, Review phim ngắn)</option>
+                      <option value="vieneu:Adam bựa">🔥 Adam bựa (Review phim dí dỏm, hài hước Tốp Tốp)</option>
+                      <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh, tin tức)</option>
+                      <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
+                      <option value="en-US-JennyNeural">🇺🇸 Jenny (Nữ Mỹ tự nhiên, quốc tế)</option>
+                      <option value="zh-CN-XiaoxiaoNeural">🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      3. Tốc Độ Nói (Rate):
+                      3. Ngôn Ngữ Gốc Của Video:
+                    </label>
+                    <select
+                      value={dubSourceLang}
+                      onChange={(e) => setDubSourceLang(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+                    >
+                      <option value="auto">🌐 Tự Động Nhận Diện (Auto Detect)</option>
+                      <option value="zh">🇨🇳 Tiếng Trung (Phim ngắn Trung Quốc)</option>
+                      <option value="en">🇺🇸 Tiếng Anh (English)</option>
+                      <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
+                      <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. Speed & Model */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                      4. Tốc Độ Nói (Rate):
                     </label>
                     <select
                       value={dubSpeed}
@@ -1025,13 +1053,10 @@ function App() {
                       <option value="+20%">1.2x (Kịch tính)</option>
                     </select>
                   </div>
-                </div>
 
-                {/* 3. AI Whisper Model & BGM Volume */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      4. Model Whisper Nhận Dạng:
+                      5. Model Whisper Nhận Dạng:
                     </label>
                     <select
                       value={dubModel}
@@ -1044,10 +1069,13 @@ function App() {
                       <option value="medium">medium (Rất chính xác)</option>
                     </select>
                   </div>
+                </div>
 
+                {/* 4. Audio Ducking & Subtitles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                   <div>
                     <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      5. Âm Lượng Nhạc Nền Gốc (Ducking):
+                      6. Âm Lượng Nhạc Nền Gốc (Ducking):
                     </label>
                     <select
                       value={dubBgmVol}
@@ -1059,6 +1087,20 @@ function App() {
                       <option value="0.25">25% (Nhạc nền vừa phải)</option>
                       <option value="0.35">35% (Nhạc nền lớn)</option>
                     </select>
+                  </div>
+
+                  <div className="pt-2 sm:pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={dubBurnSub}
+                        onChange={(e) => setDubBurnSub(e.target.checked)}
+                        className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-800 border-slate-700"
+                      />
+                      <span className="text-xs font-bold text-slate-200">
+                        🔤 Chèn Phụ Đề Cứng (.srt Burn-in)
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -1765,35 +1807,6 @@ function App() {
               </p>
               <div className="p-3 rounded-xl bg-slate-900 text-xs font-mono text-brand-300 border border-slate-800">
                 Double click vào file <strong>CHAY_DOCKER.bat</strong> hoặc chạy lệnh <code>docker compose up -d</code>
-              </div>
-            </div>
-
-            {/* Launch Original StudioVDT Streamlit UI */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2">
-                <span>🚀 Giao Diện Gốc StudioVDT Streamlit</span>
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Toàn bộ mã nguồn và tài nguyên gốc của dự án <strong>StudioVDT</strong> (bao gồm <code>video_dubber/</code>, <code>assets/</code>, <code>studiovdt_app.py</code>) đã được mang qua và tích hợp đầy đủ. Bạn có thể mở giao diện Streamlit gốc nếu muốn:
-              </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={async () => {
-                    showToast('Đang gửi lệnh khởi động Streamlit StudioVDT...', 'info');
-                    try {
-                      await fetch('/api/studiovdt/launch-streamlit', { method: 'POST' });
-                      showToast('Đã khởi chạy! Hãy mở http://localhost:8501', 'success');
-                    } catch (e) {
-                      showToast('Lỗi khởi chạy Streamlit', 'error');
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md flex items-center gap-2"
-                >
-                  <span>⚡ Mở Giao Diện Streamlit (Cổng 8501)</span>
-                </button>
-                <div className="text-xs text-slate-400">
-                  Hoặc chạy file <code>CHAY_STUDIOVDT_STREAMLIT.bat</code> trong thư mục dự án.
-                </div>
               </div>
             </div>
 

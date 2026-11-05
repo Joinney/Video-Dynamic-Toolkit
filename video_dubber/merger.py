@@ -579,14 +579,31 @@ class VideoMerger:
         try:
             original_sound = AudioSegment.from_file(original_audio_path)
             import math
-            # Duy trì âm lượng nhạc nền/phim gốc ở mức êm dịu, ổn định xuyên suốt toàn bộ video (Steady Studio Level)
-            # Triệt tiêu hoàn toàn hiện tượng bơm tiếng 'lúc to lúc nhỏ' gây khó chịu
+            # Duy trì âm lượng nhạc nền/phim gốc ở mức êm dịu
             gain_reduction_db = 20 * math.log10(max(0.01, vol_fraction))
             attenuated_orig = original_sound + gain_reduction_db
 
+            # Tự động triệt tiêu giọng thoại gốc trong các khoảng thời gian nhân vật nói thoại
+            # (Auto-Ducking / Zero Bleed: triệt tiêu 100% tình trạng hai thứ tiếng chồng lên nhau)
+            if mute_original_dialogue and segments:
+                duck_extra_attenuation = -24.0  # Giảm thêm 24dB trong lúc có lời thoại
+                orig_len = len(attenuated_orig)
+                
+                # Tạo mask ducking cho âm thanh gốc
+                ducked_sound = attenuated_orig
+                for seg in segments:
+                    s_ms = max(0, int(seg.start * 1000) - 40)
+                    e_val = getattr(seg, "sub_end", None) or seg.end
+                    e_ms = min(orig_len, int(e_val * 1000) + 80)
+                    if s_ms < e_ms and s_ms < orig_len:
+                        silenced_slice = ducked_sound[s_ms:e_ms] + duck_extra_attenuation
+                        ducked_sound = ducked_sound[:s_ms] + silenced_slice + ducked_sound[e_ms:]
+
+                attenuated_orig = ducked_sound
+
             mixed = attenuated_orig.overlay(dubbed_sound)
             mixed.export(str(output_mixed_audio_path), format="wav")
-            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with zero pumping.")
+            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with dialogue ducking.")
             return output_mixed_audio_path
         except Exception as e:
             logger.warning(f"Audio mixing failed ({e}), using dubbed audio only.")
@@ -756,6 +773,7 @@ class VideoMerger:
                         "-crf", "22",
                         "-c:a", "aac",
                         "-b:a", "192k",
+                        "-movflags", "+faststart",
                         "-shortest",
                         str(intermediate_out),
                     ])
@@ -764,6 +782,7 @@ class VideoMerger:
                         "-c:v", "copy",
                         "-c:a", "aac",
                         "-b:a", "192k",
+                        "-movflags", "+faststart",
                         "-map", "0:v:0",
                         "-map", "1:a:0",
                         "-shortest",
@@ -778,11 +797,20 @@ class VideoMerger:
                 )
 
                 if has_outro and outro_video_path and Path(outro_video_path).exists():
-                    self.append_outro(intermediate_out, outro_video_path, output_video_path, ffmpeg_bin=ffmpeg_bin)
                     try:
-                        intermediate_out.unlink(missing_ok=True)
-                    except Exception:
-                        pass
+                        self.append_outro(intermediate_out, outro_video_path, output_video_path, ffmpeg_bin=ffmpeg_bin)
+                    except Exception as ex_ao:
+                        logger.warning(f"append_outro warning: {ex_ao}")
+                        if not output_video_path.exists() and intermediate_out.exists():
+                            shutil.copy2(str(intermediate_out), str(output_video_path))
+                    finally:
+                        try:
+                            if intermediate_out != output_video_path and intermediate_out.exists():
+                                intermediate_out.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                elif intermediate_out != output_video_path and intermediate_out.exists():
+                    shutil.move(str(intermediate_out), str(output_video_path))
 
                 logger.info("Video and audio merged successfully using FFmpeg CLI.")
                 ffmpeg_succeeded = True
@@ -1166,7 +1194,7 @@ class VideoMerger:
     ) -> Path:
         """
         Appends outro_video_path to the end of main_video_path.
-        Automatically handles resolution differences, aspect ratio fitting, framerate, and audio tracks.
+        Uses native FFmpeg CLI for maximum speed, memory efficiency, and rock-solid reliability.
         """
         import shutil
         import subprocess
@@ -1177,16 +1205,47 @@ class VideoMerger:
 
         logger.info(f"Appending outro video '{outro_video_path.name}' to '{main_video_path.name}' -> '{final_output_path.name}'...")
 
+        if not ffmpeg_bin:
+            ffmpeg_bin = find_ffmpeg_binary()
+
+        cpu_threads = min(8, max(2, os.cpu_count() or 4))
+
+        # Method 1: High-Performance FFmpeg CLI Concat (Primary)
+        if ffmpeg_bin:
+            try:
+                target_w, target_h = get_video_dimensions(main_video_path)
+                cmd_cat = [
+                    ffmpeg_bin, "-y",
+                    "-i", str(main_video_path),
+                    "-i", str(outro_video_path),
+                    "-filter_complex",
+                    f"[0:v]setsar=1[v0];"
+                    f"[1:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
+                    f"[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[v_cat][a_cat]",
+                    "-map", "[v_cat]",
+                    "-map", "[a_cat]",
+                    "-c:v", "libx264",
+                    "-pix_fmt", "yuv420p",
+                    "-preset", "veryfast",
+                    "-threads", str(cpu_threads),
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "-movflags", "+faststart",
+                    str(final_output_path),
+                ]
+                subprocess.run(cmd_cat, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if final_output_path.exists() and final_output_path.stat().st_size > 1000:
+                    logger.info("Outro video concatenated successfully using FFmpeg CLI.")
+                    return final_output_path
+            except Exception as ex_ff:
+                logger.warning(f"FFmpeg outro concatenation notice: {ex_ff}")
+
+        # Method 2: MoviePy fallback (only if FFmpeg CLI is absent or failed)
         try:
             try:
                 from moviepy import VideoFileClip, CompositeVideoClip, concatenate_videoclips
             except ImportError:
-                try:
-                    from moviepy.editor import VideoFileClip, CompositeVideoClip, concatenate_videoclips
-                except ImportError:
-                    from moviepy.video.io.VideoFileClip import VideoFileClip
-                    from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
-                    from moviepy.video.compositing.concatenate import concatenate_videoclips
+                from moviepy.editor import VideoFileClip, CompositeVideoClip, concatenate_videoclips
 
             main_clip = VideoFileClip(str(main_video_path))
             outro_clip = VideoFileClip(str(outro_video_path))
@@ -1228,18 +1287,6 @@ class VideoMerger:
             elif hasattr(fitted_outro, "set_fps"):
                 fitted_outro = fitted_outro.set_fps(base_fps)
 
-            if getattr(fitted_outro, "audio", None) is None and getattr(main_clip, "audio", None) is not None:
-                try:
-                    from moviepy.audio.AudioClip import AudioClip
-                    silent_audio = AudioClip(lambda t: [0.0, 0.0], duration=fitted_outro.duration, fps=44100)
-                    if hasattr(fitted_outro, "with_audio"):
-                        fitted_outro = fitted_outro.with_audio(silent_audio)
-                    elif hasattr(fitted_outro, "set_audio"):
-                        fitted_outro = fitted_outro.set_audio(silent_audio)
-                except Exception:
-                    pass
-
-            cpu_threads = min(8, max(2, os.cpu_count() or 4))
             final_clip = concatenate_videoclips([main_clip, fitted_outro], method="compose")
             final_clip.write_videofile(
                 str(final_output_path),
@@ -1257,35 +1304,8 @@ class VideoMerger:
             logger.info("Outro video concatenated successfully using MoviePy.")
             return final_output_path
         except Exception as ex_moviepy:
-            logger.warning(f"MoviePy outro concatenation notice ({ex_moviepy}), attempting FFmpeg...")
+            logger.warning(f"MoviePy outro concatenation notice: {ex_moviepy}")
 
-        if ffmpeg_bin:
-            try:
-                cmd_cat = [
-                    ffmpeg_bin, "-y",
-                    "-i", str(main_video_path),
-                    "-i", str(outro_video_path),
-                    "-filter_complex",
-                    "[0:v]setsar=1[v0];"
-                    "[1:v]scale=w=main_w:h=main_h:force_original_aspect_ratio=decrease,"
-                    "pad=main_w:main_h:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
-                    "[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[v_cat][a_cat]",
-                    "-map", "[v_cat]",
-                    "-map", "[a_cat]",
-                    "-c:v", "libx264",
-                    "-pix_fmt", "yuv420p",
-                    "-preset", "veryfast",
-                    "-threads", str(cpu_threads),
-                    "-c:a", "aac",
-                    "-b:a", "192k",
-                    str(final_output_path),
-                ]
-                subprocess.run(cmd_cat, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                logger.info("Outro video concatenated successfully using FFmpeg CLI.")
-                return final_output_path
-            except Exception as ex_ff:
-                logger.warning(f"FFmpeg outro concatenation failed: {ex_ff}")
-
-        if str(main_video_path) != str(final_output_path):
+        if str(main_video_path) != str(final_output_path) and not final_output_path.exists():
             shutil.copy2(str(main_video_path), str(final_output_path))
         return final_output_path

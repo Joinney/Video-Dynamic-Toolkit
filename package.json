@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build:ui": "node -e \"const babel=require('@babel/standalone');const fs=require('fs');fs.writeFileSync('frontend/js/app.js',babel.transform(fs.readFileSync('frontend/js/app.jsx','utf8'),{presets:[['react',{runtime:'classic'}]]}).code);console.log('UI bundle compiled (classic runtime)!');\""
+    "build:ui": "node -e \"require('esbuild').buildSync({ entryPoints: ['src/main.jsx'], bundle: true, outfile: 'frontend/js/app.js', format: 'iife', platform: 'browser', target: ['es2020'] }); console.log('UI bundle compiled from src/ successfully!');\""
   },
   "dependencies": {
     "lucide-react": "^0.395.0",
@@ -25,6 +25,7 @@
   "license": "ISC",
   "devDependencies": {
     "@babel/standalone": "^8.1.1",
+    "esbuild": "^0.28.2",
     "tailwindcss": "^4.3.4"
   }
 }

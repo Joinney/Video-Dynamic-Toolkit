@@ -54,11 +54,14 @@ const Trash2 = (p) => <SvgIcon {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1
 // ==========================================
 // FILE 2: DUBBING VIEW (LỒNG TIẾNG VIDEO AI)
 // ==========================================
-function DubbingView({ onBackHome }) {
+function DubbingView({ onBackHome, initialVideo, backendData }) {
   const [videoFile, setVideoFile] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [selectedVoice, setSelectedVoice] = useState('vi-VN-HoaiMyNeural');
+  const [videoUrl, setVideoUrl] = useState(initialVideo ? `/video/${encodeURIComponent(initialVideo.relPath)}` : null);
+  const [serverVideoPath, setServerVideoPath] = useState(initialVideo ? initialVideo.relPath : '');
+  const [selectedVoice, setSelectedVoice] = useState('vieneu:Adam Tốp Tốp');
   const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('Adam Tốp Tốp (VieNeu - Nam Miền Nam)');
+  const [voicesCatalog, setVoicesCatalog] = useState([]);
+  const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('vi');
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
@@ -75,6 +78,26 @@ function DubbingView({ onBackHome }) {
   const [dubProgress, setDubProgress] = useState(null);
   const [resultVideoUrl, setResultVideoUrl] = useState(null);
 
+  useEffect(() => {
+    fetch('/api/voices')
+      .then(r => r.json())
+      .then(d => { if (d.catalog) setVoicesCatalog(d.catalog); })
+      .catch(() => {});
+    if (!backendData?.localDramas) {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(d => { if (d.localDramas) setLocalDramas(d.localDramas); })
+        .catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialVideo && initialVideo.relPath) {
+      setServerVideoPath(initialVideo.relPath);
+      setVideoUrl(`/video/${encodeURIComponent(initialVideo.relPath)}`);
+    }
+  }, [initialVideo]);
+
   // Poll real job status
   useEffect(() => {
     if (!dubJobId) return;
@@ -83,10 +106,10 @@ function DubbingView({ onBackHome }) {
         const res = await fetch(`/api/dub-status?id=${dubJobId}`);
         const data = await res.json();
         setDubProgress(data);
-        if (data.status === 'completed') {
+        if (data.status === 'completed' || data.done) {
           setIsDubbingProcessing(false);
           setDubbingCompleted(true);
-          const outPath = data.output_video || '';
+          const outPath = data.outputVideo || data.output_video || '';
           const parts = outPath.split(/[\\\/]/);
           const fName = parts.pop();
           const subF = parts.pop();
@@ -104,7 +127,8 @@ function DubbingView({ onBackHome }) {
   }, [dubJobId]);
 
   const handleStartDubbing = async () => {
-    if (!videoFile && !videoUrl) {
+    const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : '');
+    if (!targetVideo) {
       alert('Vui lòng chọn hoặc tải lên tệp Video trước!');
       return;
     }
@@ -116,7 +140,7 @@ function DubbingView({ onBackHome }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          videoPath: videoUrl || (videoFile ? videoFile.name : ''),
+          videoPath: targetVideo,
           voice: selectedVoice,
           sourceLang: sourceLang,
           targetLang: targetLang,
@@ -125,21 +149,16 @@ function DubbingView({ onBackHome }) {
         })
       });
       const data = await res.json();
-      if (data.success && data.jobId) {
-        setDubJobId(data.jobId);
-        setDubProgress({ status: 'starting', percent: 5, step: 'Khởi động AI Video Dubbing...' });
+      if (data.success && data.job) {
+        setDubJobId(data.job.id);
+        setDubProgress({ status: 'starting', pct: 5, message: 'Đang chuẩn bị luồng lồng tiếng AI...' });
       } else {
-        // Fallback demo timeout if local server is mocking
-        setTimeout(() => {
-          setIsDubbingProcessing(false);
-          setDubbingCompleted(true);
-        }, 3000);
+        alert('Lỗi khởi động: ' + (data.message || 'Không thành công'));
+        setIsDubbingProcessing(false);
       }
     } catch (e) {
-      setTimeout(() => {
-        setIsDubbingProcessing(false);
-        setDubbingCompleted(true);
-      }, 3000);
+      alert('Lỗi kết nối máy chủ: ' + e.message);
+      setIsDubbingProcessing(false);
     }
   };
 
@@ -212,14 +231,28 @@ function DubbingView({ onBackHome }) {
                   }}
                   className="bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
                 >
-                  <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (VieNeu - Nam Miền Nam)</option>
-                  <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm, tấu hài)</option>
-                  <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào, truyền cảm)</option>
-                  <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm, tin tức)</option>
-                  <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh)</option>
-                  <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
-                  <option value="en-US-JennyNeural">🇺🇸 Jenny (Nữ Mỹ hiện đại)</option>
-                  <option value="zh-CN-XiaoxiaoNeural">🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)</option>
+                  {voicesCatalog && voicesCatalog.length > 0 ? (
+                    voicesCatalog.map(cat => (
+                      <optgroup key={cat.category} label={cat.category}>
+                        {cat.voices.map(v => (
+                          <option key={v.id} value={v.id}>
+                            {v.gender === 'Nữ' ? '👩' : '👨'} {v.name} ({v.style})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                  ) : (
+                    <>
+                      <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (VieNeu - Nam Miền Nam)</option>
+                      <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm, tấu hài)</option>
+                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào, truyền cảm)</option>
+                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm, tin tức)</option>
+                      <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh)</option>
+                      <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
+                      <option value="en-US-JennyNeural">🇺🇸 Jenny (Nữ Mỹ hiện đại)</option>
+                      <option value="zh-CN-XiaoxiaoNeural">🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
@@ -287,10 +320,50 @@ function DubbingView({ onBackHome }) {
           </div>
 
           <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-              <span>📁</span> Chọn tệp Video (MP4, MKV, MOV, AVI) — Hỗ trợ đến 2 GB (2048 MB):
+            <label className="text-xs font-bold text-gray-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><span>🎬</span> Chọn Video Cần Lồng Tiếng:</span>
+              {serverVideoPath && (
+                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  ✓ Kho phim máy
+                </span>
+              )}
             </label>
-            <label className="border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50/30 rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center">
+
+            {/* Quick dropdown for local dramas */}
+            {localDramas && localDramas.length > 0 && (
+              <div className="p-2 bg-sky-50/70 border border-sky-200 rounded-lg">
+                <div className="text-[11px] font-bold text-sky-900 mb-1 flex items-center gap-1">
+                  <span>📂</span> Kho phim đã tải trên máy ({localDramas.length} bộ):
+                </div>
+                <select
+                  value={serverVideoPath}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setServerVideoPath(val);
+                    if (val) {
+                      setVideoUrl(`/video/${encodeURIComponent(val)}`);
+                      setVideoFile(null);
+                    }
+                  }}
+                  className="w-full bg-white border border-sky-300 rounded-md p-1.5 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs"
+                >
+                  <option value="">-- Bấm để chọn tập phim có sẵn trong máy --</option>
+                  {localDramas.map((drama) => (
+                    <optgroup key={drama.name} label={`📁 ${drama.name} (${drama.videos?.length || 0} tập)`}>
+                      {drama.videos?.map((vid) => (
+                        <option key={vid.relPath} value={vid.relPath}>
+                          ▶ {vid.name} ({vid.sizeMb} MB)
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="text-center text-[10px] text-gray-400 font-semibold">— HOẶC TẢI LÊN FILE VIDEO TỪ MÁY TÍNH —</div>
+
+            <label className="border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50/30 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
               <input
                 type="file"
                 accept="video/*"
@@ -299,17 +372,18 @@ function DubbingView({ onBackHome }) {
                   if (e.target.files?.[0]) {
                     setVideoFile(e.target.files[0]);
                     setVideoUrl(URL.createObjectURL(e.target.files[0]));
+                    setServerVideoPath('');
                   }
                 }}
               />
               <button
                 type="button"
-                className="bg-white border border-gray-300 shadow-xs text-gray-700 text-xs font-bold px-4 py-1.5 rounded-lg flex items-center gap-1.5 mb-1 pointer-events-none"
+                className="bg-white border border-gray-300 shadow-xs text-gray-700 text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1.5 mb-1 pointer-events-none"
               >
-                <Upload size={14} /> Upload
+                <Upload size={14} /> Tải file MP4/MKV khác
               </button>
-              <span className="text-[11px] text-gray-400 font-medium">
-                {videoFile ? `Đã chọn: ${videoFile.name}` : '2GB per file • MP4, MKV, MOV, AVI'}
+              <span className="text-[11px] text-gray-400 font-medium truncate max-w-full">
+                {videoFile ? `Đã chọn: ${videoFile.name}` : (serverVideoPath ? `Đang dùng: ${serverVideoPath}` : '2GB per file • MP4, MKV, MOV')}
               </span>
             </label>
           </div>
@@ -604,15 +678,26 @@ function TTSStudioView({ onBackHome }) {
     "Chào cả nhà đã quay trở lại với kênh! [Hắng giọng] Hôm nay mình sẽ tóm tắt cho anh em một siêu phẩm điện ảnh đỉnh của chóp! [Nghỉ 0.5s] Cái kết khiến ai xem xong cũng phải [Gầm] thốt lên kinh ngạc vì quá bất ngờ! [Đỉnh kout] Cùng xem hết video nhé!"
   );
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0.8);
-  const duration = 14.5;
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(14.5);
   const [isRendering, setIsRendering] = useState(false);
   const [selectedSpeed, setSelectedSpeed] = useState('1.0');
   const [emotionIntensity, setEmotionIntensity] = useState(65);
   const [pitchValue, setPitchValue] = useState(6);
+  const [selectedVoice, setSelectedVoice] = useState('vieneu:Adam Tốp Tốp');
+  const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('Adam Tốp Tốp (VieNeu - Nam Miền Nam)');
+  const [voicesCatalog, setVoicesCatalog] = useState([]);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [audioHistory, setAudioHistory] = useState([]);
   const textareaRef = useRef(null);
   const audioRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/voices')
+      .then(r => r.json())
+      .then(d => { if (d.catalog) setVoicesCatalog(d.catalog); })
+      .catch(() => {});
+  }, []);
 
   const wordCount = scriptText.trim() ? scriptText.trim().split(/\s+/).length : 0;
   const charCount = scriptText.length;
@@ -620,21 +705,15 @@ function TTSStudioView({ onBackHome }) {
   const tagMatches = scriptText.match(/\[.*?\]/g) || [];
   const tagCount = tagMatches.length;
 
-  useEffect(() => {
-    let timer;
+  const togglePlayAudio = () => {
+    if (!audioRef.current) return;
     if (isPlaying) {
-      timer = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= duration) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return parseFloat((prev + 0.1).toFixed(1));
-        });
-      }, 100);
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
-    return () => clearInterval(timer);
-  }, [isPlaying]);
+  };
 
   const insertTagAtCursor = (tag) => {
     const textarea = textareaRef.current;
@@ -662,26 +741,39 @@ function TTSStudioView({ onBackHome }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: scriptText.replace(/\[.*?\]/g, '').trim(),
-          voice: 'vi-VN-HoaiMyNeural',
+          voice: selectedVoice,
           rate: `${selectedSpeed === '1.0' ? '+0%' : selectedSpeed === '0.8' ? '-20%' : selectedSpeed === '1.15' ? '+15%' : '+30%'}`
         })
       });
       const data = await res.json();
       if (data.success && data.url) {
         setAudioUrl(data.url);
+        setAudioHistory(prev => [
+          {
+            id: Date.now(),
+            url: data.url,
+            text: scriptText.substring(0, 50) + '...',
+            voice: selectedVoiceLabel,
+            time: new Date().toLocaleTimeString()
+          },
+          ...prev
+        ]);
         setIsRendering(false);
         setIsPlaying(true);
-        setCurrentTime(0);
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play().catch(() => {});
+          }
+        }, 300);
         return;
+      } else {
+        alert('Lỗi tạo giọng đọc: ' + (data.message || 'Thất bại'));
+        setIsRendering(false);
       }
-    } catch (e) {}
-
-    // Fallback timer simulation
-    setTimeout(() => {
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ TTS: ' + e.message);
       setIsRendering(false);
-      setIsPlaying(true);
-      setCurrentTime(0);
-    }, 1200);
+    }
   };
 
   const formatTags = () => {
@@ -757,8 +849,35 @@ function TTSStudioView({ onBackHome }) {
         <div className="col-span-12 lg:col-span-3 flex flex-col gap-3">
           <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm">
             <div className="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700">
-              <span>Adam Tốp Tốp (VieNeu - Nam Miền Nam)</span>
-              <ChevronDown size={14} className="text-gray-400" />
+              <select
+                value={selectedVoice}
+                onChange={(e) => {
+                  setSelectedVoice(e.target.value);
+                  const sel = e.target.options[e.target.selectedIndex].text;
+                  setSelectedVoiceLabel(sel);
+                }}
+                className="bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
+              >
+                {voicesCatalog && voicesCatalog.length > 0 ? (
+                  voicesCatalog.map(cat => (
+                    <optgroup key={cat.category} label={cat.category}>
+                      {cat.voices.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.gender === 'Nữ' ? '👩' : '👨'} {v.name} ({v.style})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                ) : (
+                  <>
+                    <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (VieNeu - Nam Miền Nam)</option>
+                    <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm)</option>
+                    <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào)</option>
+                    <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm)</option>
+                    <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên)</option>
+                  </>
+                )}
+              </select>
             </div>
 
             <div className="mt-3 bg-gradient-to-br from-slate-50 to-orange-50/30 rounded-xl p-3 border border-orange-100/70 flex gap-3">
@@ -902,18 +1021,31 @@ function TTSStudioView({ onBackHome }) {
       {/* FOOTER AUDIO PLAYER NỔI */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40">
         <div className="max-w-[1740px] mx-auto px-4 py-2 flex flex-col gap-2">
+          {audioUrl && (
+            <audio
+              ref={audioRef}
+              src={audioUrl}
+              onTimeUpdate={() => {
+                if (audioRef.current) {
+                  setCurrentTime(audioRef.current.currentTime);
+                  if (audioRef.current.duration) setDuration(audioRef.current.duration);
+                }
+              }}
+              onEnded={() => setIsPlaying(false)}
+            />
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={togglePlayAudio}
                 className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition"
               >
                 {isPlaying ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}
               </button>
               <div>
-                <span className="font-bold text-xs text-gray-900 block">Adam Tốp Tốp_Master_Audio</span>
+                <span className="font-bold text-xs text-gray-900 block truncate max-w-xs">{selectedVoiceLabel}_Master</span>
                 <span className="text-[11px] text-gray-500 font-mono">
-                  00:{currentTime.toFixed(1)} / 00:{duration.toFixed(1)}
+                  {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
                 </span>
               </div>
             </div>
@@ -960,15 +1092,20 @@ function TTSStudioView({ onBackHome }) {
 // ==========================================
 // FILE 4: DRAMA DOWNLOADER VIEW (TẢI PHIM DRAMA SERIES)
 // ==========================================
-function DramaDownloaderView() {
-  const [activeApp, setActiveApp] = useState('auto');
-  const [dramaTitle, setDramaTitle] = useState('Tổng Tài Huyết Thống Cuối Cùng');
+function DramaDownloaderView({ initialDrama, backendData, onRefreshStatus, onSelectForDubbing }) {
+  const [activeApp, setActiveApp] = useState(backendData?.activeApp || 'auto');
+  const [dramaTitle, setDramaTitle] = useState(initialDrama ? (initialDrama.name || initialDrama.title) : 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh');
+  const [currentDramaCover, setCurrentDramaCover] = useState(null);
   const [startEp, setStartEp] = useState(1);
   const [autoSwipeCount, setAutoSwipeCount] = useState(1);
   const [autoExport, setAutoExport] = useState(true);
   const [isSwiping, setIsSwiping] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [selectedCodec, setSelectedCodec] = useState('h264');
+  const [connected, setConnected] = useState(backendData ? backendData.connected : false);
+  const [deviceName, setDeviceName] = useState(backendData ? backendData.deviceName : 'Chưa tìm thấy giả lập');
+  const [adbAddress, setAdbAddress] = useState('127.0.0.1:5555');
+  const [isConnectingAdb, setIsConnectingAdb] = useState(false);
 
   // Modals
   const [showPlayerModal, setShowPlayerModal] = useState(false);
@@ -976,23 +1113,33 @@ function DramaDownloaderView() {
   const [directDramaData, setDirectDramaData] = useState(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState('');
 
-  // Queue danh sách tập video
-  const [queueItems, setQueueItems] = useState([
-    { id: 1, ep: 1, title: 'Tập 01 - Cuộc gặp định mệnh', size: '24.5 MB', isNew: true, checked: true },
-    { id: 2, ep: 2, title: 'Tập 02 - Hợp đồng hôn nhân', size: '26.1 MB', isNew: true, checked: true },
-    { id: 3, ep: 3, title: 'Tập 03 - Thân phận lộ tẩy', size: '25.8 MB', isNew: false, checked: false },
-    { id: 4, ep: 4, title: 'Tập 04 - Đại tiệc gia tộc', size: '28.2 MB', isNew: false, checked: false },
-  ]);
-
-  const [localDramas, setLocalDramas] = useState([
-    { title: 'Chàng Rể Quyền Lực', episodes: '85/85 Tập', folder: 'Soda_Reels_Videos/ChangRe' },
-    { title: 'Thiên Kim Thật Trở Về', episodes: '92/92 Tập', folder: 'Soda_Reels_Videos/ThienKim' },
-    { title: 'Chiến Thần Đô Thị', episodes: '60/60 Tập', folder: 'Soda_Reels_Videos/ChienThan' },
-  ]);
+  // Queue danh sách tập video - khởi tạo RỖNG (không dùng fake data)
+  const [queueItems, setQueueItems] = useState([]);
+  const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
 
   const showToast = (text) => {
     setToastMsg(text);
     setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const handleConnectAdb = async (customAddr) => {
+    setIsConnectingAdb(true);
+    showToast('Đang kết nối ADB tới: ' + (customAddr || adbAddress) + '...');
+    try {
+      const res = await fetch('/api/connect-adb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: customAddr || adbAddress })
+      });
+      const data = await res.json();
+      showToast(data.message || (data.connected ? 'Kết nối ADB thành công!' : 'Không tìm thấy thiết bị'));
+      fetchStatusData();
+      if (onRefreshStatus) onRefreshStatus();
+    } catch (e) {
+      showToast('Lỗi kết nối ADB: ' + e.message);
+    } finally {
+      setIsConnectingAdb(false);
+    }
   };
 
   // Sync real status from backend
@@ -1000,8 +1147,15 @@ function DramaDownloaderView() {
     try {
       const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}`);
       const data = await res.json();
+      setConnected(data.connected);
+      setDeviceName(data.deviceName || 'Chưa tìm thấy giả lập');
       if (data.currentDrama && data.currentDrama.title) {
-        setDramaTitle(data.currentDrama.title);
+        if (!dramaTitle || dramaTitle === 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh') {
+          setDramaTitle(data.currentDrama.title);
+        }
+        if (data.currentDrama.cover) {
+          setCurrentDramaCover(data.currentDrama.cover);
+        }
         if (data.currentDrama.currentEpisode) {
           setStartEp(data.currentDrama.currentEpisode);
         }
@@ -1017,20 +1171,20 @@ function DramaDownloaderView() {
           path: item.path
         }));
         setQueueItems(mapped);
+      } else {
+        setQueueItems([]);
       }
-      if (data.localDramas && data.localDramas.length > 0) {
-        const dList = data.localDramas.map(d => ({
-          title: d.name,
-          episodes: `${d.videos ? d.videos.length : 0} Tập`,
-          folder: `Soda_Reels_Videos/${d.name}`
-        }));
-        setLocalDramas(dList);
+      if (data.localDramas) {
+        setLocalDramas(data.localDramas);
       }
     } catch (e) {}
   };
 
   useEffect(() => {
     fetchStatusData();
+    const interval = setInterval(fetchStatusData, 3000);
+    return () => clearInterval(interval);
+  }, [activeApp, dramaTitle]);
   }, [activeApp]);
 
   // Fetch real direct CDN links
@@ -1206,10 +1360,34 @@ function DramaDownloaderView() {
               {activeApp === 'auto' ? 'Tự động quét' : activeApp === 'sodareels' ? 'Soda Reels' : 'MinuteDrama'}
             </strong>
           </div>
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs text-emerald-400 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>ADB Đã Kết Nối</span>
-          </div>
+          {connected ? (
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs text-emerald-400 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>ADB: {deviceName}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded text-[11px] text-rose-400 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                <span>Chưa có ADB</span>
+              </div>
+              <input
+                type="text"
+                value={adbAddress}
+                onChange={(e) => setAdbAddress(e.target.value)}
+                placeholder="127.0.0.1:5555"
+                className="w-28 bg-slate-900 border border-slate-700 text-white text-[11px] px-2 py-0.5 rounded"
+              />
+              <button
+                type="button"
+                onClick={() => handleConnectAdb(adbAddress)}
+                disabled={isConnectingAdb}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2 py-0.5 rounded transition"
+              >
+                {isConnectingAdb ? 'Đang nối...' : '⚡ Nối ADB'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1233,9 +1411,17 @@ function DramaDownloaderView() {
 
           {/* Poster & Thông tin phim */}
           <div className="flex gap-3 bg-slate-50 border border-gray-200 rounded-xl p-3">
-            <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0">
-              <span className="text-xl">🎬</span>
-              <span className="text-[10px] mt-1 font-medium">Poster Phim</span>
+            <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative">
+              <img
+                src={currentDramaCover ? `/api/proxy-img?url=${encodeURIComponent(currentDramaCover)}` : `/poster/${encodeURIComponent(dramaTitle)}`}
+                alt={dramaTitle}
+                onError={(e) => { e.target.style.display = 'none'; }}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none -z-10">
+                <span className="text-xl">🎬</span>
+                <span className="text-[10px] mt-1 font-medium">{dramaTitle || 'Poster Phim'}</span>
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col justify-between min-w-0">
@@ -1458,79 +1644,156 @@ function DramaDownloaderView() {
             </div>
           </div>
 
-          {/* Danh sách các tập */}
+          {/* Danh sách các tập trong RAM cache */}
           <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
-            {queueItems.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
-                  item.checked ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-gray-200'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    onChange={(e) => {
-                      setQueueItems(queueItems.map(q => q.id === item.id ? { ...q, checked: e.target.checked } : q));
-                    }}
-                    className="accent-blue-600 w-4 h-4 cursor-pointer"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-900">{item.title}</span>
-                      {item.isNew && (
-                        <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded">
-                          MỚI
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-gray-500">{item.size} • Đã lưu trong bộ đệm RAM</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewVideoUrl(item.path ? `/api/preview-remote?path=${encodeURIComponent(item.path)}` : '');
-                    setShowPlayerModal(true);
-                  }}
-                  className="bg-white hover:bg-slate-100 text-blue-600 border border-gray-300 text-xs font-bold px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1 transition"
-                >
-                  <Play size={11} /> Xem
-                </button>
+            {queueItems.length === 0 ? (
+              <div className="p-6 text-center bg-slate-50 border border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center">
+                <span className="text-2xl mb-1.5">📥</span>
+                <h4 className="font-bold text-gray-700 text-xs">Chưa có video trong bộ nhớ đệm giả lập</h4>
+                <p className="text-[11px] text-gray-500 mt-1 max-w-sm">
+                  Hãy mở app <strong>Soda Reels</strong> hoặc <strong>MinuteDrama</strong> trên máy ảo để xem phim, tool sẽ tự động gom video vào đây. Hoặc bấm <strong>"Link Trực Tiếp Cả Bộ"</strong> ở trên để tải trực tiếp từ CDN!
+                </p>
               </div>
-            ))}
+            ) : (
+              queueItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
+                    item.checked ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={(e) => {
+                        setQueueItems(queueItems.map(q => q.id === item.id ? { ...q, checked: e.target.checked } : q));
+                      }}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-900">{item.title}</span>
+                        {item.isNew && (
+                          <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded">
+                            MỚI
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500">{item.size} • Đã lưu trong bộ đệm RAM</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewVideoUrl(item.path ? `/api/preview-remote?path=${encodeURIComponent(item.path)}` : '');
+                      setShowPlayerModal(true);
+                    }}
+                    className="bg-white hover:bg-slate-100 text-blue-600 border border-gray-300 text-xs font-bold px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1 transition"
+                  >
+                    <Play size={11} /> Xem
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* Danh sách các bộ phim đã tải */}
       <div className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs">
-        <h3 className="text-sm font-black text-gray-900 uppercase mb-3 flex items-center gap-2">
-          📚 Các Bộ Phim Đã Tải Trên Máy Tính
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {localDramas.map((d, i) => (
-            <div key={i} className="p-3 bg-slate-50 border border-gray-200 rounded-xl flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-gray-900">{d.title}</h4>
-                <span className="text-[11px] text-emerald-600 font-semibold">{d.episodes}</span>
-                <p className="text-[10px] text-gray-400 mt-0.5">{d.folder}</p>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: d.title }) });
-                  showToast(`Mở thư mục: ${d.folder}`);
-                }}
-                className="p-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg shadow-xs transition"
-              >
-                <FolderOpen size={14} />
-              </button>
-            </div>
-          ))}
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-sm font-black text-gray-900 uppercase flex items-center gap-2">
+            📚 Các Bộ Phim Đã Tải Trên Máy Tính ({localDramas.length})
+          </h3>
+          <span className="text-xs font-semibold text-slate-500">Thư mục: Soda_Reels_Videos/</span>
         </div>
+        {localDramas.length === 0 ? (
+          <div className="p-6 text-center text-xs text-gray-500 bg-slate-50 rounded-xl border border-dashed border-gray-300">
+            Chưa có bộ phim nào được lưu về máy. Hãy tích chọn các tập trong hàng đợi hoặc dùng tải CDN trực tiếp!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {localDramas.map((d, i) => (
+              <div key={i} className="p-3 bg-slate-50 border border-gray-200 rounded-xl flex flex-col justify-between gap-2.5">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-16 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300">
+                    <img
+                      src={`/poster/${encodeURIComponent(d.name || d.title)}`}
+                      alt={d.name || d.title}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold text-gray-900 truncate" title={d.name || d.title}>{d.name || d.title}</h4>
+                    <span className="text-[11px] text-emerald-600 font-bold block mt-0.5">
+                      {d.videos ? `${d.videos.length} Tập Video` : (d.episodes || '0 Tập')} • {d.totalSizeMb ? `${d.totalSizeMb} MB` : ''}
+                    </span>
+                    <p className="text-[10px] text-gray-400 truncate">Soda_Reels_Videos/{d.name || d.title}</p>
+                  </div>
+                </div>
+
+                {/* Danh sách các tập video có sẵn */}
+                {d.videos && d.videos.length > 0 && (
+                  <div className="max-h-24 overflow-y-auto bg-white rounded-lg border border-gray-200 p-1 space-y-1">
+                    {d.videos.map(v => (
+                      <div key={v.relPath} className="flex items-center justify-between text-[11px] p-1 hover:bg-slate-50 rounded">
+                        <span className="font-medium text-slate-700 truncate max-w-[130px]">{v.name}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            title="Xem video"
+                            onClick={() => {
+                              setPreviewVideoUrl(`/video/${encodeURIComponent(v.relPath)}`);
+                              setShowPlayerModal(true);
+                            }}
+                            className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold hover:bg-blue-100"
+                          >
+                            ▶ Xem
+                          </button>
+                          {onSelectForDubbing && (
+                            <button
+                              type="button"
+                              title="Chuyển sang Lồng Tiếng Video AI"
+                              onClick={() => onSelectForDubbing({ drama: d.name, name: v.name, relPath: v.relPath })}
+                              className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold hover:bg-emerald-100 flex items-center gap-0.5"
+                            >
+                              🎙️ Lồng tiếng
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 pt-1 border-t border-gray-200/60">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: d.name || d.title }) });
+                      showToast(`Mở thư mục: Soda_Reels_Videos/${d.name || d.title}`);
+                    }}
+                    className="flex-1 py-1 px-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition"
+                  >
+                    <FolderOpen size={13} /> Mở Thư Mục
+                  </button>
+                  {d.videos && d.videos[0] && onSelectForDubbing && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectForDubbing({ drama: d.name, name: d.videos[0].name, relPath: d.videos[0].relPath })}
+                      className="py-1 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition"
+                    >
+                      🎙️ Lồng Tiếng
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modal 1: Player */}
@@ -1685,10 +1948,60 @@ function App() {
   // 'home' | 'dubbing' | 'tts' | 'downloader'
   const [currentPage, setCurrentPage] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [backendData, setBackendData] = useState(null);
+  const [selectedVideoForDubbing, setSelectedVideoForDubbing] = useState(null);
+  const [selectedDramaForDownloader, setSelectedDramaForDownloader] = useState(null);
+  const [adbAddress, setAdbAddress] = useState('127.0.0.1:5555');
+  const [isConnectingAdb, setIsConnectingAdb] = useState(false);
+  const [adbStatusMsg, setAdbStatusMsg] = useState('');
 
-  // Nếu đang ở trang con: Hiển thị giao diện riêng toàn màn hình, không sidebar
+  const fetchGlobalStatus = async () => {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      setBackendData(data);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchGlobalStatus();
+    const interval = setInterval(fetchGlobalStatus, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleConnectAdb = async (customAddr) => {
+    setIsConnectingAdb(true);
+    setAdbStatusMsg('Đang thử kết nối ADB...');
+    try {
+      const res = await fetch('/api/connect-adb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: customAddr || adbAddress })
+      });
+      const data = await res.json();
+      setAdbStatusMsg(data.message || (data.connected ? 'Kết nối thành công!' : 'Không tìm thấy thiết bị'));
+      fetchGlobalStatus();
+    } catch (e) {
+      setAdbStatusMsg('Lỗi: ' + e.message);
+    } finally {
+      setIsConnectingAdb(false);
+      setTimeout(() => setAdbStatusMsg(''), 4000);
+    }
+  };
+
+  const localDramas = backendData?.localDramas || [];
+  const totalEpisodes = localDramas.reduce((acc, d) => acc + (d.videos ? d.videos.length : (d.count || 0)), 0);
+  const totalSizeMb = localDramas.reduce((acc, d) => acc + (parseFloat(d.totalSizeMb) || 0), 0).toFixed(1);
+
+  // Nếu đang ở trang con: Hiển thị giao diện riêng toàn màn hình
   if (currentPage === 'dubbing') {
-    return <DubbingView onBackHome={() => setCurrentPage('home')} />;
+    return (
+      <DubbingView
+        initialVideo={selectedVideoForDubbing}
+        backendData={backendData}
+        onBackHome={() => setCurrentPage('home')}
+      />
+    );
   }
   if (currentPage === 'tts') {
     return <TTSStudioView onBackHome={() => setCurrentPage('home')} />;
@@ -1713,7 +2026,15 @@ function App() {
           </button>
         </div>
         <div className="max-w-[1740px] w-full mx-auto">
-          <DramaDownloaderView />
+          <DramaDownloaderView
+            initialDrama={selectedDramaForDownloader}
+            backendData={backendData}
+            onRefreshStatus={fetchGlobalStatus}
+            onSelectForDubbing={(v) => {
+              setSelectedVideoForDubbing(v);
+              setCurrentPage('dubbing');
+            }}
+          />
         </div>
       </div>
     );
@@ -1805,82 +2126,245 @@ function App() {
       </aside>
 
       {/* NỘI DUNG CHÍNH TRANG CHỦ */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-10 max-w-7xl mx-auto">
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold mb-2">
-            <Sparkles size={14} /> Hệ thống Studio AI cao cấp
+      <main className="flex-1 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+        {/* Banner Kết nối Thiết bị Giả lập & Hệ Thống */}
+        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-0.5 rounded-full text-xs font-bold mb-1">
+              <Sparkles size={13} /> Studio VDT • Phiên bản 2.1
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Trung Tâm Điều Hành Studio AI</h2>
+            <p className="text-slate-500 text-xs mt-0.5">
+              Hệ thống kết nối trực tiếp với backend máy tính & máy ảo ADB theo thời gian thực.
+            </p>
           </div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Chào mừng đến với Studio VDT</h2>
-          <p className="text-slate-500 text-sm mt-1">
-            Chọn không gian làm việc chuyên biệt bên dưới để bắt đầu sản xuất nội dung:
-          </p>
+
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-xl flex-wrap">
+            {backendData?.connected ? (
+              <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-bold">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>ADB: {backendData.deviceName}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span>Chưa kết nối máy ảo</span>
+                </div>
+                <input
+                  type="text"
+                  value={adbAddress}
+                  onChange={(e) => setAdbAddress(e.target.value)}
+                  placeholder="127.0.0.1:5555"
+                  className="w-28 bg-white border border-slate-300 text-slate-800 text-xs px-2 py-1 rounded-lg font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleConnectAdb(adbAddress)}
+                  disabled={isConnectingAdb}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-1 rounded-lg transition"
+                >
+                  {isConnectingAdb ? 'Đang nối...' : '⚡ Nối ADB'}
+                </button>
+              </div>
+            )}
+            {adbStatusMsg && (
+              <span className="text-[11px] text-blue-600 font-semibold px-2">{adbStatusMsg}</span>
+            )}
+          </div>
         </div>
 
-        {/* Cards điều hướng sang từng trang riêng biệt */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Dubbing */}
-          <div
-            onClick={() => setCurrentPage('dubbing')}
-            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-blue-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Clapperboard size={26} />
-              </div>
-              <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                Lồng Tiếng Video AI
-              </h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Tự động dịch thuật, tách thoại, khử tiếng ồn và lồng giọng đọc AI cảm xúc kết hợp chèn Watermark thương hiệu trực tiếp trên Canvas.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
-              <span>Mở phòng lồng tiếng</span>
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </div>
+        {/* 4 Thẻ Thống Kê Dữ Liệu Thực Tế */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bộ Phim Trong Máy</div>
+            <div className="text-2xl font-black text-slate-900 mt-1">{localDramas.length} <span className="text-xs font-bold text-slate-500">Bộ phim</span></div>
+            <div className="text-[10px] text-emerald-600 font-semibold mt-1">Đã lưu trữ an toàn</div>
           </div>
 
-          {/* Card 2: TTS Studio */}
-          <div
-            onClick={() => setCurrentPage('tts')}
-            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-emerald-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Mic size={26} />
-              </div>
-              <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
-                Phòng Thu Giọng Đọc AI (TTS)
-              </h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Soạn thảo kịch bản Live Syntax, chèn hơn 55+ thẻ mã cảm xúc tức thì, tinh chỉnh tempo, cao độ và xuất audio Master 48kHz.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
-              <span>Mở TTS Studio</span>
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </div>
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Số Tập Video</div>
+            <div className="text-2xl font-black text-blue-600 mt-1">{totalEpisodes} <span className="text-xs font-bold text-slate-500">Tập MP4</span></div>
+            <div className="text-[10px] text-blue-500 font-semibold mt-1">Sẵn sàng lồng tiếng</div>
           </div>
 
-          {/* Card 3: Drama Downloader */}
-          <div
-            onClick={() => setCurrentPage('downloader')}
-            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-purple-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
-          >
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dung Lượng Đã Dùng</div>
+            <div className="text-2xl font-black text-purple-600 mt-1">{totalSizeMb} <span className="text-xs font-bold text-slate-500">MB</span></div>
+            <div className="text-[10px] text-purple-500 font-semibold mt-1">Thư mục Soda_Reels_Videos</div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bộ Nhớ Đệm RAM Máy Ảo</div>
+            <div className="text-2xl font-black text-amber-600 mt-1">{backendData?.remoteCacheCount || 0} <span className="text-xs font-bold text-slate-500">Tập</span></div>
+            <div className="text-[10px] text-amber-600 font-semibold mt-1">Video chờ xuất về máy</div>
+          </div>
+        </div>
+
+        {/* BẢNG KHO PHIM ĐÃ TẢI TRÊN MÁY TÍNH (DỮ LIỆU THẬT TỪ BACKEND) */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <DownloadCloud size={26} />
-              </div>
-              <h3 className="text-base font-black text-slate-900 group-hover:text-purple-600 transition-colors">
-                Tải Phim Drama Series
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <span>📚</span> Kho Phim Đã Tải Trên Máy Tính ({localDramas.length})
               </h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Tự động nhận diện phim từ Soda Reels, MinuteDrama qua ADB, auto-swipe lướt từng tập và trích xuất link CDN siêu tốc.
-              </p>
+              <p className="text-xs text-slate-400 mt-0.5">Dữ liệu thực tế quét từ thư mục hệ thống <code>Soda_Reels_Videos/</code></p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
-              <span>Mở công cụ tải phim</span>
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            <button
+              onClick={() => setCurrentPage('downloader')}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl transition"
+            >
+              ＋ Tải Thêm Phim Mới
+            </button>
+          </div>
+
+          {localDramas.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              Chưa phát hiện bộ phim nào trong thư mục <code>Soda_Reels_Videos/</code>. Hãy bấm "Tải Thêm Phim Mới" để bắt đầu!
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {localDramas.map((drama, idx) => (
+                <div key={idx} className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col justify-between gap-3 hover:border-blue-400 transition">
+                  <div className="flex items-start gap-3">
+                    <div className="w-14 h-20 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 shadow-2xs">
+                      <img
+                        src={`/poster/${encodeURIComponent(drama.name)}`}
+                        alt={drama.name}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-slate-900 truncate" title={drama.name}>{drama.name}</h4>
+                      <div className="text-xs font-bold text-emerald-600 mt-1">
+                        {drama.videos ? `${drama.videos.length} Tập Video` : `${drama.count || 0} Tập`} • {drama.totalSizeMb} MB
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+                        Soda_Reels_Videos/{drama.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Nút hành động */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-200/80">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstVid = drama.videos && drama.videos[0];
+                        if (firstVid) {
+                          setSelectedVideoForDubbing({ drama: drama.name, name: firstVid.name, relPath: firstVid.relPath });
+                        }
+                        setCurrentPage('dubbing');
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] py-1.5 px-2 rounded-lg text-center shadow-2xs transition flex items-center justify-center gap-1"
+                    >
+                      <Mic size={12} /> Lồng tiếng
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDramaForDownloader(drama);
+                        setCurrentPage('downloader');
+                      }}
+                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] py-1.5 px-2 rounded-lg text-center shadow-2xs transition flex items-center justify-center gap-1"
+                    >
+                      <DownloadCloud size={12} /> Tải tiếp
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch('/api/open-folder', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ folder: drama.name })
+                        });
+                      }}
+                      className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] py-1.5 px-2 rounded-lg text-center shadow-2xs transition flex items-center justify-center gap-1"
+                    >
+                      <FolderOpen size={12} /> Mở thư mục
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 3 KHÔNG GIAN SÁNG TẠO CHUYÊN BIỆT */}
+        <div>
+          <div className="mb-3">
+            <h3 className="text-base font-black text-slate-900 tracking-tight">Không Gian Sáng Tạo Chuyên Biệt</h3>
+            <p className="text-slate-500 text-xs">Bấm vào từng phòng làm việc để sản xuất nội dung:</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: Dubbing */}
+            <div
+              onClick={() => setCurrentPage('dubbing')}
+              className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-blue-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Clapperboard size={26} />
+                </div>
+                <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                  Lồng Tiếng Video AI
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Tự động dịch thuật, tách thoại, khử tiếng ồn và lồng giọng đọc AI cảm xúc (VieNeu / Edge-TTS) kết hợp chèn Watermark trực tiếp trên Canvas.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+                <span>Mở phòng lồng tiếng</span>
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Card 2: TTS Studio */}
+            <div
+              onClick={() => setCurrentPage('tts')}
+              className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-emerald-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Mic size={26} />
+                </div>
+                <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+                  Phòng Thu Giọng Đọc AI (TTS)
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Soạn thảo kịch bản Live Syntax, chèn hơn 55+ thẻ mã cảm xúc tức thì, tinh chỉnh tempo, cao độ và xuất audio Master 48kHz.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                <span>Mở TTS Studio</span>
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+
+            {/* Card 3: Drama Downloader */}
+            <div
+              onClick={() => setCurrentPage('downloader')}
+              className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-purple-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <DownloadCloud size={26} />
+                </div>
+                <h3 className="text-base font-black text-slate-900 group-hover:text-purple-600 transition-colors">
+                  Tải Phim Drama Series
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Tự động nhận diện phim từ Soda Reels, MinuteDrama qua ADB, auto-swipe lướt từng tập và trích xuất link CDN siêu tốc.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
+                <span>Mở công cụ tải phim</span>
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
           </div>
         </div>

@@ -171,6 +171,61 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 2.2. API Voices Catalog
+  if (url.pathname === '/api/voices') {
+    const catalog = [
+      {
+        category: 'VieNeu-TTS (Top Phim & TikTok)',
+        voices: [
+          { id: 'vieneu:Adam Tốp Tốp', name: 'Adam Tốp Tốp', lang: 'vi-VN', gender: 'Nam', style: 'Nam Miền Nam • Cảm xúc, Hài hước, Tốp Tốp' },
+          { id: 'vieneu:Adam bựa', name: 'Adam bựa', lang: 'vi-VN', gender: 'Nam', style: 'Review Phim Tốp Tốp dí dỏm, hài hước' },
+          { id: 'vieneu:Adam', name: 'Adam', lang: 'vi-VN', gender: 'Nam', style: 'Giọng Tốp Tốp Tự Nhiên & Đa Cảm Xúc' },
+          { id: 'vieneu:Hải Đăng', name: 'Hải Đăng', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc chuẩn phát thanh, tin tức' },
+          { id: 'vieneu:Trúc Ly', name: 'Trúc Ly', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc tự nhiên, trẻ trung, dễ thương' },
+          { id: 'vieneu:Thiện Minh', name: 'Thiện Minh', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc kể chuyện, sâu lắng, truyền cảm' },
+          { id: 'vieneu:Mai Anh', name: 'Mai Anh', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc tin tức, thời sự chuyên nghiệp' },
+          { id: 'vieneu:Thùy Dung', name: 'Thùy Dung', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Nam ngọt ngào, nhẹ nhàng' },
+          { id: 'vieneu:Thiền Tâm Đức', name: 'Thiền Tâm Đức', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc trầm tĩnh, triết lý, thiền định' },
+          { id: 'vieneu:Ngọc Huyền', name: 'Ngọc Huyền', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc kể chuyện, diễn cảm' },
+          { id: 'vieneu:Quang Sơn', name: 'Quang Sơn', lang: 'vi-VN', gender: 'Nam', style: 'Nam Trung trầm ấm, chân chất' },
+          { id: 'vieneu:Ngọc Trân', name: 'Ngọc Trân', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Trung đằm thắm, dịu dàng' }
+        ]
+      },
+      {
+        category: 'Edge-TTS (Chuẩn Phim Drama & Thuyết Minh)',
+        voices: [
+          { id: 'vi-VN-HoaiMyNeural', name: 'Hoài My', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc - Trầm ấm, truyền cảm (Chuẩn phim drama)' },
+          { id: 'vi-VN-NamMinhNeural', name: 'Nam Minh', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc - Mạnh mẽ, dứt khoát, hào sảng' }
+        ]
+      },
+      {
+        category: 'VieNeu-TTS (Miền Bắc & Miền Nam)',
+        voices: [
+          { id: 'vieneu:Minh Đức', name: 'Minh Đức', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc chững chạc, tin tức' },
+          { id: 'vieneu:Thanh Bình', name: 'Thanh Bình', lang: 'vi-VN', gender: 'Nam', style: 'Nam Bắc điềm đạm, ấm áp' },
+          { id: 'vieneu:Đoan Trang', name: 'Đoan Trang', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc trang nhã, thanh lịch' },
+          { id: 'vieneu:Quỳnh Anh', name: 'Quỳnh Anh', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Bắc nhẹ nhàng, tự nhiên' },
+          { id: 'vieneu:Thái Sơn', name: 'Thái Sơn', lang: 'vi-VN', gender: 'Nam', style: 'Nam Nam hào sảng, hiện đại' },
+          { id: 'vieneu:Thục Đoan', name: 'Thục Đoan', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Nam duyên dáng, truyền cảm' },
+          { id: 'vieneu:Mỹ Duyên', name: 'Mỹ Duyên', lang: 'vi-VN', gender: 'Nữ', style: 'Nữ Nam đọc truyện tình cảm, ngọt ngào' }
+        ]
+      },
+      {
+        category: 'Quốc Tế (English / Chinese / Japanese)',
+        voices: [
+          { id: 'en-US-JennyNeural', name: 'Jenny (EN)', lang: 'en-US', gender: 'Nữ', style: 'English US - Natural & Expressive' },
+          { id: 'en-US-GuyNeural', name: 'Guy (EN)', lang: 'en-US', gender: 'Nam', style: 'English US - Confident & Warm' },
+          { id: 'zh-CN-XiaoxiaoNeural', name: 'Xiaoxiao (ZH)', lang: 'zh-CN', gender: 'Nữ', style: 'Chinese Mandarin - Natural Drama' },
+          { id: 'zh-CN-YunxiNeural', name: 'Yunxi (ZH)', lang: 'zh-CN', gender: 'Nam', style: 'Chinese Mandarin - Lively & Narrative' },
+          { id: 'ja-JP-NanamiNeural', name: 'Nanami (JA)', lang: 'ja-JP', gender: 'Nữ', style: 'Japanese - Soft & Anime tone' }
+        ]
+      }
+    ];
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true, catalog }));
+    return;
+  }
+
   // 3. API Set App Mode
   if (url.pathname === '/api/set-app' && req.method === 'POST') {
     try {

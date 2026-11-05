@@ -1,0 +1,490 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Upload,
+  Headphones,
+  Sliders,
+  Play,
+  Pause,
+  Download,
+  RefreshCw,
+  Sparkles,
+  Layers,
+  ChevronRight,
+  Info
+} from 'lucide-react';
+import Header from '../components/Header';
+
+export default function LongTiengVideo({ onBackHome, initialVideo, backendData }) {
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(initialVideo ? `/video/${encodeURIComponent(initialVideo.relPath)}` : null);
+  const [serverVideoPath, setServerVideoPath] = useState(initialVideo ? initialVideo.relPath : '');
+  const [selectedVoice, setSelectedVoice] = useState('vieneu:Adam Tốp Tốp');
+  const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('Adam Tốp Tốp (VieNeu - Nam Miền Nam)');
+  const [voicesCatalog, setVoicesCatalog] = useState([]);
+  const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
+  const [sourceLang, setSourceLang] = useState('auto');
+  const [targetLang, setTargetLang] = useState('vi');
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [activeOverlayTab, setActiveOverlayTab] = useState('logo');
+  const [logoSize, setLogoSize] = useState(18);
+  const [logoX, setLogoX] = useState(80);
+  const [logoY, setLogoY] = useState(5);
+  const [logoOpacity, setLogoOpacity] = useState(90);
+  const [logoRotation, setLogoRotation] = useState(0);
+
+  const [isDubbingProcessing, setIsDubbingProcessing] = useState(false);
+  const [dubbingCompleted, setDubbingCompleted] = useState(false);
+  const [dubJobId, setDubJobId] = useState(null);
+  const [dubProgress, setDubProgress] = useState(null);
+  const [resultVideoUrl, setResultVideoUrl] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/voices')
+      .then(r => r.json())
+      .then(d => { if (d.catalog) setVoicesCatalog(d.catalog); })
+      .catch(() => {});
+    if (!backendData?.localDramas) {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(d => { if (d.localDramas) setLocalDramas(d.localDramas); })
+        .catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialVideo && initialVideo.relPath) {
+      setServerVideoPath(initialVideo.relPath);
+      setVideoUrl(`/video/${encodeURIComponent(initialVideo.relPath)}`);
+    }
+  }, [initialVideo]);
+
+  // Poll real job status
+  useEffect(() => {
+    if (!dubJobId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/dub-status?id=${dubJobId}`);
+        const data = await res.json();
+        setDubProgress(data);
+        if (data.status === 'completed' || data.done) {
+          setIsDubbingProcessing(false);
+          setDubbingCompleted(true);
+          const outPath = data.outputVideo || data.output_video || '';
+          const parts = outPath.split(/[\\\/]/);
+          const fName = parts.pop();
+          const subF = parts.pop();
+          const dName = parts.pop();
+          setResultVideoUrl(`/video/${encodeURIComponent(dName)}/${encodeURIComponent(subF)}/${encodeURIComponent(fName)}`);
+          setDubJobId(null);
+        } else if (data.status === 'error' || data.status === 'failed') {
+          setIsDubbingProcessing(false);
+          alert('Lỗi lồng tiếng: ' + (data.error || 'Thất bại'));
+          setDubJobId(null);
+        }
+      } catch (e) {}
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [dubJobId]);
+
+  const handleStartDubbing = async () => {
+    const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : '');
+    if (!targetVideo) {
+      alert('Vui lòng chọn hoặc tải lên tệp Video trước!');
+      return;
+    }
+    setIsDubbingProcessing(true);
+    setDubbingCompleted(false);
+
+    try {
+      const res = await fetch('/api/dub-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoPath: targetVideo,
+          voice: selectedVoice,
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+          burnSubtitles: true,
+          bgmVolume: 0.15
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.job) {
+        setDubJobId(data.job.id);
+        setDubProgress({ status: 'starting', pct: 5, message: 'Đang chuẩn bị luồng lồng tiếng AI...' });
+      } else {
+        alert('Lỗi khởi động: ' + (data.message || 'Không thành công'));
+        setIsDubbingProcessing(false);
+      }
+    } catch (e) {
+      alert('Lỗi kết nối máy chủ: ' + e.message);
+      setIsDubbingProcessing(false);
+    }
+  };
+
+  return (
+    <div
+      className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative"
+      style={{
+        backgroundColor: '#f6f9fc',
+        backgroundImage:
+          'linear-gradient(to right, rgba(0, 114, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 114, 255, 0.05) 1px, transparent 1px)',
+        backgroundSize: '24px 24px'
+      }}
+    >
+      <div className="pt-2.5 px-4 max-w-[1740px] w-full mx-auto">
+        <Header
+          title="Studio VDT"
+          badge="AI VIDEO DUBBING"
+          showBackButton={true}
+          onBackHome={onBackHome}
+          backendData={backendData}
+        />
+      </div>
+
+      {/* Main Grid: 3 Cột */}
+      <main className="p-3.5 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 items-start mt-1">
+        {/* CỘT 1: THIẾT LẬP */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
+            <div className="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-orange-500 text-sm">🔥</span>
+                <select
+                  value={selectedVoice}
+                  onChange={(e) => {
+                    setSelectedVoice(e.target.value);
+                    const sel = e.target.options[e.target.selectedIndex].text;
+                    setSelectedVoiceLabel(sel);
+                  }}
+                  className="bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
+                >
+                  {voicesCatalog && voicesCatalog.length > 0 ? (
+                    voicesCatalog.map(cat => (
+                      <optgroup key={cat.category} label={cat.category}>
+                        {cat.voices.map(v => (
+                          <option key={v.id} value={v.id}>
+                            {v.gender === 'Nữ' ? '👩' : '👨'} {v.name} ({v.style})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                  ) : (
+                    <>
+                      <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (VieNeu - Nam Miền Nam)</option>
+                      <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm, tấu hài)</option>
+                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào, truyền cảm)</option>
+                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm, tin tức)</option>
+                      <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh)</option>
+                      <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-2.5 bg-gradient-to-br from-slate-50 to-orange-50/20 rounded-xl p-3 border border-orange-100 flex gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200">
+                <img
+                  src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80"
+                  alt="Adam Tốp Tốp"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-bold text-sm text-gray-900">{selectedVoiceLabel.split(' (')[0]}</h3>
+                  <span className="bg-sky-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded shadow-xs">
+                    HOT REVIEW
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-snug">
+                  VieNeu - Nam Miền Nam • Cảm xúc, Không nghiêm túc, Tốp Tốp, Tấu hề
+                </p>
+                <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-200/60">
+                  <span className="text-[10px] text-gray-500 font-medium">Acoustic 48kHz</span>
+                  <button
+                    type="button"
+                    onClick={() => alert(`Đang phát giọng đọc mẫu: ${selectedVoiceLabel}`)}
+                    className="flex items-center gap-1 bg-white hover:bg-orange-50 text-gray-700 border border-gray-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs transition cursor-pointer"
+                  >
+                    <Headphones size={11} className="text-sky-500" /> Nghe thử mẫu
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
+            <div>
+              <label className="text-[11px] text-gray-600 font-semibold block mb-1">Ngôn ngữ gốc của video:</label>
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                className="w-full bg-slate-50 border border-gray-200 rounded-lg p-2 text-xs font-medium text-gray-700 cursor-pointer"
+              >
+                <option value="auto">🌐 Tự động nhận diện</option>
+                <option value="zh">🇨🇳 Tiếng Trung</option>
+                <option value="en">🇺🇸 Tiếng Anh</option>
+                <option value="ja">🇯🇵 Tiếng Nhật</option>
+                <option value="ko">🇰🇷 Tiếng Hàn</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-gray-600 font-semibold block mb-1">Dịch và lồng tiếng sang:</label>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="w-full bg-slate-50 border border-gray-200 rounded-lg p-2 text-xs font-medium text-gray-700 cursor-pointer"
+              >
+                <option value="vi">🇻🇳 Tiếng Việt (Vietnamese)</option>
+                <option value="en">🇺🇸 Tiếng Anh (English)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Chọn Video: Tải lên hoặc chọn từ kho phim */}
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><span>🎬</span> Chọn Video Cần Lồng Tiếng:</span>
+              {serverVideoPath && (
+                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  ✓ Kho phim máy
+                </span>
+              )}
+            </label>
+
+            {/* Dropdown kho phim máy tính */}
+            {localDramas && localDramas.length > 0 && (
+              <div className="p-2 bg-sky-50/70 border border-sky-200 rounded-lg">
+                <div className="text-[11px] font-bold text-sky-900 mb-1 flex items-center gap-1">
+                  <span>📂</span> Kho phim đã tải trên máy ({localDramas.length} bộ):
+                </div>
+                <select
+                  value={serverVideoPath}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setServerVideoPath(val);
+                    if (val) {
+                      setVideoUrl(`/video/${encodeURIComponent(val)}`);
+                      setVideoFile(null);
+                    }
+                  }}
+                  className="w-full bg-white border border-sky-300 rounded-md p-1.5 text-xs font-semibold text-slate-800 cursor-pointer shadow-2xs"
+                >
+                  <option value="">-- Bấm để chọn tập phim có sẵn trong máy --</option>
+                  {localDramas.map((drama) => (
+                    <optgroup key={drama.name} label={`📁 ${drama.name} (${drama.videos?.length || 0} tập)`}>
+                      {drama.videos?.map((vid) => (
+                        <option key={vid.relPath} value={vid.relPath}>
+                          ▶ {vid.name} ({vid.sizeMb} MB)
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="text-center text-[10px] text-gray-400 font-semibold">— HOẶC TẢI LÊN FILE TỪ MÁY TÍNH —</div>
+
+            <label className="border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50/30 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center">
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setVideoFile(e.target.files[0]);
+                    setVideoUrl(URL.createObjectURL(e.target.files[0]));
+                    setServerVideoPath('');
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="bg-white border border-gray-300 shadow-xs text-gray-700 text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1.5 mb-1 pointer-events-none"
+              >
+                <Upload size={14} /> Tải file MP4/MKV khác
+              </button>
+              <span className="text-[11px] text-gray-400 font-medium truncate max-w-full">
+                {videoFile ? `Đã chọn: ${videoFile.name}` : (serverVideoPath ? `Đang dùng: ${serverVideoPath}` : 'Hỗ trợ MP4, MKV, MOV')}
+              </span>
+            </label>
+          </div>
+
+          {/* Watermark controls */}
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2.5">
+            <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+              <span className="flex items-center gap-1.5">
+                <Sliders size={14} className="text-blue-600" /> Tùy Chỉnh Watermark & Phụ Đề
+              </span>
+              <label className="flex items-center gap-1 cursor-pointer text-[11px] text-blue-600">
+                <input
+                  type="checkbox"
+                  checked={watermarkEnabled}
+                  onChange={(e) => setWatermarkEnabled(e.target.checked)}
+                  className="accent-blue-600 rounded"
+                />
+                Bật
+              </label>
+            </div>
+
+            {watermarkEnabled && (
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <div className="flex items-center justify-between text-[11px] text-gray-600 font-medium">
+                  <span>Kích thước logo: {logoSize}%</span>
+                  <input
+                    type="range"
+                    min="5"
+                    max="50"
+                    value={logoSize}
+                    onChange={(e) => setLogoSize(Number(e.target.value))}
+                    className="w-32 accent-blue-600"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-600 font-medium">
+                  <span>Độ mờ đục: {logoOpacity}%</span>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={logoOpacity}
+                    onChange={(e) => setLogoOpacity(Number(e.target.value))}
+                    className="w-32 accent-blue-600"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CỘT 2: CANVAS STUDIO & VIDEO PLAYER */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                <span>📺</span> Canvas Xem Trước & Kéo Thả Trực Tiếp
+              </span>
+              <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded">
+                1080x1920 (9:16)
+              </span>
+            </div>
+
+            {/* Video Canvas Container */}
+            <div className="relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group">
+              {videoUrl ? (
+                <video
+                  src={videoUrl}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center">
+                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                    <Play size={20} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-400">Chưa chọn video</span>
+                  <p className="text-[11px] text-slate-600 max-w-xs">
+                    Vui lòng chọn video từ danh sách kho phim bên trái hoặc tải file lên để xem trước trên Canvas.
+                  </p>
+                </div>
+              )}
+
+              {/* Logo Overlay trên mặt video */}
+              {watermarkEnabled && videoUrl && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: `${logoY}%`,
+                    left: `${logoX}%`,
+                    width: `${logoSize}%`,
+                    opacity: logoOpacity / 100,
+                    transform: `rotate(${logoRotation}deg)`
+                  }}
+                  className="cursor-move select-none p-1 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity"
+                  title="Kéo thả để điều chỉnh vị trí logo"
+                >
+                  <div className="bg-blue-600/90 text-white font-black text-[10px] px-1.5 py-0.5 rounded shadow text-center truncate">
+                    VDT Studio
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Nút Khởi Chạy Lồng Tiếng AI */}
+            <button
+              type="button"
+              onClick={handleStartDubbing}
+              disabled={isDubbingProcessing || (!videoUrl && !serverVideoPath)}
+              className={`w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer ${
+                isDubbingProcessing
+                  ? 'bg-slate-400 text-white cursor-not-allowed'
+                  : 'bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white active:scale-[0.99]'
+              }`}
+            >
+              {isDubbingProcessing ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin" /> ĐANG XỬ LÝ LỒNG TIẾNG AI...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} /> BẮT ĐẦU LỒNG TIẾNG VIDEO AI
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* CỘT 3: TIẾN TRÌNH & THÀNH PHẨM */}
+        <div className="col-span-12 lg:col-span-3 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3">
+            <h3 className="text-xs font-black text-gray-900 uppercase">
+              📊 Trạng Thái Luồng Lồng Tiếng
+            </h3>
+
+            {isDubbingProcessing && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold text-blue-900">
+                  <span>{dubProgress?.step || dubProgress?.message || 'Đang lồng tiếng...'}</span>
+                  <span>{dubProgress?.percent || dubProgress?.pct || 15}%</span>
+                </div>
+                <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300 rounded-full"
+                    style={{ width: `${dubProgress?.percent || dubProgress?.pct || 15}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* Video thành phẩm sau khi hoàn tất */}
+            {dubbingCompleted && resultVideoUrl ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <span>✓</span> Lồng tiếng hoàn tất 100%!
+                </div>
+                <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden border border-emerald-200">
+                  <video src={resultVideoUrl} controls autoPlay className="w-full h-full object-contain" />
+                </div>
+                <a
+                  href={resultVideoUrl}
+                  download
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition"
+                >
+                  <Download size={14} /> TẢI VIDEO THÀNH PHẨM (.MP4)
+                </a>
+              </div>
+            ) : (
+              !isDubbingProcessing && (
+                <div className="p-6 text-center text-xs text-gray-400 bg-slate-50 border border-dashed border-gray-200 rounded-xl">
+                  Video thành phẩm sau khi hoàn tất sẽ hiển thị tại đây để bạn xem lại và tải về máy.
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

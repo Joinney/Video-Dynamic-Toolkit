@@ -155,8 +155,8 @@ class Transcriber:
         cleaned_raw = []
         prev_clean_text = ""
         for s in raw_segments:
-            # Ngưỡng phát hiện âm thanh không lời / ảo giác
-            if getattr(s, "no_speech_prob", 0.0) > 0.48:
+            # Ngưỡng phát hiện âm thanh không lời / ảo giác (chỉ lọc khi vượt ngưỡng cực đoan vì VAD filter đã lọc chuẩn xác)
+            if getattr(s, "no_speech_prob", 0.0) > 0.95:
                 continue
             text = s.text.strip()
             if not text:

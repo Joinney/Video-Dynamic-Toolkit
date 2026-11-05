@@ -175,9 +175,13 @@ class Transcriber:
                     logger.info(f"Filtered out background song lyrics: '{text}'")
                     continue
 
+            # Dùng mốc thời gian từng từ (word timestamps) để lấy điểm bắt đầu chính xác từng mili-giây
+            w_start = round(s.words[0].start, 2) if hasattr(s, "words") and s.words else round(s.start, 2)
+            w_end = round(s.words[-1].end, 2) if hasattr(s, "words") and s.words else round(s.end, 2)
+
             cleaned_raw.append({
-                "start": round(s.start, 2),
-                "end": round(s.end, 2),
+                "start": max(0.0, w_start),
+                "end": max(w_start + 0.3, w_end),
                 "text": text,
             })
 

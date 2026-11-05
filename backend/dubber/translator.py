@@ -80,6 +80,11 @@ def preprocess_source_text(text: str, source_lang: str = "auto") -> str:
             t = re.sub(r'把那小鬼扯了魂', '把这小鬼扯了魂', t)
         t = re.sub(r'不奖的', '字迹', t)
         t = re.sub(r'挺得上你|停在上面', '停下来', t)
+        t = re.sub(r'黑字上面写得清清楚楚', '白纸黑字写得清清楚楚', t)
+        t = re.sub(r'我中正南岸[，,\s]*', '我叫钟颜，', t)
+        t = re.sub(r'我中的老板', '我是你的老板', t)
+        t = re.sub(r'确实是我的部件|确实是我的部下', '确实是我的字迹', t)
+        t = re.sub(r'自然叫阴阳[，,\s]*谁的伙计了|怎么能叫阴阳[，,\s]*谁的伙计呢', '哪有叫阴阳的店，又是谁的伙计', t)
 
     return t
 
@@ -122,8 +127,33 @@ def refine_vietnamese_dialogue(text: str) -> str:
         (r"\bcửa hàng tạp hóa Âm Dương\b", "tiệm Tạp Hóa Âm Dương"),
         (r"\bkho tạp hóa Âm Dương\b", "Tiệm Tạp Hóa Âm Dương"),
         (r"\bKho tạp hóa Âm Dương\b", "Tiệm Tạp Hóa Âm Dương"),
+        (r"Chữ viết được giấy trắng mực đen viết rõ ràng rành rành", "Giấy trắng mực đen viết rõ ràng rành rành"),
+        (r"Chữ viết được giấy trắng mực đen", "Giấy trắng mực đen"),
+        (r"Nhưng làm sao tôi có thể dừng lại được\?\s*cơ chứ\?", "Nhưng làm sao tôi dừng lại được cơ chứ?"),
+        (r"nhưng làm sao tôi có thể dừng lại được\?\s*cơ chứ\?", "nhưng làm sao tôi dừng lại được cơ chứ?"),
+        (r"\bNhững chữ màu đen được viết rõ ràng trên đó\b", "Giấy trắng mực đen trên này viết rõ ràng rành rành"),
+        (r"\bNhững chữ màu đen được viết rõ ràng\b", "Giấy trắng mực đen viết rõ ràng rành rành"),
         (r"\bviết rõ ràng bằng chữ đen trắng\b", "giấy trắng mực đen viết rõ ràng rành rành"),
         (r"\bviết rõ ràng bằng màu đen và trắng\b", "giấy trắng mực đen viết rõ ràng rành rành"),
+        (r"\bBạn là nhân viên bán hàng tại Tiệm Tạp Hóa Âm Dương của tôi\b", "Cậu là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi"),
+        (r"\bBạn là nhân viên bán hàng\b", "Cậu là nhân viên"),
+        (r"\bnhân viên bán hàng tại Tiệm Tạp Hóa Âm Dương\b", "nhân viên của Tiệm Tạp Hóa Âm Dương"),
+        (r"\bTôi là Chung Nhan, bạn gọi tôi là Chung Nhan, tôi gọi bạn là ông chủ\b", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu"),
+        (r"\bTôi là Chung Nhan, bạn gọi tôi là Chung Nhan, tôi là ông chủ của bạn\b", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu"),
+        (r"\bTôi là Chung Nhan, cậu gọi tôi là Chung Nhan, tôi là ông chủ của cậu\b", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu"),
+        (r"\bChữ viết tay trên đây thực sự là chữ viết tay của tôi\b", "Nét chữ trên này quả thực là của tôi"),
+        (r"\bChữ viết tay trên đây thực sự là phần của tôi\b", "Nét chữ trên này quả thực là của tôi"),
+        (r"\bChữ viết tay trên đây thực sự là bộ phận của tôi\b", "Nét chữ trên này quả thực là của tôi"),
+        (r"\bChữ viết tay trên đây thực sự là của tôi\b", "Nét chữ trên này quả thực là của tôi"),
+        (r"\bNhưng làm sao tôi có thể dừng lại được\?* cơ chứ\?*\.?\b", "Nhưng làm sao tôi dừng lại được cơ chứ?"),
+        (r"\bnhưng làm sao tôi có thể dừng lại được\?*\b", "nhưng làm sao tôi có thể dừng lại được cơ chứ?"),
+        (r"\bKhông có cửa hàng nào tên Âm Dương, và người phục vụ ở đó là ai\?*\b", "Sao lại có tiệm tên là Âm Dương, lại còn là nhân viên của ai cơ chứ?"),
+        (r"\bLàm sao có thể gọi là Âm và Dương, bạn thân của ai\?*\b", "Sao lại có tiệm tên là Âm Dương, lại còn là nhân viên của ai cơ chứ?"),
+        (r"\bLàm sao có thể gọi là Âm Dương, bạn thân của ai\?*\b", "Sao lại có tiệm tên là Âm Dương, lại còn là nhân viên của ai cơ chứ?"),
+        (r"\bAi đã gọi cho tôi\?*\b", "Ai gọi tôi đấy?"),
+        (r"\bAi đã gọi tôi\?*\b", "Ai gọi tôi đấy?"),
+        (r"\bAi gọi cho tôi\?*\b", "Ai gọi tôi đấy?"),
+        (r"\bai gọi cho tôi\?*\b", "ai gọi tôi đấy?"),
         (r"\bbằng chữ đen trắng\b", "giấy trắng mực đen"),
         (r"\bbằng màu đen và trắng trên mảnh giấy này\b", "giấy trắng mực đen trên này"),
         (r"\bTrên mảnh giấy này viết rõ ràng bằng chữ đen trắng\b", "Giấy trắng mực đen trên này viết rõ ràng rành rành"),
@@ -251,6 +281,13 @@ def refine_vietnamese_dialogue(text: str) -> str:
     t = re.sub(r"^Bạn là ai\??", "Cậu là ai?", t, flags=re.IGNORECASE)
     t = re.sub(r"^Bạn đi đâu đấy\??", "Cậu đi đâu đấy?", t, flags=re.IGNORECASE)
     t = re.sub(r"^Bạn nghe tôi nói này", "Cậu nghe tôi nói này", t, flags=re.IGNORECASE)
+
+    # Dọn dẹp dấu câu trùng lặp do ghép cụm
+    t = re.sub(r'\?+', '?', t)
+    t = re.sub(r'!+', '!', t)
+    t = re.sub(r'\?\.', '?', t)
+    t = re.sub(r'!\.', '!', t)
+    t = re.sub(r'\s{2,}', ' ', t).strip()
 
     # Viết hoa chữ cái đầu câu nếu cần
     if t and len(t) > 1 and t[0].islower():

@@ -579,14 +579,31 @@ class VideoMerger:
         try:
             original_sound = AudioSegment.from_file(original_audio_path)
             import math
-            # Duy trì âm lượng nhạc nền/phim gốc ở mức êm dịu, ổn định xuyên suốt toàn bộ video (Steady Studio Level)
-            # Triệt tiêu hoàn toàn hiện tượng bơm tiếng 'lúc to lúc nhỏ' gây khó chịu
+            # Duy trì âm lượng nhạc nền/phim gốc ở mức êm dịu
             gain_reduction_db = 20 * math.log10(max(0.01, vol_fraction))
             attenuated_orig = original_sound + gain_reduction_db
 
+            # Tự động triệt tiêu giọng thoại gốc trong các khoảng thời gian nhân vật nói thoại
+            # (Auto-Ducking / Zero Bleed: triệt tiêu 100% tình trạng hai thứ tiếng chồng lên nhau)
+            if mute_original_dialogue and segments:
+                duck_extra_attenuation = -24.0  # Giảm thêm 24dB trong lúc có lời thoại
+                orig_len = len(attenuated_orig)
+                
+                # Tạo mask ducking cho âm thanh gốc
+                ducked_sound = attenuated_orig
+                for seg in segments:
+                    s_ms = max(0, int(seg.start * 1000) - 40)
+                    e_val = getattr(seg, "sub_end", None) or seg.end
+                    e_ms = min(orig_len, int(e_val * 1000) + 80)
+                    if s_ms < e_ms and s_ms < orig_len:
+                        silenced_slice = ducked_sound[s_ms:e_ms] + duck_extra_attenuation
+                        ducked_sound = ducked_sound[:s_ms] + silenced_slice + ducked_sound[e_ms:]
+
+                attenuated_orig = ducked_sound
+
             mixed = attenuated_orig.overlay(dubbed_sound)
             mixed.export(str(output_mixed_audio_path), format="wav")
-            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with zero pumping.")
+            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with dialogue ducking.")
             return output_mixed_audio_path
         except Exception as e:
             logger.warning(f"Audio mixing failed ({e}), using dubbed audio only.")

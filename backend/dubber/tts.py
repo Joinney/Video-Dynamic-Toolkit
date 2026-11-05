@@ -5,7 +5,10 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import List
-from .transcriber import Segment
+try:
+    from .transcriber import Segment
+except ImportError:
+    from transcriber import Segment
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,10 @@ class TTSService:
     ) -> bool:
         import edge_tts
         from pydub import AudioSegment
-        from .vieneu_tts import enhance_vocal
+        try:
+            from .vieneu_tts import enhance_vocal
+        except ImportError:
+            from vieneu_tts import enhance_vocal
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
         communicate = edge_tts.Communicate(
@@ -73,7 +79,10 @@ class TTSService:
         )
 
         if is_vieneu:
-            from .vieneu_tts import generate_vieneu_speech
+            try:
+                from .vieneu_tts import generate_vieneu_speech
+            except ImportError:
+                from vieneu_tts import generate_vieneu_speech
             clean_voice = self.voice.replace("vieneu:", "")
 
             for seg in segments:

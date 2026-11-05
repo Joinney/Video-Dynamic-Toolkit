@@ -1177,6 +1177,8 @@ class VideoMerger:
 
         logger.info(f"Appending outro video '{outro_video_path.name}' to '{main_video_path.name}' -> '{final_output_path.name}'...")
 
+        cpu_threads = min(8, max(2, os.cpu_count() or 4))
+
         try:
             try:
                 from moviepy import VideoFileClip, CompositeVideoClip, concatenate_videoclips
@@ -1261,15 +1263,15 @@ class VideoMerger:
 
         if ffmpeg_bin:
             try:
+                target_w, target_h = get_video_dimensions(main_video_path)
                 cmd_cat = [
                     ffmpeg_bin, "-y",
                     "-i", str(main_video_path),
                     "-i", str(outro_video_path),
                     "-filter_complex",
-                    "[0:v]setsar=1[v0];"
-                    "[1:v]scale=w=main_w:h=main_h:force_original_aspect_ratio=decrease,"
-                    "pad=main_w:main_h:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
-                    "[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[v_cat][a_cat]",
+                    f"[0:v]setsar=1[v0];"
+                    f"[1:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];"
+                    f"[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[v_cat][a_cat]",
                     "-map", "[v_cat]",
                     "-map", "[a_cat]",
                     "-c:v", "libx264",

@@ -122,7 +122,10 @@ class VideoDubberPipeline:
         # Trích xuất độ dài video chuẩn xác mà không cần giải mã toàn bộ tệp WAV vào RAM
         total_duration = 0.0
         try:
-            from .merger import find_ffprobe_binary
+            try:
+                from .merger import find_ffprobe_binary
+            except ImportError:
+                from merger import find_ffprobe_binary
             probe_bin = find_ffprobe_binary()
             res = subprocess.run(
                 [probe_bin, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(orig_audio_path)],
@@ -152,8 +155,7 @@ class VideoDubberPipeline:
                         id=int(s_data.get("id", _i + 1)),
                         start=float(s_data.get("start", 0.0)),
                         end=float(s_data.get("end", 0.0)),
-                        text=t_text,
-                        words=[],
+                        text=str(s_data.get("original_text", t_text)).strip(),
                         translated_text=t_text,
                     )
                     segments.append(seg_obj)

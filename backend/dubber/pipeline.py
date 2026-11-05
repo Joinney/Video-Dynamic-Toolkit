@@ -165,19 +165,20 @@ class VideoDubberPipeline:
             self.last_segments = segments
         else:
             # Step 2: Speech Recognition (Transcription)
-            notify("Nhận diện giọng nói và tách mốc thời gian (Whisper ASR)...", 0.25)
+            notify("Nhận diện giọng nói và tách mốc thời gian (Whisper ASR)...", 0.12)
             segments, detected_lang = self.transcriber.transcribe(
                 orig_audio_path,
                 language=None if self.config.source_language == "auto" else self.config.source_language,
+                progress_callback=notify,
             )
 
             if not segments:
                 raise ValueError("Không nhận diện được giọng nói nào trong video!")
 
             # Step 3: Translation
-            notify(f"Dịch nội dung sang ngôn ngữ đích ({self.config.target_language})...", 0.45)
+            notify(f"Dịch kịch bản sang ngôn ngữ đích ({self.config.target_language})...", 0.35)
             self.translator.source_lang = detected_lang
-            segments = self.translator.translate_segments(segments)
+            segments = self.translator.translate_segments(segments, progress_callback=notify)
             self.last_segments = segments
 
         # Save metadata and subtitle
@@ -189,17 +190,18 @@ class VideoDubberPipeline:
 
         # Step 4: TTS Generation
         engine_label = "VieNeu Neural" if "vieneu" in self.config.tts_voice.lower() else "Edge-TTS"
-        notify(f"Sinh giọng đọc AI lồng tiếng mới ({engine_label})...", 0.65)
+        notify(f"Sinh giọng đọc AI lồng tiếng mới ({engine_label})...", 0.50)
         tts_dir = work_dir / "tts_segments"
-        segments = self.tts.generate_speech(segments, tts_dir)
+        segments = self.tts.generate_speech(segments, tts_dir, progress_callback=notify)
 
         # Step 5: Audio Synchronization
-        notify("Đồng bộ thời gian và khớp khẩu hình âm thanh...", 0.80)
+        notify("Đồng bộ thời gian và khớp khẩu hình âm thanh...", 0.75)
         dubbed_voice_path = work_dir / "dubbed_assembled.wav"
         self.synchronizer.align_and_assemble(
             segments=segments,
             total_duration_seconds=total_duration,
             output_file=dubbed_voice_path,
+            progress_callback=notify,
         )
 
         # Mốc phụ đề sub_end đã được đồng bộ chuẩn xác từng mili-giây từ AudioSynchronizer
@@ -216,7 +218,7 @@ class VideoDubberPipeline:
             pass
 
         # Step 6: Audio Mixing & Video Merging
-        notify("Hòa âm nhạc nền và ghép video lồng tiếng hoàn thiện...", 0.90)
+        notify("Hòa âm nhạc nền và triệt tiêu tạp âm gốc...", 0.85)
         mixed_audio_path = work_dir / "mixed_final.wav"
         self.merger.mix_audios(
             original_audio_path=orig_audio_path,
@@ -233,6 +235,7 @@ class VideoDubberPipeline:
         if enable_outro and not outro_path and Path("assets/endgpc.mp4").exists():
             outro_path = Path("assets/endgpc.mp4")
 
+        notify("Bắt đầu mã hóa video thành phẩm chuẩn phòng thu...", 0.87)
         final_video = self.merger.merge_video(
             video_path=video_path,
             audio_path=mixed_audio_path,
@@ -251,6 +254,8 @@ class VideoDubberPipeline:
             floating_watermark_font_size=getattr(self.config, "floating_watermark_font_size", 18),
             floating_watermark_opacity=getattr(self.config, "floating_watermark_opacity", 0.30),
             outro_video_path=outro_path if enable_outro else None,
+            progress_callback=notify,
+            total_duration=total_duration,
         )
 
         # Dọn dẹp triệt để toàn bộ file tạm (.srt, .temp_dub, thư mục tạm), CHỈ LƯU DUY NHẤT FILE VIDEO LỒNG TIẾNG (.mp4)

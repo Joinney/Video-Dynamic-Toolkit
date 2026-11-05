@@ -280,7 +280,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           setDubJobId(null);
         }
       } catch (e) {}
-    }, 1500);
+    }, 500);
     return () => clearInterval(interval);
   }, [dubJobId]);
 

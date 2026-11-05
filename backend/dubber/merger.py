@@ -650,6 +650,8 @@ class VideoMerger:
         floating_watermark_font_size: int = 18,
         floating_watermark_opacity: float = 0.30,
         outro_video_path: Optional[Union[str, Path]] = None,
+        progress_callback: Optional[object] = None,
+        total_duration: float = 0.0,
     ) -> Path:
         """
         Merges final mixed audio into the original video container,
@@ -678,7 +680,7 @@ class VideoMerger:
             f"(has_logo={has_logo}, has_sub={has_sub}, floating_wm={floating_watermark_text}, has_outro={has_outro})..."
         )
 
-        cpu_threads = min(8, max(2, os.cpu_count() or 4))
+        cpu_threads = max(2, os.cpu_count() or 16)
 
         has_floating_wm = bool(floating_watermark_text and floating_watermark_text.strip())
         wm_opacity = max(0.05, min(0.95, float(floating_watermark_opacity)))
@@ -789,13 +791,14 @@ class VideoMerger:
                         "-map", "1:a:0",
                         "-c:v", "libx264",
                         "-pix_fmt", "yuv420p",
-                        "-preset", "veryfast",
+                        "-preset", "superfast",
                         "-threads", str(cpu_threads),
-                        "-crf", "22",
+                        "-crf", "23",
                         "-c:a", "aac",
                         "-b:a", "192k",
                         "-movflags", "+faststart",
                         "-shortest",
+                        "-progress", "pipe:1",
                         str(intermediate_out),
                     ])
                 else:
@@ -807,17 +810,57 @@ class VideoMerger:
                         "-map", "0:v:0",
                         "-map", "1:a:0",
                         "-shortest",
+                        "-progress", "pipe:1",
                         str(intermediate_out),
                     ])
 
-                res = subprocess.run(
+                logger.info(f"Running high-speed FFmpeg with {cpu_threads} CPU threads (preset: superfast)...")
+                proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    check=True
+                    text=True,
+                    bufsize=1
                 )
 
+                cur_fps = 0.0
+                cur_speed = "1.0x"
+                last_reported_s = -999.0
+                if proc.stdout:
+                    for line in proc.stdout:
+                        line_str = line.strip()
+                        if line_str.startswith("fps="):
+                            try:
+                                cur_fps = round(float(line_str.split("=")[1]), 1)
+                            except Exception:
+                                pass
+                        elif line_str.startswith("speed="):
+                            cur_speed = line_str.split("=")[1].strip()
+                        elif line_str.startswith("out_time_us="):
+                            try:
+                                us_val = int(line_str.split("=")[1])
+                                cur_s = us_val / 1000000.0
+                                if total_duration > 0 and (cur_s - last_reported_s >= 2.0 or cur_s >= total_duration - 0.5):
+                                    last_reported_s = cur_s
+                                    sub_pct = 0.88 + min(0.09, (cur_s / total_duration) * 0.09)
+                                    cur_m, cur_sec = divmod(int(cur_s), 60)
+                                    tot_m, tot_sec = divmod(int(total_duration), 60)
+                                    if progress_callback:
+                                        progress_callback(
+                                            f"[Mã hóa FFmpeg] [{cur_m:02d}:{cur_sec:02d}/{tot_m:02d}:{tot_sec:02d}] Tốc độ {cur_speed} ({cur_fps} FPS)",
+                                            sub_pct
+                                        )
+                            except Exception:
+                                pass
+
+                proc.wait()
+                if proc.returncode != 0:
+                    stderr_msg = proc.stderr.read() if proc.stderr else ""
+                    raise subprocess.CalledProcessError(proc.returncode, cmd, stderr=stderr_msg)
+
                 if has_outro and outro_video_path and Path(outro_video_path).exists():
+                    if progress_callback:
+                        progress_callback("[Ghép Outro] Đang hoàn thiện phần kết thúc thương hiệu...", 0.98)
                     try:
                         self.append_outro(intermediate_out, outro_video_path, output_video_path, ffmpeg_bin=ffmpeg_bin)
                     except Exception as ex_ao:
@@ -1229,7 +1272,7 @@ class VideoMerger:
         if not ffmpeg_bin:
             ffmpeg_bin = find_ffmpeg_binary()
 
-        cpu_threads = min(8, max(2, os.cpu_count() or 4))
+        cpu_threads = max(2, os.cpu_count() or 16)
 
         # Method 1: High-Performance FFmpeg CLI Concat (Primary)
         if ffmpeg_bin:

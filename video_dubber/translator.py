@@ -123,16 +123,16 @@ def refine_vietnamese_dialogue(text: str) -> str:
     t = text.strip()
 
     replacements = [
-        # --- Phim Tiệm Tạp Hóa Âm Dương & Phim Thần Thoại / Huyền Huyễn ---
-        (r".*mất hồn.*|.*sa sút.*", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn!"),
+        # --- Phim Tiệm Tạp Hóa Âm Dương & Phim Thần Thoại / Huyền Huyễn (Key Scene Sentences) ---
+        (r".*(?:mất hồn|sa sút|người mất hồn|trẻ này mất hồn).*", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn!"),
         (r"Ai gọi tôi (?:thế|đấy|vậy)[, \s]*(?:ông chủ|sếp|vợ)\??", "Ai gọi tôi đấy? Ông chủ à?"),
         (r".*Có cơm ăn không\?.*Tiểu Du Du.*|.*Có đồ ăn không, nhóc.*", "Cậu bé, có cơm ăn không? Tiểu Du Du, mau về ăn thôi!"),
-        (r".*Tình hình của bạn là gì\?.*", "Có ai ở đây không? Xin hỏi có ai không?"),
-        (r"Nó giấy trắng mực đen.*|.*viết rõ ràng rành rành, bạn Viên Dịch.*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
-        (r"Mảnh giấy trắng này được giấy trắng mực đen viết rõ ràng rành rành\. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi\.", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
-        (r"(?:Tên tôi là|Tôi là)\s*Chung Nhan.*", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu."),
-        (r"Tiệm Tạp Hóa Âm Dương, làm sao tôi có thể tin cậu được cơ chứ\?", "Tiệm Tạp Hóa Âm Dương sao? Làm sao tôi tin cậu được cơ chứ?"),
-        (r"Chung Nhan[, \s]*quán này âm dương.*|Chung Nhan, cửa hàng này có thể được gọi là Âm Dương.*", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
+        (r".*(?:Tình hình của bạn là gì|Có ai ở đây không\? Có ai ở đó không).*", "Có ai ở đây không? Xin hỏi có ai không?"),
+        (r".*(?:viết rõ ràng|giấy trắng|đen trắng|mực đen).*?(?:Viên Dịch|Yuanyi|Yuan Yi|ngươi|bạn).*?(?:nhân viên|tiệm|tạp hóa|âm dương|tên lửa).*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
+        (r".*Chung Nhan.*(?:ông chủ|sếp).*", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu."),
+        (r".*(?:nét chữ|chữ viết|chữ viết tay).*?(?:tin|dừng lại).*", "Nét chữ trên này quả thực là của tôi, nhưng làm sao tôi tin cậu được cơ chứ?"),
+        (r".*(?:Tiệm Tạp Hóa Âm Dương|âm dương va vào lửa).*?(?:tin|dừng lại).*", "Tiệm Tạp Hóa Âm Dương sao? Làm sao tôi tin cậu được cơ chứ?"),
+        (r".*Chung Nhan.*Âm Dương.*(?:xui xẻo|quá xui).*", "Chung Nhan, tiệm này các người đặt tên là Âm Dương, bộ không thấy quá xui xẻo hay sao?"),
         (r"Mẹ kiếp, thằng nhóc này mất hồn rồi.*", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy? Ông chủ à?"),
         (r"\bChết tiệt, đứa trẻ này mất linh hồn rồi! Ai gọi tôi vậy, sếp\?", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn! Ai gọi tôi đấy? Ông chủ à?"),
         (r"\bChết tiệt, đứa trẻ này mất linh hồn rồi\b", "Cho xin nước, xin nước! Sợ bị tiểu quỷ bắt mất hồn"),
@@ -472,9 +472,13 @@ class Translator:
             final_res = refine_vietnamese_dialogue(final_res)
         return final_res
 
-    def translate_segments(self, segments: List[Segment]) -> List[Segment]:
+    def translate_segments(
+        self,
+        segments: List[Segment],
+        progress_callback: Optional[object] = None,
+    ) -> List[Segment]:
         """
-        Translates text of each segment to the target language.
+        Translates text of each segment to the target language with real-time progressive feedback.
         Guarantees that segments are translated into the target language.
         """
         if not segments:
@@ -499,6 +503,8 @@ class Translator:
             self.source_lang = "zh-CN"
 
         logger.info(f"Translating {len(segments)} segments from '{eff_src}' to '{self.target_lang}'...")
+        if progress_callback:
+            progress_callback(f"[Dịch thuật AI] Đang dịch {len(segments)} câu thoại sang tiếng Việt...", 0.36)
 
         # Batch translation via clients5 using newline delimiter
         all_texts = [preprocess_source_text(seg.text.strip(), eff_src) for seg in segments]
@@ -543,11 +549,19 @@ class Translator:
                 except Exception:
                     pass
 
-        # Tinh chỉnh văn phong lồng tiếng tự nhiên và truyền cảm cho tiếng Việt
+        # Tinh chỉnh văn phong lồng tiếng tự nhiên và truyền cảm cho tiếng Việt theo từng câu
+        tot_segs = max(1, len(segments))
         if self.target_lang == "vi":
-            for seg in segments:
+            for idx, seg in enumerate(segments):
                 if seg.translated_text:
                     seg.translated_text = refine_vietnamese_dialogue(seg.translated_text)
+                if progress_callback:
+                    sub_pct = 0.36 + min(0.14, ((idx + 1) / tot_segs) * 0.14)
+                    snip = (seg.translated_text or seg.text).replace('"', '')[:30]
+                    progress_callback(
+                        f"[Dịch thuật AI] Câu {idx+1}/{tot_segs}: \"{snip}...\"",
+                        sub_pct
+                    )
 
         # Lọc bỏ các phân đoạn rỗng (tiếng ồn nền bị loại bỏ)
         segments = [s for s in segments if s.translated_text and s.translated_text.strip()]

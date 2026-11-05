@@ -81,6 +81,7 @@ class AudioSynchronizer:
         segments: List[Segment],
         total_duration_seconds: float,
         output_file: Union[str, Path],
+        progress_callback: Optional[object] = None,
     ) -> Path:
         """
         Assembles synchronous voice track with 100% authentic character timbre and bright tone.
@@ -91,6 +92,7 @@ class AudioSynchronizer:
 
         total_duration_ms = int(total_duration_seconds * 1000)
         master_track = AudioSegment.silent(duration=total_duration_ms)
+        tot_segs = max(1, len(segments))
 
         logger.info(
             f"Assembling audio track for {len(segments)} segments (total length: {total_duration_seconds:.2f}s)..."
@@ -107,6 +109,14 @@ class AudioSynchronizer:
             except Exception as e:
                 logger.warning(f"Could not read audio clip {seg.tts_audio_path}: {e}")
                 continue
+
+            if progress_callback:
+                sub_pct = 0.75 + min(0.10, ((idx + 1) / tot_segs) * 0.10)
+                cur_m, cur_s_val = divmod(int(seg.start), 60)
+                progress_callback(
+                    f"[Khớp khẩu hình] Đồng bộ câu {idx+1}/{tot_segs} (Mốc {cur_m:02d}:{cur_s_val:02d})",
+                    sub_pct
+                )
 
             # Mốc bắt đầu của câu thoại kế tiếp để tránh đè tiếng
             if idx + 1 < len(segments):

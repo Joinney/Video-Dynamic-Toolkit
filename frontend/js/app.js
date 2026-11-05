@@ -24367,7 +24367,7 @@
           }
         } catch (e) {
         }
-      }, 1500);
+      }, 500);
       return () => clearInterval(interval);
     }, [dubJobId]);
     const handleStartDubbing = async () => {

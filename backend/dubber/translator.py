@@ -472,9 +472,13 @@ class Translator:
             final_res = refine_vietnamese_dialogue(final_res)
         return final_res
 
-    def translate_segments(self, segments: List[Segment]) -> List[Segment]:
+    def translate_segments(
+        self,
+        segments: List[Segment],
+        progress_callback: Optional[object] = None,
+    ) -> List[Segment]:
         """
-        Translates text of each segment to the target language.
+        Translates text of each segment to the target language with real-time progressive feedback.
         Guarantees that segments are translated into the target language.
         """
         if not segments:
@@ -499,6 +503,8 @@ class Translator:
             self.source_lang = "zh-CN"
 
         logger.info(f"Translating {len(segments)} segments from '{eff_src}' to '{self.target_lang}'...")
+        if progress_callback:
+            progress_callback(f"[Dịch thuật AI] Đang dịch {len(segments)} câu thoại sang tiếng Việt...", 0.36)
 
         # Batch translation via clients5 using newline delimiter
         all_texts = [preprocess_source_text(seg.text.strip(), eff_src) for seg in segments]
@@ -543,11 +549,19 @@ class Translator:
                 except Exception:
                     pass
 
-        # Tinh chỉnh văn phong lồng tiếng tự nhiên và truyền cảm cho tiếng Việt
+        # Tinh chỉnh văn phong lồng tiếng tự nhiên và truyền cảm cho tiếng Việt theo từng câu
+        tot_segs = max(1, len(segments))
         if self.target_lang == "vi":
-            for seg in segments:
+            for idx, seg in enumerate(segments):
                 if seg.translated_text:
                     seg.translated_text = refine_vietnamese_dialogue(seg.translated_text)
+                if progress_callback:
+                    sub_pct = 0.36 + min(0.14, ((idx + 1) / tot_segs) * 0.14)
+                    snip = (seg.translated_text or seg.text).replace('"', '')[:30]
+                    progress_callback(
+                        f"[Dịch thuật AI] Câu {idx+1}/{tot_segs}: \"{snip}...\"",
+                        sub_pct
+                    )
 
         # Lọc bỏ các phân đoạn rỗng (tiếng ồn nền bị loại bỏ)
         segments = [s for s in segments if s.translated_text and s.translated_text.strip()]

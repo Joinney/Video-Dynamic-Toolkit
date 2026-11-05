@@ -127,7 +127,11 @@ function startDubbingJob(inputVideoPath, options = {}) {
                 jobState.status = parsed.status;
                 jobState.pct = parsed.pct;
                 jobState.message = parsed.message;
-                addLog(`[${parsed.pct}%] ${parsed.message}`);
+                let logText = parsed.message || '';
+                if (!logText.includes('%')) {
+                  logText = `[${parsed.pct}%] ${logText}`;
+                }
+                addLog(logText);
                 if (parsed.status === 'completed') {
                   jobState.done = true;
                 } else if (parsed.status === 'error') {

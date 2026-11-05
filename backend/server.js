@@ -464,6 +464,53 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 9.3 API Voice Sample Preview (Real Studio VDT 48kHz Voice Preview)
+  if (url.pathname === '/api/voice-preview') {
+    const voiceParam = (url.searchParams.get('voice') || '').trim();
+    const previewDir = path.join(__dirname, '..', 'output', 'preview_samples');
+    
+    const normalize = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normVoice = normalize(voiceParam);
+    let targetFile = null;
+
+    if (normVoice.includes('adam')) {
+      targetFile = path.join(previewDir, 'preview_Adam_Top_Top.wav');
+      if (!fs.existsSync(targetFile)) {
+        targetFile = path.join(__dirname, 'dubber', 'assets', 'adam_toptop_ref.wav');
+      }
+    } else if (fs.existsSync(previewDir)) {
+      const files = fs.readdirSync(previewDir);
+      for (const file of files) {
+        const normFile = normalize(file.replace('preview_', '').replace(/\.(mp3|wav)$/, ''));
+        if (normFile && (normVoice.includes(normFile) || normFile.includes(normVoice))) {
+          targetFile = path.join(previewDir, file);
+          break;
+        }
+      }
+    }
+
+    if (!targetFile || !fs.existsSync(targetFile)) {
+      targetFile = path.join(__dirname, 'dubber', 'assets', 'adam_toptop_ref.wav');
+    }
+
+    if (fs.existsSync(targetFile)) {
+      const ext = path.extname(targetFile).toLowerCase();
+      const mime = ext === '.wav' ? 'audio/wav' : 'audio/mpeg';
+      const stat = fs.statSync(targetFile);
+      res.writeHead(200, {
+        'Content-Type': mime,
+        'Content-Length': stat.size,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=86400'
+      });
+      fs.createReadStream(targetFile).pipe(res);
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Sample preview not found' }));
+    }
+    return;
+  }
+
   // 8. API Restart App
   if (url.pathname === '/api/restart-app' && req.method === 'POST') {
     const device = checkAdbDevice();

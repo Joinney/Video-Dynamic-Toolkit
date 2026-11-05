@@ -102,8 +102,14 @@ export default function Sidebar({
       {/* User Footer */}
       <div className="p-3 border-t border-slate-800">
         <div className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-xl border border-slate-700/50">
-          <div className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
-            VT
+          <div className="w-8 h-8 rounded-full overflow-hidden border border-sky-400/40 shrink-0 bg-sky-500/20 flex items-center justify-center font-bold text-xs text-sky-400">
+            <img
+              src="/assets/author.png"
+              alt="Võ Duy Toàn"
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+            <span>VT</span>
           </div>
           {!isCollapsed && (
             <div className="min-w-0">

@@ -23877,7 +23877,17 @@
         /* @__PURE__ */ import_react3.default.createElement(CloudDownload, { size: 18, className: "text-purple-400" }),
         !isCollapsed && /* @__PURE__ */ import_react3.default.createElement("span", null, "T\u1EA3i Phim Drama Series")
       ))),
-      /* @__PURE__ */ import_react3.default.createElement("div", { className: "p-3 border-t border-slate-800" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "flex items-center gap-3 p-2 bg-slate-800/40 rounded-xl border border-slate-700/50" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0" }, "VT"), !isCollapsed && /* @__PURE__ */ import_react3.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "text-xs font-bold text-white truncate" }, "V\xF5 Duy To\xE0n"), /* @__PURE__ */ import_react3.default.createElement("div", { className: "text-[10px] text-slate-400" }, "Enterprise Pro"))))
+      /* @__PURE__ */ import_react3.default.createElement("div", { className: "p-3 border-t border-slate-800" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "flex items-center gap-3 p-2 bg-slate-800/40 rounded-xl border border-slate-700/50" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "w-8 h-8 rounded-full overflow-hidden border border-sky-400/40 shrink-0 bg-sky-500/20 flex items-center justify-center font-bold text-xs text-sky-400" }, /* @__PURE__ */ import_react3.default.createElement(
+        "img",
+        {
+          src: "/assets/author.png",
+          alt: "V\xF5 Duy To\xE0n",
+          className: "w-full h-full object-cover",
+          onError: (e) => {
+            e.target.style.display = "none";
+          }
+        }
+      ), /* @__PURE__ */ import_react3.default.createElement("span", null, "VT")), !isCollapsed && /* @__PURE__ */ import_react3.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react3.default.createElement("div", { className: "text-xs font-bold text-white truncate" }, "V\xF5 Duy To\xE0n"), /* @__PURE__ */ import_react3.default.createElement("div", { className: "text-[10px] text-slate-400" }, "Enterprise Pro"))))
     );
   }
 
@@ -24054,6 +24064,81 @@
     )));
   }
 
+  // src/utils/voiceAvatar.js
+  var VOICE_AVATAR_MAP = {
+    // Adam series
+    "Adam T\u1ED1p T\u1ED1p": "adam1.png",
+    "Adam b\u1EF1a": "adam2.png",
+    "Adam": "adam3.png",
+    // Hot voices (Ưu tiên giọng hot trước)
+    "H\u1EA3i \u0110\u0103ng": "n10.png",
+    "Tr\xFAc Ly": "nu3.png",
+    "Thi\u1EC7n Minh": "ch2.png",
+    "Mai Anh": "nu4.png",
+    "Th\xF9y Dung": "nu6.png",
+    "Thi\u1EC1n T\xE2m \u0110\u1EE9c": "n15.png",
+    "Ng\u1ECDc Huy\u1EC1n": "nu11.png",
+    "Quang S\u01A1n": "n13.png",
+    "Ng\u1ECDc Tr\xE2n": "nu26.png",
+    // Nam voices (n1 - n20, ch: chú)
+    "Minh \u0110\u1EE9c": "n1.png",
+    "Ph\u1EA1m Tuy\xEAn": "n2.png",
+    "Xu\xE2n V\u0129nh": "n4.png",
+    "Thanh B\xECnh": "n8.png",
+    "Qu\u1ED1c Tu\u1EA5n": "n11.png",
+    "H\u1EEFu Qu\xE2n": "n5.png",
+    "Anh Kh\xF4i": "n9.png",
+    "Minh Qu\xE2n": "n18.png",
+    "M\u1EA1nh D\u0169ng": "n7.png",
+    "Th\xE1i S\u01A1n": "n6.png",
+    "Minh Tri\u1EBFt": "n12.png",
+    "\u0110\u1EE9c Tr\xED": "n19.png",
+    "Ho\xE0ng Nam": "n19.png",
+    "Quang Huy": "n20.png",
+    "NM1": "n10.png",
+    "SM": "n6.png",
+    "NM2": "n9.png",
+    "NamMinh": "n1.png",
+    "Th\u1EA7y B\u1EA3y": "ch2.png",
+    // Nữ voices (nu1 - nu27, co: cô)
+    "Ng\u1ECDc Linh": "nu5.png",
+    "\u0110oan Trang": "nu15.png",
+    "Qu\u1EF3nh Anh": "nu27.png",
+    "\xC1i H\xE2n": "nu12.png",
+    "Xu\xE2n Ti\xEAn": "nu2.png",
+    "Th\u1EE5c \u0110oan": "nu14.png",
+    "M\u1EF9 Duy\xEAn": "nu24.png",
+    "Kim Thanh": "nu1.png",
+    "Ng\u1ECDc \xC1nh": "nu8.png",
+    "Thanh T\xE2m": "nu9.png",
+    "Thu H\xE0": "nu7.png",
+    "NF": "nu16.png",
+    "SF": "nu17.png",
+    "HoaiMy": "nu20.png",
+    "M\u1EF9 Linh": "nu23.png"
+  };
+  function getVoiceAvatarUrl(voiceLabel = "", voiceId = "") {
+    const searchKey = `${voiceLabel} ${voiceId}`.toLowerCase();
+    for (const [key, imgName] of Object.entries(VOICE_AVATAR_MAP)) {
+      if (searchKey.includes(key.toLowerCase())) {
+        return `/assets/${imgName}`;
+      }
+    }
+    if (searchKey.includes("adam")) {
+      return "/assets/adam1.png";
+    }
+    if (["ch\xFA", "th\u1EA7y", "b\xE1c", "\xF4ng", "b\u1EA3y", "k\u1EC3 chuy\u1EC7n", "r\xF9ng r\u1EE3n", "ma"].some((w) => searchKey.includes(w))) {
+      return "/assets/ch2.png";
+    }
+    if (["c\xF4", "b\xE0", "m\u1EB9", "l\xE3o"].some((w) => searchKey.includes(w))) {
+      return "/assets/co1.png";
+    }
+    if (["n\u1EEF", "ch\u1ECB", "b\xE9", "g\xE1i", "mai", "ly", "dung", "huy\u1EC1n", "tr\xE2n", "linh", "anh", "h\xE2n", "ti\xEAn", "\u0111oan", "duy\xEAn", "thanh", "\xE1nh", "t\xE2m", "h\xE0"].some((w) => searchKey.includes(w))) {
+      return "/assets/nu3.png";
+    }
+    return "/assets/n1.png";
+  }
+
   // src/pages/LongTiengVideo.jsx
   function LongTiengVideo({ onBackHome, initialVideo, backendData }) {
     const [videoFile, setVideoFile] = (0, import_react6.useState)(null);
@@ -24088,6 +24173,21 @@
     const [dubJobId, setDubJobId] = (0, import_react6.useState)(null);
     const [dubProgress, setDubProgress] = (0, import_react6.useState)(null);
     const [resultVideoUrl, setResultVideoUrl] = (0, import_react6.useState)(null);
+    const [isPlayingVoicePreview, setIsPlayingVoicePreview] = (0, import_react6.useState)(false);
+    const previewAudioRef = (0, import_react6.useRef)(null);
+    const toggleVoicePreview = () => {
+      if (!previewAudioRef.current) return;
+      if (isPlayingVoicePreview) {
+        previewAudioRef.current.pause();
+        setIsPlayingVoicePreview(false);
+      } else {
+        previewAudioRef.current.src = `/api/voice-preview?voice=${encodeURIComponent(selectedVoice)}&t=${Date.now()}`;
+        previewAudioRef.current.play().then(() => setIsPlayingVoicePreview(true)).catch((e) => {
+          console.warn("Audio preview play error:", e);
+          setIsPlayingVoicePreview(false);
+        });
+      }
+    };
     (0, import_react6.useEffect)(() => {
       fetch("/api/voices").then((r) => r.json()).then((d) => {
         if (d.catalog) setVoicesCatalog(d.catalog);
@@ -24100,6 +24200,12 @@
         });
       }
     }, []);
+    (0, import_react6.useEffect)(() => {
+      if (isPlayingVoicePreview && previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        setIsPlayingVoicePreview(false);
+      }
+    }, [selectedVoice]);
     (0, import_react6.useEffect)(() => {
       if (initialVideo && initialVideo.relPath) {
         setServerVideoPath(initialVideo.relPath);
@@ -24219,19 +24325,26 @@
       ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "mt-2.5 bg-gradient-to-br from-slate-50 to-orange-50/20 rounded-xl p-3 border border-orange-100 flex gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200" }, /* @__PURE__ */ import_react6.default.createElement(
         "img",
         {
-          src: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80",
-          alt: "Adam T\u1ED1p T\u1ED1p",
+          src: getVoiceAvatarUrl(selectedVoiceLabel, selectedVoice),
+          alt: selectedVoiceLabel,
           className: "w-full h-full object-cover"
         }
       )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react6.default.createElement("h3", { className: "font-bold text-sm text-gray-900" }, selectedVoiceLabel.split(" (")[0]), /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-sky-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded shadow-xs" }, "HOT REVIEW")), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-snug" }, "VieNeu - Nam Mi\u1EC1n Nam \u2022 C\u1EA3m x\xFAc, Kh\xF4ng nghi\xEAm t\xFAc, T\u1ED1p T\u1ED1p, T\u1EA5u h\u1EC1"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between mt-2 pt-1 border-t border-gray-200/60" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-gray-500 font-medium" }, "Acoustic 48kHz"), /* @__PURE__ */ import_react6.default.createElement(
+        "audio",
+        {
+          ref: previewAudioRef,
+          onEnded: () => setIsPlayingVoicePreview(false),
+          onError: () => setIsPlayingVoicePreview(false)
+        }
+      ), /* @__PURE__ */ import_react6.default.createElement(
         "button",
         {
           type: "button",
-          onClick: () => alert(`\u0110ang ph\xE1t gi\u1ECDng \u0111\u1ECDc m\u1EABu: ${selectedVoiceLabel}`),
-          className: "flex items-center gap-1 bg-white hover:bg-orange-50 text-gray-700 border border-gray-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs transition cursor-pointer"
+          onClick: toggleVoicePreview,
+          className: `flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition shadow-xs cursor-pointer ${isPlayingVoicePreview ? "bg-amber-500 text-white border-amber-600 animate-pulse" : "bg-white hover:bg-sky-50 text-sky-700 border-sky-300"}`
         },
-        /* @__PURE__ */ import_react6.default.createElement(Headphones, { size: 11, className: "text-sky-500" }),
-        " Nghe th\u1EED m\u1EABu"
+        /* @__PURE__ */ import_react6.default.createElement(Headphones, { size: 12, className: isPlayingVoicePreview ? "text-white" : "text-sky-600" }),
+        /* @__PURE__ */ import_react6.default.createElement("span", null, isPlayingVoicePreview ? "\u0110ang ph\xE1t..." : "Nghe th\u1EED m\u1EABu")
       ))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "Ng\xF4n ng\u1EEF g\u1ED1c c\u1EE7a video:"), /* @__PURE__ */ import_react6.default.createElement(
         "select",
         {
@@ -24554,14 +24667,35 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     const [copiedPrompt, setCopiedPrompt] = (0, import_react7.useState)(false);
     const [showEmotionTableModal, setShowEmotionTableModal] = (0, import_react7.useState)(false);
     const [selectedCaretTag, setSelectedCaretTag] = (0, import_react7.useState)("[lip smacks]");
+    const [isPlayingVoicePreview, setIsPlayingVoicePreview] = (0, import_react7.useState)(false);
     const textareaRef = (0, import_react7.useRef)(null);
     const audioRef = (0, import_react7.useRef)(null);
+    const previewAudioRef = (0, import_react7.useRef)(null);
+    const toggleVoicePreview = () => {
+      if (!previewAudioRef.current) return;
+      if (isPlayingVoicePreview) {
+        previewAudioRef.current.pause();
+        setIsPlayingVoicePreview(false);
+      } else {
+        previewAudioRef.current.src = `/api/voice-preview?voice=${encodeURIComponent(selectedVoice)}&t=${Date.now()}`;
+        previewAudioRef.current.play().then(() => setIsPlayingVoicePreview(true)).catch((e) => {
+          console.warn("Audio preview play error:", e);
+          setIsPlayingVoicePreview(false);
+        });
+      }
+    };
     (0, import_react7.useEffect)(() => {
       fetch("/api/voices").then((r) => r.json()).then((d) => {
         if (d.catalog) setVoicesCatalog(d.catalog);
       }).catch(() => {
       });
     }, []);
+    (0, import_react7.useEffect)(() => {
+      if (isPlayingVoicePreview && previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        setIsPlayingVoicePreview(false);
+      }
+    }, [selectedVoice]);
     const wordCount = scriptText.trim() ? scriptText.trim().split(/\s+/).length : 0;
     const charCount = scriptText.length;
     const estimatedSeconds = (wordCount * 0.38).toFixed(1);
@@ -24678,7 +24812,30 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           className: "bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
         },
         voicesCatalog && voicesCatalog.length > 0 ? voicesCatalog.map((group) => /* @__PURE__ */ import_react7.default.createElement("optgroup", { key: group.category, label: group.category }, group.voices.map((v) => /* @__PURE__ */ import_react7.default.createElement("option", { key: v.id, value: v.id }, v.name)))) : /* @__PURE__ */ import_react7.default.createElement(import_react7.default.Fragment, null, /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Adam T\u1ED1p T\u1ED1p" }, "\u{1F525} Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:H\u1EA3i \u0110\u0103ng" }, "\u{1F399}\uFE0F H\u1EA3i \u0110\u0103ng (VieNeu - Nam B\u1EAFc Th\u1EDDi S\u1EF1 VTV)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Thi\u1EC7n Minh" }, "\u{1F47B} Th\u1EA7y B\u1EA3y (VieNeu - Chuy\u1EC7n Ma R\xF9ng R\u1EE3n)"), /* @__PURE__ */ import_react7.default.createElement("option", { value: "vieneu:Th\xF9y Dung" }, "\u2728 M\u1EF9 Linh (VieNeu - N\u1EEF S\xE0i G\xF2n Podcast)"))
-      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-2.5 p-2.5 bg-gradient-to-r from-slate-50 to-blue-50/40 rounded-xl border border-blue-100 flex items-center gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "w-12 h-14 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xs shrink-0" }, "\u{1F399}\uFE0F"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "font-extrabold text-sm text-slate-900 truncate" }, selectedVoiceLabel.split("(")[0].replace("\u{1F525}", "").trim()), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded" }, "HOT REVIEW")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "text-[11px] text-slate-500 truncate mt-0.5" }, "VieNeu High-Fidelity 48kHz Acoustic Vocal"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[10px] text-slate-400" }, /* @__PURE__ */ import_react7.default.createElement("span", null, "Acoustic 48kHz"), /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-sky-600 font-bold" }, "Studio Master")))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] font-bold text-slate-600 block mb-1.5" }, "Hi\u1EC3n th\u1ECB danh t\xEDnh nhanh:"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-2 gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(
+      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-2.5 p-2.5 bg-gradient-to-r from-slate-50 to-blue-50/40 rounded-xl border border-blue-100 flex items-center gap-3" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "w-14 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-xs shrink-0" }, /* @__PURE__ */ import_react7.default.createElement(
+        "img",
+        {
+          src: getVoiceAvatarUrl(selectedVoiceLabel, selectedVoice),
+          alt: selectedVoiceLabel,
+          className: "w-full h-full object-cover"
+        }
+      )), /* @__PURE__ */ import_react7.default.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "font-extrabold text-sm text-slate-900 truncate" }, selectedVoiceLabel.split("(")[0].replace("\u{1F525}", "").trim()), /* @__PURE__ */ import_react7.default.createElement("span", { className: "bg-sky-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded" }, "HOT REVIEW")), /* @__PURE__ */ import_react7.default.createElement("p", { className: "text-[11px] text-slate-500 truncate mt-0.5" }, "VieNeu High-Fidelity 48kHz Acoustic Vocal"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "flex items-center justify-between mt-2 pt-1.5 border-t border-blue-100" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[10px] text-slate-500 font-semibold" }, "Acoustic 48kHz"), /* @__PURE__ */ import_react7.default.createElement(
+        "audio",
+        {
+          ref: previewAudioRef,
+          onEnded: () => setIsPlayingVoicePreview(false),
+          onError: () => setIsPlayingVoicePreview(false)
+        }
+      ), /* @__PURE__ */ import_react7.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: toggleVoicePreview,
+          className: `flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition shadow-xs cursor-pointer ${isPlayingVoicePreview ? "bg-amber-500 text-white border-amber-600 animate-pulse" : "bg-white hover:bg-sky-50 text-sky-700 border-sky-300"}`
+        },
+        /* @__PURE__ */ import_react7.default.createElement(Headphones, { size: 12, className: isPlayingVoicePreview ? "text-white" : "text-sky-600" }),
+        /* @__PURE__ */ import_react7.default.createElement("span", null, isPlayingVoicePreview ? "\u0110ang ph\xE1t..." : "Nghe th\u1EED m\u1EABu")
+      )))), /* @__PURE__ */ import_react7.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react7.default.createElement("span", { className: "text-[11px] font-bold text-slate-600 block mb-1.5" }, "Hi\u1EC3n th\u1ECB danh t\xEDnh nhanh:"), /* @__PURE__ */ import_react7.default.createElement("div", { className: "grid grid-cols-2 gap-1.5" }, /* @__PURE__ */ import_react7.default.createElement(
         "button",
         {
           type: "button",

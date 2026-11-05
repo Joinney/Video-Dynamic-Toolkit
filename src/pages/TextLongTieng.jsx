@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import Header from '../components/Header';
+import { getVoiceAvatarUrl } from '../utils/voiceAvatar';
 
 // Bảng 55+ Mã Lệnh Cảm Xúc Chuẩn từ Studio VDT
 const EMOTION_TABLE_DATA = [
@@ -131,9 +132,27 @@ export default function TextLongTieng({ onBackHome, backendData }) {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [showEmotionTableModal, setShowEmotionTableModal] = useState(false);
   const [selectedCaretTag, setSelectedCaretTag] = useState('[lip smacks]');
+  const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
 
   const textareaRef = useRef(null);
   const audioRef = useRef(null);
+  const previewAudioRef = useRef(null);
+
+  const toggleVoicePreview = () => {
+    if (!previewAudioRef.current) return;
+    if (isPlayingVoicePreview) {
+      previewAudioRef.current.pause();
+      setIsPlayingVoicePreview(false);
+    } else {
+      previewAudioRef.current.src = `/api/voice-preview?voice=${encodeURIComponent(selectedVoice)}&t=${Date.now()}`;
+      previewAudioRef.current.play()
+        .then(() => setIsPlayingVoicePreview(true))
+        .catch((e) => {
+          console.warn('Audio preview play error:', e);
+          setIsPlayingVoicePreview(false);
+        });
+    }
+  };
 
   useEffect(() => {
     fetch('/api/voices')
@@ -141,6 +160,13 @@ export default function TextLongTieng({ onBackHome, backendData }) {
       .then(d => { if (d.catalog) setVoicesCatalog(d.catalog); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (isPlayingVoicePreview && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingVoicePreview(false);
+    }
+  }, [selectedVoice]);
 
   const wordCount = scriptText.trim() ? scriptText.trim().split(/\s+/).length : 0;
   const charCount = scriptText.length;
@@ -293,8 +319,12 @@ export default function TextLongTieng({ onBackHome, backendData }) {
 
             {/* Showcase Card Nhân Vật */}
             <div className="mt-2.5 p-2.5 bg-gradient-to-r from-slate-50 to-blue-50/40 rounded-xl border border-blue-100 flex items-center gap-3">
-              <div className="w-12 h-14 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xs shrink-0">
-                🎙️
+              <div className="w-14 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-xs shrink-0">
+                <img
+                  src={getVoiceAvatarUrl(selectedVoiceLabel, selectedVoice)}
+                  alt={selectedVoiceLabel}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -308,9 +338,25 @@ export default function TextLongTieng({ onBackHome, backendData }) {
                 <p className="text-[11px] text-slate-500 truncate mt-0.5">
                   VieNeu High-Fidelity 48kHz Acoustic Vocal
                 </p>
-                <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
-                  <span>Acoustic 48kHz</span>
-                  <span className="text-sky-600 font-bold">Studio Master</span>
+                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-blue-100">
+                  <span className="text-[10px] text-slate-500 font-semibold">Acoustic 48kHz</span>
+                  <audio
+                    ref={previewAudioRef}
+                    onEnded={() => setIsPlayingVoicePreview(false)}
+                    onError={() => setIsPlayingVoicePreview(false)}
+                  />
+                  <button
+                    type="button"
+                    onClick={toggleVoicePreview}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition shadow-xs cursor-pointer ${
+                      isPlayingVoicePreview
+                        ? 'bg-amber-500 text-white border-amber-600 animate-pulse'
+                        : 'bg-white hover:bg-sky-50 text-sky-700 border-sky-300'
+                    }`}
+                  >
+                    <Headphones size={12} className={isPlayingVoicePreview ? 'text-white' : 'text-sky-600'} />
+                    <span>{isPlayingVoicePreview ? 'Đang phát...' : 'Nghe thử mẫu'}</span>
+                  </button>
                 </div>
               </div>
             </div>

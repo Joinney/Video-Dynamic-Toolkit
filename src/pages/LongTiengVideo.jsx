@@ -16,6 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import Header from '../components/Header';
+import { getVoiceAvatarUrl } from '../utils/voiceAvatar';
 
 export default function LongTiengVideo({ onBackHome, initialVideo, backendData }) {
   const [videoFile, setVideoFile] = useState(null);
@@ -62,6 +63,24 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
   const [resultVideoUrl, setResultVideoUrl] = useState(null);
+  const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
+  const previewAudioRef = useRef(null);
+
+  const toggleVoicePreview = () => {
+    if (!previewAudioRef.current) return;
+    if (isPlayingVoicePreview) {
+      previewAudioRef.current.pause();
+      setIsPlayingVoicePreview(false);
+    } else {
+      previewAudioRef.current.src = `/api/voice-preview?voice=${encodeURIComponent(selectedVoice)}&t=${Date.now()}`;
+      previewAudioRef.current.play()
+        .then(() => setIsPlayingVoicePreview(true))
+        .catch((e) => {
+          console.warn('Audio preview play error:', e);
+          setIsPlayingVoicePreview(false);
+        });
+    }
+  };
 
   useEffect(() => {
     fetch('/api/voices')
@@ -75,6 +94,13 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
         .catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (isPlayingVoicePreview && previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingVoicePreview(false);
+    }
+  }, [selectedVoice]);
 
   useEffect(() => {
     if (initialVideo && initialVideo.relPath) {
@@ -229,8 +255,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             <div className="mt-2.5 bg-gradient-to-br from-slate-50 to-orange-50/20 rounded-xl p-3 border border-orange-100 flex gap-3">
               <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200">
                 <img
-                  src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80"
-                  alt="Adam Tốp Tốp"
+                  src={getVoiceAvatarUrl(selectedVoiceLabel, selectedVoice)}
+                  alt={selectedVoiceLabel}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -246,12 +272,22 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 </p>
                 <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-200/60">
                   <span className="text-[10px] text-gray-500 font-medium">Acoustic 48kHz</span>
+                  <audio
+                    ref={previewAudioRef}
+                    onEnded={() => setIsPlayingVoicePreview(false)}
+                    onError={() => setIsPlayingVoicePreview(false)}
+                  />
                   <button
                     type="button"
-                    onClick={() => alert(`Đang phát giọng đọc mẫu: ${selectedVoiceLabel}`)}
-                    className="flex items-center gap-1 bg-white hover:bg-orange-50 text-gray-700 border border-gray-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs transition cursor-pointer"
+                    onClick={toggleVoicePreview}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border transition shadow-xs cursor-pointer ${
+                      isPlayingVoicePreview
+                        ? 'bg-amber-500 text-white border-amber-600 animate-pulse'
+                        : 'bg-white hover:bg-sky-50 text-sky-700 border-sky-300'
+                    }`}
                   >
-                    <Headphones size={11} className="text-sky-500" /> Nghe thử mẫu
+                    <Headphones size={12} className={isPlayingVoicePreview ? 'text-white' : 'text-sky-600'} />
+                    <span>{isPlayingVoicePreview ? 'Đang phát...' : 'Nghe thử mẫu'}</span>
                   </button>
                 </div>
               </div>

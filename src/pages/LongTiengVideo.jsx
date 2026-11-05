@@ -1185,12 +1185,12 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   <span>✓</span> Lồng tiếng hoàn tất 100%!
                 </div>
                 <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden border border-emerald-200">
-                  <video src={resultVideoUrl} controls autoPlay className="w-full h-full object-contain" />
+                  <video src={resultVideoUrl} controls preload="metadata" className="w-full h-full object-contain" />
                 </div>
                 <a
                   href={resultVideoUrl}
-                  download
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition"
+                  download={decodeURIComponent(resultVideoUrl.split('/').pop() || 'Video_LongTieng_Viet.mp4')}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <Download size={14} /> TẢI VIDEO THÀNH PHẨM (.MP4)
                 </a>

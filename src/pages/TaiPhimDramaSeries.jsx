@@ -22,7 +22,7 @@ export default function TaiPhimDramaSeries({
   const [currentDramaCover, setCurrentDramaCover] = useState(null);
   const [startEp, setStartEp] = useState(1);
   const [autoSwipeCount, setAutoSwipeCount] = useState(1);
-  const [autoExport, setAutoExport] = useState(true);
+  const [autoExport, setAutoExport] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [selectedCodec, setSelectedCodec] = useState('h264');

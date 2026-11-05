@@ -253,5 +253,24 @@ class VideoDubberPipeline:
             outro_video_path=outro_path if enable_outro else None,
         )
 
+        # Dọn dẹp triệt để toàn bộ file tạm (.srt, .temp_dub, thư mục tạm), CHỈ LƯU DUY NHẤT FILE VIDEO LỒNG TIẾNG (.mp4)
+        try:
+            import shutil
+            if srt_path and srt_path.exists():
+                srt_path.unlink(missing_ok=True)
+            if work_dir and work_dir.exists():
+                shutil.rmtree(work_dir, ignore_errors=True)
+            temp_root = self.config.temp_dir
+            if temp_root and temp_root.exists() and not any(temp_root.iterdir()):
+                temp_root.rmdir()
+            # Dọn bất kỳ file pre_outro rác nào nếu còn sót
+            for stray in output_path.parent.glob("pre_outro_*.mp4"):
+                try:
+                    stray.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         notify("Hoàn thành lồng tiếng video!", 1.0)
         return final_video

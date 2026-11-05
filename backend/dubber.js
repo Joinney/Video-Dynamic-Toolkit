@@ -155,6 +155,12 @@ function startDubbingJob(inputVideoPath, options = {}) {
     });
 
     proc.on('close', (code) => {
+      // Dọn dẹp file json phụ đề tạm nếu có
+      const tempSubJson = path.join(dir, `.temp_sub_${jobId}.json`);
+      if (fs.existsSync(tempSubJson)) {
+        try { fs.unlinkSync(tempSubJson); } catch (e) {}
+      }
+
       if (code !== 0 && !jobState.done) {
         jobState.status = 'error';
         jobState.done = true;

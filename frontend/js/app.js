@@ -25470,7 +25470,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     const [currentDramaCover, setCurrentDramaCover] = (0, import_react8.useState)(null);
     const [startEp, setStartEp] = (0, import_react8.useState)(1);
     const [autoSwipeCount, setAutoSwipeCount] = (0, import_react8.useState)(1);
-    const [autoExport, setAutoExport] = (0, import_react8.useState)(true);
+    const [autoExport, setAutoExport] = (0, import_react8.useState)(false);
     const [isSwiping, setIsSwiping] = (0, import_react8.useState)(false);
     const [toastMsg, setToastMsg] = (0, import_react8.useState)("");
     const [selectedCodec, setSelectedCodec] = (0, import_react8.useState)("h264");

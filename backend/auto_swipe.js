@@ -48,7 +48,7 @@ function startAutoSwipe(device, total, delay, options = {}) {
 
   const dramaTitle = options.dramaTitle || '';
   const startEp = parseInt(options.startEpisode, 10) || 1;
-  const autoExport = (options.autoExport !== false); // Mặc định tự lưu vào máy tính khi xong
+  const autoExport = (options.autoExport === true); // Chỉ lưu khi người dùng chủ động chọn lưu, không tự ý lưu
 
   (async () => {
     let lastCompletedPath = null;

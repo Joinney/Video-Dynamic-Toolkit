@@ -6,13 +6,24 @@ import logging
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from config import DubbingConfig
-from .extractor import extract_audio
-from .transcriber import Transcriber, Segment
-from .translator import Translator
-from .tts import TTSService
-from .synchronizer import AudioSynchronizer
-from .merger import VideoMerger
+try:
+    from .config import DubbingConfig
+except ImportError:
+    from config import DubbingConfig
+try:
+    from .extractor import extract_audio
+    from .transcriber import Transcriber, Segment
+    from .translator import Translator
+    from .tts import TTSService
+    from .synchronizer import AudioSynchronizer
+    from .merger import VideoMerger
+except ImportError:
+    from extractor import extract_audio
+    from transcriber import Transcriber, Segment
+    from translator import Translator
+    from tts import TTSService
+    from synchronizer import AudioSynchronizer
+    from merger import VideoMerger
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +125,10 @@ class VideoDubberPipeline:
         # Trích xuất độ dài video chuẩn xác mà không cần giải mã toàn bộ tệp WAV vào RAM
         total_duration = 0.0
         try:
-            from .merger import find_ffprobe_binary
+            try:
+                from .merger import find_ffprobe_binary
+            except ImportError:
+                from merger import find_ffprobe_binary
             probe_bin = find_ffprobe_binary()
             res = subprocess.run(
                 [probe_bin, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(orig_audio_path)],
@@ -144,8 +158,7 @@ class VideoDubberPipeline:
                         id=int(s_data.get("id", _i + 1)),
                         start=float(s_data.get("start", 0.0)),
                         end=float(s_data.get("end", 0.0)),
-                        text=t_text,
-                        words=[],
+                        text=str(s_data.get("original_text", t_text)).strip(),
                         translated_text=t_text,
                     )
                     segments.append(seg_obj)
@@ -239,6 +252,25 @@ class VideoDubberPipeline:
             floating_watermark_opacity=getattr(self.config, "floating_watermark_opacity", 0.30),
             outro_video_path=outro_path if enable_outro else None,
         )
+
+        # Dọn dẹp triệt để toàn bộ file tạm (.srt, .temp_dub, thư mục tạm), CHỈ LƯU DUY NHẤT FILE VIDEO LỒNG TIẾNG (.mp4)
+        try:
+            import shutil
+            if srt_path and srt_path.exists():
+                srt_path.unlink(missing_ok=True)
+            if work_dir and work_dir.exists():
+                shutil.rmtree(work_dir, ignore_errors=True)
+            temp_root = self.config.temp_dir
+            if temp_root and temp_root.exists() and not any(temp_root.iterdir()):
+                temp_root.rmdir()
+            # Dọn bất kỳ file pre_outro rác nào nếu còn sót
+            for stray in output_path.parent.glob("pre_outro_*.mp4"):
+                try:
+                    stray.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         notify("Hoàn thành lồng tiếng video!", 1.0)
         return final_video

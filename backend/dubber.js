@@ -186,8 +186,57 @@ function generateTTSAudio(text, options = {}) {
   });
 }
 
+function transcribeAndTranslateVideo(inputVideoPath, options = {}) {
+  const sourceLang = options.sourceLang || 'auto';
+  const targetLang = options.targetLang || 'vi';
+  const whisperModel = options.whisperModel || 'base';
+
+  return new Promise((resolve, reject) => {
+    const scriptPath = path.join(__dirname, 'dubber', 'quick_transcribe.py');
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    const args = [
+      scriptPath,
+      '--input', inputVideoPath,
+      '--source-lang', sourceLang,
+      '--target-lang', targetLang,
+      '--whisper-model', whisperModel
+    ];
+
+    try {
+      const proc = spawn(pythonCmd, args);
+      let stdout = '';
+      let stderr = '';
+      proc.stdout.on('data', d => { stdout += d.toString(); });
+      proc.stderr.on('data', d => { stderr += d.toString(); });
+
+      proc.on('close', code => {
+        const match = stdout.match(/__TRANSCRIBE_RESULT__(.*?)__TRANSCRIBE_RESULT__/s);
+        if (match) {
+          try {
+            const data = JSON.parse(match[1]);
+            resolve(data);
+            return;
+          } catch (e) {}
+        }
+        if (code === 0) {
+          resolve({ success: true, segments: [] });
+        } else {
+          reject(new Error(stderr || 'Lỗi nhận diện giọng nói (Exit code ' + code + ')'));
+        }
+      });
+
+      proc.on('error', err => {
+        reject(new Error('Không thể chạy tiến trình Python: ' + err.message));
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 module.exports = {
   startDubbingJob,
   getDubbingJob,
-  generateTTSAudio
+  generateTTSAudio,
+  transcribeAndTranslateVideo
 };

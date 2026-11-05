@@ -17,7 +17,7 @@ const {
 const { checkAdbDevice, resolveActiveApp, pullRemoteFile } = require('./adb');
 const { getRemoteCacheList } = require('./cache');
 const { startAutoSwipe, stopAutoSwipe, getAutoSwipeStatus } = require('./auto_swipe');
-const { startDubbingJob, getDubbingJob, generateTTSAudio } = require('./dubber');
+const { startDubbingJob, getDubbingJob, generateTTSAudio, transcribeAndTranslateVideo } = require('./dubber');
 const {
   sanitizeFolderName,
   getDramaInfoFromDevice,
@@ -552,6 +552,41 @@ const server = http.createServer(async (req, res) => {
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Sample preview not found' }));
+    }
+    return;
+  }
+
+  // 9.4 API Quick Transcribe & Translate Subtitles (Dịch phụ đề trước từ Video)
+  if (url.pathname === '/api/quick-transcribe' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      let videoPath = payload.videoPath;
+      if (!videoPath) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Vui lòng chọn hoặc tải video trước!' }));
+        return;
+      }
+
+      let resolvedVideoPath = videoPath;
+      if (videoPath.startsWith('/video/')) {
+        const decoded = decodeURIComponent(videoPath.replace('/video/', ''));
+        resolvedVideoPath = path.join(DOWNLOAD_DIR, decoded);
+      } else if (!path.isAbsolute(videoPath)) {
+        resolvedVideoPath = path.join(DOWNLOAD_DIR, videoPath);
+      }
+
+      if (!fs.existsSync(resolvedVideoPath)) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Không tìm thấy file video: ' + path.basename(resolvedVideoPath) }));
+        return;
+      }
+
+      const result = await transcribeAndTranslateVideo(resolvedVideoPath, payload);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, ...result }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
     }
     return;
   }

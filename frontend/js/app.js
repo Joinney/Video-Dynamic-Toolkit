@@ -24166,6 +24166,43 @@
     const [subFontSize, setSubFontSize] = (0, import_react6.useState)(28);
     const [subBottomPct, setSubBottomPct] = (0, import_react6.useState)(7);
     const [previewSubText, setPreviewSubText] = (0, import_react6.useState)("Studio VDT \u2014 L\u1ED3ng ti\u1EBFng phim AI \u0111\u1EC9nh cao");
+    const [previewSegments, setPreviewSegments] = (0, import_react6.useState)([]);
+    const [activeSegmentIndex, setActiveSegmentIndex] = (0, import_react6.useState)(0);
+    const [isTranscribingSubtitles, setIsTranscribingSubtitles] = (0, import_react6.useState)(false);
+    const handleQuickTranscribe = async () => {
+      const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : "");
+      if (!targetVideo) {
+        alert("Vui l\xF2ng ch\u1ECDn ho\u1EB7c t\u1EA3i l\xEAn t\u1EC7p Video tr\u01B0\u1EDBc khi d\u1ECBch ph\u1EE5 \u0111\u1EC1!");
+        return;
+      }
+      setIsTranscribingSubtitles(true);
+      try {
+        const res = await fetch("/api/quick-transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoPath: targetVideo,
+            sourceLang,
+            targetLang,
+            whisperModel: "base"
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.segments && data.segments.length > 0) {
+          setPreviewSegments(data.segments);
+          setActiveSegmentIndex(0);
+          if (data.segments[0].text) {
+            setPreviewSubText(data.segments[0].text);
+          }
+        } else {
+          alert(data.message || "Kh\xF4ng t\xECm th\u1EA5y c\xE2u tho\u1EA1i n\xE0o trong video!");
+        }
+      } catch (err) {
+        alert("L\u1ED7i nh\u1EADn di\u1EC7n v\xE0 d\u1ECBch ph\u1EE5 \u0111\u1EC1: " + err.message);
+      } finally {
+        setIsTranscribingSubtitles(false);
+      }
+    };
     const [enableFloatWm, setEnableFloatWm] = (0, import_react6.useState)(true);
     const [floatWmText, setFloatWmText] = (0, import_react6.useState)("@gocphimcuon");
     const [floatWmSize, setFloatWmSize] = (0, import_react6.useState)(18);
@@ -24525,7 +24562,58 @@
           onChange: (e) => setBurnSubtitles(e.target.checked),
           className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
-      )), burnSubtitles && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "Ki\u1EC3u d\xE1ng ph\u1EE5 \u0111\u1EC1:"), /* @__PURE__ */ import_react6.default.createElement(
+      )), burnSubtitles && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, previewSegments && previewSegments.length > 0 ? /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-black text-sky-900" }, "\u{1F4DD} Danh s\xE1ch ph\u1EE5 \u0111\u1EC1 \u0111\xE3 d\u1ECBch (", previewSegments.length, " c\xE2u):"), /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            setPreviewSegments([]);
+            setPreviewSubText("Studio VDT \u2014 L\u1ED3ng ti\u1EBFng phim AI \u0111\u1EC9nh cao");
+          },
+          className: "text-[10px] text-rose-600 font-bold hover:underline cursor-pointer"
+        },
+        "\u{1F504} Nh\u1EADn di\u1EC7n l\u1EA1i"
+      )), /* @__PURE__ */ import_react6.default.createElement(
+        "select",
+        {
+          value: activeSegmentIndex,
+          onChange: (e) => {
+            const idx = Number(e.target.value);
+            setActiveSegmentIndex(idx);
+            if (previewSegments[idx]?.text) {
+              setPreviewSubText(previewSegments[idx].text);
+            }
+          },
+          className: "w-full bg-white border border-sky-300 rounded-lg p-1.5 text-xs font-semibold text-slate-800 cursor-pointer"
+        },
+        previewSegments.map((s, idx) => /* @__PURE__ */ import_react6.default.createElement("option", { key: s.id || idx, value: idx }, "C\xE2u ", idx + 1, ": [", s.start, "s - ", s.end, "s] ", s.text.substring(0, 35), "..."))
+      ), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-[10px] text-slate-500 mb-1" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "font-bold text-slate-700" }, "Ch\u1EC9nh s\u1EEDa ph\u1EE5 \u0111\u1EC1 c\xE2u ", activeSegmentIndex + 1, ":"), /* @__PURE__ */ import_react6.default.createElement("span", null, "\u23F1\uFE0F ", previewSegments[activeSegmentIndex]?.start, "s \u2192 ", previewSegments[activeSegmentIndex]?.end, "s")), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "text",
+          value: previewSegments[activeSegmentIndex]?.text || "",
+          onChange: (e) => {
+            const newText = e.target.value;
+            const updated = [...previewSegments];
+            updated[activeSegmentIndex] = {
+              ...updated[activeSegmentIndex],
+              text: newText
+            };
+            setPreviewSegments(updated);
+            setPreviewSubText(newText);
+          },
+          className: "w-full bg-white border border-sky-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 shadow-2xs"
+        }
+      ), previewSegments[activeSegmentIndex]?.original_text && /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[10px] text-slate-500 italic mt-0.5 truncate" }, "G\u1ED1c: ", previewSegments[activeSegmentIndex].original_text))) : /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-slate-600" }, "\u2139\uFE0F Ch\u01B0a c\xF3 ph\u1EE5 \u0111\u1EC1 \u0111\u01B0\u1EE3c nh\u1EADn di\u1EC7n. B\u1EA5m n\xFAt d\u01B0\u1EDBi \u0111\u1EC3 Whisper AI tr\xEDch xu\u1EA5t v\xE0 d\u1ECBch tr\u01B0\u1EDBc ph\u1EE5 \u0111\u1EC1:"), /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: handleQuickTranscribe,
+          disabled: isTranscribingSubtitles || !videoUrl && !serverVideoPath,
+          className: `w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer ${isTranscribingSubtitles ? "bg-sky-100 text-sky-700 border border-sky-300 cursor-wait" : "bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white"}`
+        },
+        isTranscribingSubtitles ? /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(RefreshCw, { size: 13, className: "animate-spin" }), /* @__PURE__ */ import_react6.default.createElement("span", null, "\u0110ang nh\u1EADn di\u1EC7n gi\u1ECDng n\xF3i & d\u1ECBch ph\u1EE5 \u0111\u1EC1 t\u1EF1 \u0111\u1ED9ng...")) : /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement(Sparkles, { size: 13 }), /* @__PURE__ */ import_react6.default.createElement("span", null, "\u26A1 D\u1ECBch tr\u01B0\u1EDBc t\u1EEB Video (Whisper AI)"))
+      )), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "Ki\u1EC3u d\xE1ng ph\u1EE5 \u0111\u1EC1:"), /* @__PURE__ */ import_react6.default.createElement(
         "select",
         {
           value: subStyle,

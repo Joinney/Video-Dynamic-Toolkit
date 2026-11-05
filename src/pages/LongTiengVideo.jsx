@@ -50,6 +50,46 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [subFontSize, setSubFontSize] = useState(28);
   const [subBottomPct, setSubBottomPct] = useState(7);
   const [previewSubText, setPreviewSubText] = useState('Studio VDT — Lồng tiếng phim AI đỉnh cao');
+  const [previewSegments, setPreviewSegments] = useState([]);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
+  const [isTranscribingSubtitles, setIsTranscribingSubtitles] = useState(false);
+
+  // Dịch trước từ Video bằng Whisper AI
+  const handleQuickTranscribe = async () => {
+    const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : '');
+    if (!targetVideo) {
+      alert('Vui lòng chọn hoặc tải lên tệp Video trước khi dịch phụ đề!');
+      return;
+    }
+    setIsTranscribingSubtitles(true);
+
+    try {
+      const res = await fetch('/api/quick-transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoPath: targetVideo,
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+          whisperModel: 'base'
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.segments && data.segments.length > 0) {
+        setPreviewSegments(data.segments);
+        setActiveSegmentIndex(0);
+        if (data.segments[0].text) {
+          setPreviewSubText(data.segments[0].text);
+        }
+      } else {
+        alert(data.message || 'Không tìm thấy câu thoại nào trong video!');
+      }
+    } catch (err) {
+      alert('Lỗi nhận diện và dịch phụ đề: ' + err.message);
+    } finally {
+      setIsTranscribingSubtitles(false);
+    }
+  };
 
   // Tab 3: Chữ mờ bảo vệ bản quyền (Floating Watermark)
   const [enableFloatWm, setEnableFloatWm] = useState(true);
@@ -605,6 +645,104 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
                   {burnSubtitles && (
                     <>
+                      {/* KHỐI DỊCH TRƯỚC TỪ VIDEO (WHISPER AI) */}
+                      {previewSegments && previewSegments.length > 0 ? (
+                        <div className="p-2.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black text-sky-900">
+                              📝 Danh sách phụ đề đã dịch ({previewSegments.length} câu):
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewSegments([]);
+                                setPreviewSubText('Studio VDT — Lồng tiếng phim AI đỉnh cao');
+                              }}
+                              className="text-[10px] text-rose-600 font-bold hover:underline cursor-pointer"
+                            >
+                              🔄 Nhận diện lại
+                            </button>
+                          </div>
+
+                          {/* Chọn câu thoại để sửa */}
+                          <select
+                            value={activeSegmentIndex}
+                            onChange={(e) => {
+                              const idx = Number(e.target.value);
+                              setActiveSegmentIndex(idx);
+                              if (previewSegments[idx]?.text) {
+                                setPreviewSubText(previewSegments[idx].text);
+                              }
+                            }}
+                            className="w-full bg-white border border-sky-300 rounded-lg p-1.5 text-xs font-semibold text-slate-800 cursor-pointer"
+                          >
+                            {previewSegments.map((s, idx) => (
+                              <option key={s.id || idx} value={idx}>
+                                Câu {idx + 1}: [{s.start}s - {s.end}s] {s.text.substring(0, 35)}...
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Nội dung câu phụ đề được chọn */}
+                          <div>
+                            <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1">
+                              <span className="font-bold text-slate-700">Chỉnh sửa phụ đề câu {activeSegmentIndex + 1}:</span>
+                              <span>
+                                ⏱️ {previewSegments[activeSegmentIndex]?.start}s → {previewSegments[activeSegmentIndex]?.end}s
+                              </span>
+                            </div>
+                            <input
+                              type="text"
+                              value={previewSegments[activeSegmentIndex]?.text || ''}
+                              onChange={(e) => {
+                                const newText = e.target.value;
+                                const updated = [...previewSegments];
+                                updated[activeSegmentIndex] = {
+                                  ...updated[activeSegmentIndex],
+                                  text: newText
+                                };
+                                setPreviewSegments(updated);
+                                setPreviewSubText(newText);
+                              }}
+                              className="w-full bg-white border border-sky-300 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-900 shadow-2xs"
+                            />
+                            {previewSegments[activeSegmentIndex]?.original_text && (
+                              <div className="text-[10px] text-slate-500 italic mt-0.5 truncate">
+                                Gốc: {previewSegments[activeSegmentIndex].original_text}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                          <p className="text-[11px] text-slate-600">
+                            ℹ️ Chưa có phụ đề được nhận diện. Bấm nút dưới để Whisper AI trích xuất và dịch trước phụ đề:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleQuickTranscribe}
+                            disabled={isTranscribingSubtitles || (!videoUrl && !serverVideoPath)}
+                            className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer ${
+                              isTranscribingSubtitles
+                                ? 'bg-sky-100 text-sky-700 border border-sky-300 cursor-wait'
+                                : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white'
+                            }`}
+                          >
+                            {isTranscribingSubtitles ? (
+                              <>
+                                <RefreshCw size={13} className="animate-spin" />
+                                <span>Đang nhận diện giọng nói & dịch phụ đề tự động...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={13} />
+                                <span>⚡ Dịch trước từ Video (Whisper AI)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
                       <div>
                         <label className="text-[11px] text-gray-600 font-semibold block mb-1">Kiểu dáng phụ đề:</label>
                         <select

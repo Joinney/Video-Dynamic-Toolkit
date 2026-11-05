@@ -1,139 +1,132 @@
-#!/usr/bin/env python3
 """
-TTS Audio Generation Engine (Tích hợp chuẩn StudioVDT)
-Hỗ trợ cả VieNeu-TTS (Adam Tốp Tốp, 30+ giọng VieNeu) và Edge-TTS cao cấp.
-Tự động fallback an toàn không bao giờ văng lỗi 'Invalid voice'.
+Text-to-Speech (TTS) module supporting Microsoft Edge-TTS and VieNeu-TTS (Adam Tốp Tốp)
 """
-import sys
-import os
-import re
-import argparse
 import asyncio
+import logging
 from pathlib import Path
+from typing import List
+from .transcriber import Segment
 
-# Add current directory to sys.path so modules like vieneu_tts can be imported
-sys.path.insert(0, str(Path(__file__).parent.resolve()))
+logger = logging.getLogger(__name__)
 
-def is_female_voice(voice_name: str) -> bool:
-    female_keywords = [
-        "nữ", "nu", "mai anh", "thùy dung", "thuy dung", "ngọc huyền", "ngoc huyen",
-        "hoaimy", "ngọc trân", "ngoc tran", "mỹ linh", "my linh", "đoan trang", "doan trang",
-        "quỳnh anh", "quynh anh", "ái hân", "ai han", "xuân tiên", "xuan tien",
-        "thục đoan", "thuc doan", "mỹ duyên", "my duyen", "kim thanh", "ngọc ánh", "ngoc anh",
-        "thanh tâm", "thanh tam", "thu hà", "thu ha", "ngọc linh", "ngoc linh", "trúc ly", "truc ly"
-    ]
-    name_lower = voice_name.lower()
-    return any(k in name_lower for k in female_keywords)
 
-async def synthesize_edge(text: str, voice: str, output_path: str, rate: str = "+0%", volume: str = "+0%", pitch: str = "+0Hz"):
-    import edge_tts
-    communicate = edge_tts.Communicate(text, voice, rate=rate, volume=volume, pitch=pitch)
-    await communicate.save(output_path)
+class TTSService:
+    def __init__(
+        self,
+        voice: str = "vieneu:Adam",
+        rate: str = "+0%",
+        volume: str = "+0%",
+    ):
+        self.voice = voice
+        self.rate = rate
+        self.volume = volume
 
-def main():
-    parser = argparse.ArgumentParser(description="TTS StudioVDT Engine")
-    parser.add_argument("--text", required=True, help="Văn bản cần đọc")
-    parser.add_argument("--voice", default="vieneu:Adam Tốp Tốp", help="Mã giọng đọc (VieNeu hoặc Edge-TTS)")
-    parser.add_argument("--rate", default="+0%", help="Tốc độ đọc (+0%, +10%, -10%)")
-    parser.add_argument("--volume", default="+0%", help="Âm lượng")
-    parser.add_argument("--output", required=True, help="Đường dẫn file MP3 đầu ra")
+    async def _generate_single_audio_edge(
+        self,
+        text: str,
+        output_file: Path,
+        voice: str,
+        rate: str,
+        volume: str,
+    ) -> bool:
+        import edge_tts
+        from pydub import AudioSegment
+        from .vieneu_tts import enhance_vocal
 
-    args = parser.parse_args()
-
-    out_file = Path(args.output).resolve()
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-
-    text_to_read = args.text.strip()
-    voice_raw = args.voice.strip()
-
-    # Thử nạp mô-đun tiền xử lý thẻ cảm xúc
-    try:
-        from vieneu_tts import preprocess_emotion_text
-        processed_text = preprocess_emotion_text(text_to_read)
-    except Exception:
-        # Thay thế cơ bản các thẻ [thở dài], [cười]... nếu chưa nạp được vieneu_tts
-        processed_text = re.sub(r'\[(?:cười|laughing|chuckles)\]', 'haha, ', text_to_read, flags=re.IGNORECASE)
-        processed_text = re.sub(r'\[(?:gào|screaming)\]', 'Áaaa! ', processed_text, flags=re.IGNORECASE)
-        processed_text = re.sub(r'\[(?:thở dài|sighs)\]', 'haizzz... ', processed_text, flags=re.IGNORECASE)
-        processed_text = re.sub(r'\[(?:đỉnh kout)\]', 'quá đỉnh! ', processed_text, flags=re.IGNORECASE)
-        processed_text = re.sub(r'\[.*?\]', '', processed_text).strip()
-
-    # 1. Thử sinh bằng VieNeu-TTS nếu được chọn và thư viện đã sẵn sàng
-    if voice_raw.startswith("vieneu:"):
-        clean_voice = voice_raw.replace("vieneu:", "").strip()
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        communicate = edge_tts.Communicate(
+            text=text,
+            voice=voice,
+            rate=rate,
+            volume=volume,
+        )
+        # Tạm lưu raw audio để convert sang chuẩn studio WAV 48kHz
+        raw_tmp = output_file.with_suffix(".raw.mp3")
         try:
-            from vieneu_tts import generate_vieneu_speech
-            # Chuyển đổi tốc độ rate dạng chuỗi (+10%) sang float (1.10)
-            rate_num = 0
-            m = re.search(r'([+-]?\d+)', args.rate)
-            if m:
-                rate_num = int(m.group(1))
-            speed_val = max(0.5, min(2.0, 1.0 + rate_num / 100.0))
+            await communicate.save(str(raw_tmp))
+            if raw_tmp.exists() and raw_tmp.stat().st_size > 300:
+                snd = AudioSegment.from_file(str(raw_tmp))
+                snd = enhance_vocal(snd, voice_name=voice, deep_warmth=True)
+                snd.export(str(output_file), format="wav")
+                return True
+        except Exception as e_master:
+            logger.warning(f"Edge TTS processing note: {e_master}")
+        finally:
+            if raw_tmp.exists():
+                try:
+                    raw_tmp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        return False
 
-            generate_vieneu_speech(
-                text=processed_text,
-                voice=clean_voice,
-                speed=speed_val,
-                output_path=out_file
-            )
-            if out_file.exists() and out_file.stat().st_size > 500:
-                print(f"__TTS_SUCCESS__{out_file}__TTS_SUCCESS__")
-                sys.exit(0)
-        except Exception as vieneu_err:
-            # VieNeu đang nạp hoặc có lỗi -> Chuyển sang Edge-TTS Studio Mastering
-            pass
+    def generate_speech_for_segments(
+        self,
+        segments: List[Segment],
+        output_dir: Path,
+    ) -> List[Segment]:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Xử lý qua Edge-TTS an toàn (Map giọng VieNeu sang Edge-TTS chuẩn phát thanh)
-    if voice_raw.startswith("vieneu:"):
-        voice_name_only = voice_raw.replace("vieneu:", "").strip()
-        if is_female_voice(voice_name_only):
-            edge_voice = "vi-VN-HoaiMyNeural"
-            edge_pitch = "+0Hz"
+        is_vieneu = self.voice.startswith("vieneu:") or (not self.voice.endswith("Neural") and "Neural" not in self.voice)
+
+        logger.info(
+            f"Generating TTS speech for {len(segments)} segments using voice: {self.voice} (Engine: {'VieNeu-TTS' if is_vieneu else 'Edge-TTS'})..."
+        )
+
+        if is_vieneu:
+            from .vieneu_tts import generate_vieneu_speech
+            clean_voice = self.voice.replace("vieneu:", "")
+
+            for seg in segments:
+                text = seg.translated_text.strip() or seg.text.strip()
+                if not text:
+                    continue
+                audio_file = output_dir / f"seg_{seg.id:04d}.wav"
+                generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
+                seg.tts_audio_path = str(audio_file)
         else:
-            edge_voice = "vi-VN-NamMinhNeural"
-            if "adam" in voice_name_only.lower():
-                edge_pitch = "+2Hz"
-                # Adam đọc nhịp sống động
-                if args.rate == "+0%":
-                    args.rate = "+10%"
-            elif "thầy" in voice_name_only.lower() or "bảy" in voice_name_only.lower() or "thiện minh" in voice_name_only.lower():
-                edge_pitch = "-3Hz"
-            else:
-                edge_pitch = "+0Hz"
-    else:
-        edge_voice = voice_raw
-        edge_pitch = "+0Hz"
+            # Edge TTS (Async concurrent)
+            async def run_edge_batch():
+                tasks = []
+                for seg in segments:
+                    text = seg.translated_text.strip() or seg.text.strip()
+                    if not text:
+                        continue
+                    audio_file = output_dir / f"seg_{seg.id:04d}.wav"
+                    task = self._generate_single_audio_edge(
+                        text=text,
+                        output_file=audio_file,
+                        voice=self.voice,
+                        rate=self.rate,
+                        volume=self.volume,
+                    )
+                    tasks.append(task)
+                await asyncio.gather(*tasks, return_exceptions=True)
 
-    try:
-        asyncio.run(synthesize_edge(
-            text=processed_text,
-            voice=edge_voice,
-            output_path=str(out_file),
-            rate=args.rate,
-            volume=args.volume,
-            pitch=edge_pitch
-        ))
+                # Chỉ gán tts_audio_path cho các tệp WAV thực sự sinh thành công
+                for seg in segments:
+                    a_file = output_dir / f"seg_{seg.id:04d}.wav"
+                    if a_file.exists() and a_file.stat().st_size > 500:
+                        seg.tts_audio_path = str(a_file)
+                    else:
+                        seg.tts_audio_path = None
 
-        # Áp dụng Mastering Vocal nếu có pydub
-        try:
-            from pydub import AudioSegment
-            if out_file.exists() and out_file.stat().st_size > 500:
-                snd = AudioSegment.from_file(str(out_file))
-                # Tăng âm lượng chuẩn -14 LUFS Broadcast
-                snd = snd + 2.0
-                snd.export(str(out_file), format="mp3", bitrate="320k")
-        except Exception:
-            pass
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                    loop.run_until_complete(run_edge_batch())
+                else:
+                    loop.run_until_complete(run_edge_batch())
+            except RuntimeError:
+                asyncio.run(run_edge_batch())
 
-        if out_file.exists() and out_file.stat().st_size > 0:
-            print(f"__TTS_SUCCESS__{out_file}__TTS_SUCCESS__")
-            sys.exit(0)
-        else:
-            print("Lỗi: Không tạo được file âm thanh!", file=sys.stderr)
-            sys.exit(1)
-    except Exception as e:
-        print(f"Lỗi TTS: {str(e)}", file=sys.stderr)
-        sys.exit(1)
+        logger.info("Speech generation finished.")
+        return segments
 
-if __name__ == "__main__":
-    main()
+    def generate_speech(
+        self,
+        segments: List[Segment],
+        output_dir: Path,
+    ) -> List[Segment]:
+        return self.generate_speech_for_segments(segments, output_dir)

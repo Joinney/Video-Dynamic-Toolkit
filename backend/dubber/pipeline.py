@@ -6,7 +6,10 @@ import logging
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from config import DubbingConfig
+try:
+    from .config import DubbingConfig
+except ImportError:
+    from config import DubbingConfig
 try:
     from .extractor import extract_audio
     from .transcriber import Transcriber, Segment

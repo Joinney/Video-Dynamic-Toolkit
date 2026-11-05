@@ -119,10 +119,7 @@ class Transcriber:
         if not initial_prompt:
             p_name = audio_path.stem.lower()
             if whisper_lang in ("zh", "zh-cn", "zh-tw") or any(k in p_name for k in ["tap", "tiệm", "tạp hóa", "âm dương", "phim", "trung"]):
-                initial_prompt = (
-                    "这是一部精彩的微短剧对白。主要人物：袁役、钟颜、老板、伙计、郭总、夫人。"
-                    "关键词：阴阳杂货铺、白纸黑字、救命、生魂、还魂、扯了魂、小鬼、有饭吗、发生什么事了、快走、别走、求求你。"
-                )
+                initial_prompt = "这是一部精彩的微短剧，讲述阴阳杂货铺里的故事，纸上白纸黑字写得清清楚楚。"
             elif whisper_lang in ("en", "english") or "en" in p_name:
                 initial_prompt = "Dramatic movie dialogue between characters with emotional speech, natural expressions and clear lines."
 
@@ -136,13 +133,9 @@ class Transcriber:
             best_of=1,
             temperature=0.0,
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
-            vad_filter=True,
-            vad_parameters=dict(
-                threshold=0.20,
-                min_speech_duration_ms=200,
-                min_silence_duration_ms=400,
-                speech_pad_ms=200,
-            ),
+            vad_filter=False,
+            compression_ratio_threshold=2.0,
+            hallucination_silence_threshold=0.6,
             word_timestamps=True,
         )
 
@@ -151,16 +144,33 @@ class Transcriber:
             f"Detected language: '{detected_lang}' with probability {info.language_probability:.2f}"
         )
 
+        WATERMARK_PATTERNS = [
+            r'优优独播', r'独播剧场', r'YoYo Television', r'Series Exclusive',
+            r'字幕\s*by', r'Subtitles\s*by', r'Translated\s*by', r'关注频道', r'请订阅', r'点击订阅',
+            r'未经许可', r'禁止转载', r'All rights reserved'
+        ]
+
         # Lọc bỏ ảo giác âm thanh (lặp từ do nhạc nền) và lời bài hát tiếng Anh trong phim Trung
         cleaned_raw = []
         prev_clean_text = ""
         for s in raw_segments:
-            # Ngưỡng phát hiện âm thanh không lời / ảo giác (chỉ lọc khi vượt ngưỡng cực đoan vì VAD filter đã lọc chuẩn xác)
-            if getattr(s, "no_speech_prob", 0.0) > 0.95:
+            # Ngưỡng phát hiện âm thanh không lời / ảo giác
+            if getattr(s, "no_speech_prob", 0.0) > 0.88:
                 continue
             text = s.text.strip()
             if not text:
                 continue
+
+            # Bỏ qua nhãn bản quyền kênh hoặc credit phụ đề cuối phim
+            if any(re.search(pat, text, re.IGNORECASE) for pat in WATERMARK_PATTERNS):
+                continue
+
+            # Bỏ qua ảo giác lặp lại prompt ở các đoạn nhạc không lời (đặc biệt đoạn mở đầu)
+            if initial_prompt:
+                clean_p = re.sub(r'[，。？！,?! ]', '', initial_prompt)
+                clean_t = re.sub(r'[，。？！,?! ]', '', text)
+                if (clean_t in clean_p or clean_p in clean_t) and s.start < 28.0:
+                    continue
 
             # Bỏ qua từ bị lặp lại liên tiếp do nhạc nền (ví dụ: "有你", "有你" lặp lại 10 lần)
             if text == prev_clean_text:

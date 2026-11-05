@@ -39,6 +39,9 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [logoY, setLogoY] = useState(5);
   const [logoOpacity, setLogoOpacity] = useState(90);
   const [logoRotation, setLogoRotation] = useState(0);
+  const [customLogoPreviewUrl, setCustomLogoPreviewUrl] = useState('/assets/gocphimcuon1.png');
+  const [serverLogoPath, setServerLogoPath] = useState('assets/gocphimcuon1.png');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Tab 2: Phụ đề
   const [burnSubtitles, setBurnSubtitles] = useState(true);
@@ -55,7 +58,77 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
   // Tab 4: Outro kết thúc
   const [enableOutro, setEnableOutro] = useState(true);
-  const [outroPath, setOutroPath] = useState('assets/endgpc.mp4');
+  const [customOutroPreviewUrl, setCustomOutroPreviewUrl] = useState('/assets/endgpc.mp4');
+  const [serverOutroPath, setServerOutroPath] = useState('assets/endgpc.mp4');
+  const [isUploadingOutro, setIsUploadingOutro] = useState(false);
+
+  // Tải tệp Logo từ máy tính lên Server
+  const handleLogoFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Xem trước nhanh client-side
+    const localUrl = URL.createObjectURL(file);
+    setCustomLogoPreviewUrl(localUrl);
+
+    // Upload lên Server backend
+    setIsUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch('/api/upload-asset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileData: reader.result
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.filePath) {
+          setServerLogoPath(data.filePath);
+        }
+      } catch (err) {
+        console.warn('Lỗi upload logo:', err);
+      } finally {
+        setIsUploadingLogo(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Tải tệp Outro từ máy tính lên Server
+  const handleOutroFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+    setCustomOutroPreviewUrl(localUrl);
+
+    setIsUploadingOutro(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch('/api/upload-asset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileData: reader.result
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.filePath) {
+          setServerOutroPath(data.filePath);
+        }
+      } catch (err) {
+        console.warn('Lỗi upload outro:', err);
+      } finally {
+        setIsUploadingOutro(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Trạng thái xử lý
   const [isDubbingProcessing, setIsDubbingProcessing] = useState(false);
@@ -159,6 +232,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           subStyle: subStyle,
           subFontSize: subFontSize,
           enableLogo: watermarkEnabled,
+          logoPath: serverLogoPath,
           logoXPct: logoX,
           logoYPct: logoY,
           logoScale: logoSize,
@@ -168,7 +242,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           floatingWatermarkText: floatWmText,
           floatingWatermarkOpacity: floatWmOpacity,
           enableOutro: enableOutro,
-          outroPath: outroPath,
+          outroPath: serverOutroPath,
           bgmVolume: 0.15
         })
       });
@@ -419,7 +493,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             <div className="p-3 space-y-2.5">
               {/* TAB 1: LOGO */}
               {activeOverlayTab === 'logo' && (
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold text-gray-800">
                     <span>Kích hoạt chèn Logo vào video:</span>
                     <input
@@ -432,6 +506,45 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
                   {watermarkEnabled && (
                     <>
+                      {/* KHỐI TẢI LOGO TỪ MÁY TÍNH */}
+                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-700">Tệp Logo thương hiệu:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomLogoPreviewUrl('/assets/gocphimcuon1.png');
+                              setServerLogoPath('assets/gocphimcuon1.png');
+                            }}
+                            className="text-[10px] text-sky-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Dùng mặc định Góc Phim Cuốn
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-14 h-14 rounded-lg border border-slate-300 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                            <img
+                              src={customLogoPreviewUrl}
+                              alt="Logo Preview"
+                              className="max-w-full max-h-full object-contain"
+                            />
+                          </div>
+                          <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-sky-300 hover:border-sky-500 rounded-lg p-2 bg-sky-50/50 hover:bg-sky-50 cursor-pointer transition">
+                            <Upload size={15} className="text-sky-600 mb-0.5" />
+                            <span className="text-[11px] font-bold text-sky-700">
+                              {isUploadingLogo ? 'Đang tải lên...' : 'Chọn tệp Logo từ máy tính'}
+                            </span>
+                            <span className="text-[9px] text-slate-500">Hỗ trợ PNG trong suốt, JPG, WebP</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              onChange={handleLogoFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
                       <div className="text-[11px] font-bold text-orange-600">Định vị nhanh 4 góc Logo:</div>
                       <div className="grid grid-cols-5 gap-1">
                         <button type="button" onClick={() => setLogoCorner(4, 4)} className="py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300">↖ Trên Trái</button>
@@ -577,7 +690,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
               {/* TAB 4: OUTRO KẾT THÚC */}
               {activeOverlayTab === 'outro' && (
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold text-gray-800">
                     <span>Kích hoạt Video Outro kết thúc:</span>
                     <input
@@ -589,13 +702,55 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   </div>
 
                   {enableOutro && (
-                    <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                      <div className="text-[11px] text-slate-700 font-medium">
-                        🎬 Đang sử dụng Outro mặc định: <strong>assets/endgpc.mp4</strong> (Kêu gọi follow Góc Phim Cuốn)
+                    <div className="space-y-2.5">
+                      {/* KHỐI TẢI OUTRO TÙY CHỌN */}
+                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-700">Tệp Video Outro kết thúc:</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomOutroPreviewUrl('/assets/endgpc.mp4');
+                              setServerOutroPath('assets/endgpc.mp4');
+                            }}
+                            className="text-[10px] text-sky-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Dùng mặc định Góc Phim Cuốn
+                          </button>
+                        </div>
+                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-sky-300 hover:border-sky-500 rounded-lg p-2.5 bg-sky-50/50 hover:bg-sky-50 cursor-pointer transition">
+                          <Upload size={16} className="text-sky-600 mb-0.5" />
+                          <span className="text-[11px] font-bold text-sky-700">
+                            {isUploadingOutro ? 'Đang tải lên...' : 'Chọn video Outro từ máy tính (.mp4, .mov)'}
+                          </span>
+                          <span className="text-[9px] text-slate-500">Tự động nối vào cuối phim sau khi kết thúc thoại</span>
+                          <input
+                            type="file"
+                            accept="video/mp4,video/quicktime,video/webm"
+                            onChange={handleOutroFileUpload}
+                            className="hidden"
+                          />
+                        </label>
                       </div>
-                      <p className="text-[10px] text-slate-500">
-                        Tự động nối video outro vào ngay sau khi kết thúc lời thoại lồng tiếng, giúp video liền mạch chuẩn kênh chuyên nghiệp.
-                      </p>
+
+                      {/* Trình xem trước Video Outro */}
+                      {customOutroPreviewUrl && (
+                        <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                            <span>🎬 Xem trước Video Outro:</span>
+                            <span className="text-[9px] text-sky-400 font-mono truncate max-w-[150px]">
+                              {serverOutroPath}
+                            </span>
+                          </div>
+                          <div className="max-w-[240px] aspect-[9/16] max-h-[170px] rounded-lg overflow-hidden border border-slate-700 bg-black mx-auto">
+                            <video
+                              src={customOutroPreviewUrl}
+                              controls
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -647,12 +802,17 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                     opacity: logoOpacity / 100,
                     transform: `rotate(${logoRotation}deg)`
                   }}
-                  className="cursor-move select-none p-1 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity"
-                  title="Kéo thả để điều chỉnh vị trí logo"
+                  className="cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity"
+                  title="Kéo thả hoặc dùng thanh trượt để chỉnh vị trí logo"
                 >
-                  <div className="bg-blue-600/90 text-white font-black text-[10px] px-1.5 py-0.5 rounded shadow text-center truncate">
-                    VDT Studio
-                  </div>
+                  <img
+                    src={customLogoPreviewUrl}
+                    alt="Logo"
+                    className="w-full h-auto object-contain pointer-events-none drop-shadow-md"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
                 </div>
               )}
 

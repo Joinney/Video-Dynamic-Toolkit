@@ -24157,6 +24157,9 @@
     const [logoY, setLogoY] = (0, import_react6.useState)(5);
     const [logoOpacity, setLogoOpacity] = (0, import_react6.useState)(90);
     const [logoRotation, setLogoRotation] = (0, import_react6.useState)(0);
+    const [customLogoPreviewUrl, setCustomLogoPreviewUrl] = (0, import_react6.useState)("/assets/gocphimcuon1.png");
+    const [serverLogoPath, setServerLogoPath] = (0, import_react6.useState)("assets/gocphimcuon1.png");
+    const [isUploadingLogo, setIsUploadingLogo] = (0, import_react6.useState)(false);
     const [burnSubtitles, setBurnSubtitles] = (0, import_react6.useState)(true);
     const [subStyle, setSubStyle] = (0, import_react6.useState)("white_outline");
     const [subFontSize, setSubFontSize] = (0, import_react6.useState)(28);
@@ -24167,7 +24170,67 @@
     const [floatWmSize, setFloatWmSize] = (0, import_react6.useState)(18);
     const [floatWmOpacity, setFloatWmOpacity] = (0, import_react6.useState)(30);
     const [enableOutro, setEnableOutro] = (0, import_react6.useState)(true);
-    const [outroPath, setOutroPath] = (0, import_react6.useState)("assets/endgpc.mp4");
+    const [customOutroPreviewUrl, setCustomOutroPreviewUrl] = (0, import_react6.useState)("/assets/endgpc.mp4");
+    const [serverOutroPath, setServerOutroPath] = (0, import_react6.useState)("assets/endgpc.mp4");
+    const [isUploadingOutro, setIsUploadingOutro] = (0, import_react6.useState)(false);
+    const handleLogoFileUpload = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const localUrl = URL.createObjectURL(file);
+      setCustomLogoPreviewUrl(localUrl);
+      setIsUploadingLogo(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch("/api/upload-asset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileData: reader.result
+            })
+          });
+          const data = await res.json();
+          if (data.success && data.filePath) {
+            setServerLogoPath(data.filePath);
+          }
+        } catch (err) {
+          console.warn("L\u1ED7i upload logo:", err);
+        } finally {
+          setIsUploadingLogo(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+    const handleOutroFileUpload = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const localUrl = URL.createObjectURL(file);
+      setCustomOutroPreviewUrl(localUrl);
+      setIsUploadingOutro(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch("/api/upload-asset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileData: reader.result
+            })
+          });
+          const data = await res.json();
+          if (data.success && data.filePath) {
+            setServerOutroPath(data.filePath);
+          }
+        } catch (err) {
+          console.warn("L\u1ED7i upload outro:", err);
+        } finally {
+          setIsUploadingOutro(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
     const [isDubbingProcessing, setIsDubbingProcessing] = (0, import_react6.useState)(false);
     const [dubbingCompleted, setDubbingCompleted] = (0, import_react6.useState)(false);
     const [dubJobId, setDubJobId] = (0, import_react6.useState)(null);
@@ -24260,6 +24323,7 @@
             subStyle,
             subFontSize,
             enableLogo: watermarkEnabled,
+            logoPath: serverLogoPath,
             logoXPct: logoX,
             logoYPct: logoY,
             logoScale: logoSize,
@@ -24269,7 +24333,7 @@
             floatingWatermarkText: floatWmText,
             floatingWatermarkOpacity: floatWmOpacity,
             enableOutro,
-            outroPath,
+            outroPath: serverOutroPath,
             bgmVolume: 0.15
           })
         });
@@ -24418,7 +24482,7 @@
           className: `flex-1 py-2 text-center transition cursor-pointer ${activeOverlayTab === tab.id ? "bg-white text-blue-600 border-b-2 border-blue-600 font-extrabold shadow-2xs" : "text-gray-500 hover:text-gray-800"}`
         },
         tab.label
-      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 space-y-2.5" }, activeOverlayTab === "logo" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t ch\xE8n Logo v\xE0o video:"), /* @__PURE__ */ import_react6.default.createElement(
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-3 space-y-2.5" }, activeOverlayTab === "logo" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t ch\xE8n Logo v\xE0o video:"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
           type: "checkbox",
@@ -24426,7 +24490,33 @@
           onChange: (e) => setWatermarkEnabled(e.target.checked),
           className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
-      )), watermarkEnabled && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] font-bold text-orange-600" }, "\u0110\u1ECBnh v\u1ECB nhanh 4 g\xF3c Logo:"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-5 gap-1" }, /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2196 Tr\xEAn Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2197 Tr\xEAn Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2199 D\u01B0\u1EDBi Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2198 D\u01B0\u1EDBi Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(41, 41), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u23FA Gi\u1EEFa")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch th\u01B0\u1EDBc logo: ", logoSize, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "6", max: "45", value: logoSize, onChange: (e) => setLogoSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 r\xF5 n\xE9t: ", logoOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "20", max: "100", value: logoOpacity, onChange: (e) => setLogoOpacity(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 ngang X: ", logoX, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoX, onChange: (e) => setLogoX(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 d\u1ECDc Y: ", logoY, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoY, onChange: (e) => setLogoY(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-[11px] text-gray-600 font-semibold" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "G\xF3c xoay: ", logoRotation, "\xB0"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex gap-1" }, [0, 90, 180, 270].map((deg) => /* @__PURE__ */ import_react6.default.createElement("button", { key: deg, type: "button", onClick: () => setLogoRotation(deg), className: "px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-[9px] font-bold rounded border border-slate-300" }, deg, "\xB0")))), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "360", value: logoRotation, onChange: (e) => setLogoRotation(Number(e.target.value)), className: "w-full accent-blue-600 mt-1" })))), activeOverlayTab === "sub" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "Kh\u1EAFc c\u1EE9ng ph\u1EE5 \u0111\u1EC1 ti\u1EBFng Vi\u1EC7t (Hardsub):"), /* @__PURE__ */ import_react6.default.createElement(
+      )), watermarkEnabled && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-bold text-slate-700" }, "T\u1EC7p Logo th\u01B0\u01A1ng hi\u1EC7u:"), /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            setCustomLogoPreviewUrl("/assets/gocphimcuon1.png");
+            setServerLogoPath("assets/gocphimcuon1.png");
+          },
+          className: "text-[10px] text-sky-600 font-bold hover:underline cursor-pointer"
+        },
+        "D\xF9ng m\u1EB7c \u0111\u1ECBnh G\xF3c Phim Cu\u1ED1n"
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "w-14 h-14 rounded-lg border border-slate-300 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs" }, /* @__PURE__ */ import_react6.default.createElement(
+        "img",
+        {
+          src: customLogoPreviewUrl,
+          alt: "Logo Preview",
+          className: "max-w-full max-h-full object-contain"
+        }
+      )), /* @__PURE__ */ import_react6.default.createElement("label", { className: "flex-1 flex flex-col items-center justify-center border-2 border-dashed border-sky-300 hover:border-sky-500 rounded-lg p-2 bg-sky-50/50 hover:bg-sky-50 cursor-pointer transition" }, /* @__PURE__ */ import_react6.default.createElement(Upload, { size: 15, className: "text-sky-600 mb-0.5" }), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-bold text-sky-700" }, isUploadingLogo ? "\u0110ang t\u1EA3i l\xEAn..." : "Ch\u1ECDn t\u1EC7p Logo t\u1EEB m\xE1y t\xEDnh"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[9px] text-slate-500" }, "H\u1ED7 tr\u1EE3 PNG trong su\u1ED1t, JPG, WebP"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "file",
+          accept: "image/png,image/jpeg,image/webp",
+          onChange: handleLogoFileUpload,
+          className: "hidden"
+        }
+      )))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] font-bold text-orange-600" }, "\u0110\u1ECBnh v\u1ECB nhanh 4 g\xF3c Logo:"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-5 gap-1" }, /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2196 Tr\xEAn Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 4), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2197 Tr\xEAn Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(4, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2199 D\u01B0\u1EDBi Tr\xE1i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(78, 78), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u2198 D\u01B0\u1EDBi Ph\u1EA3i"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setLogoCorner(41, 41), className: "py-1 px-1 bg-slate-100 hover:bg-slate-200 text-[10px] font-bold rounded border border-slate-300" }, "\u23FA Gi\u1EEFa")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch th\u01B0\u1EDBc logo: ", logoSize, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "6", max: "45", value: logoSize, onChange: (e) => setLogoSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 r\xF5 n\xE9t: ", logoOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "20", max: "100", value: logoOpacity, onChange: (e) => setLogoOpacity(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 ngang X: ", logoX, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoX, onChange: (e) => setLogoX(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "T\u1ECDa \u0111\u1ED9 d\u1ECDc Y: ", logoY, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "95", value: logoY, onChange: (e) => setLogoY(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex justify-between items-center text-[11px] text-gray-600 font-semibold" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "G\xF3c xoay: ", logoRotation, "\xB0"), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex gap-1" }, [0, 90, 180, 270].map((deg) => /* @__PURE__ */ import_react6.default.createElement("button", { key: deg, type: "button", onClick: () => setLogoRotation(deg), className: "px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-[9px] font-bold rounded border border-slate-300" }, deg, "\xB0")))), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "0", max: "360", value: logoRotation, onChange: (e) => setLogoRotation(Number(e.target.value)), className: "w-full accent-blue-600 mt-1" })))), activeOverlayTab === "sub" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "Kh\u1EAFc c\u1EE9ng ph\u1EE5 \u0111\u1EC1 ti\u1EBFng Vi\u1EC7t (Hardsub):"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
           type: "checkbox",
@@ -24470,7 +24560,7 @@
           placeholder: "@gocphimcuon",
           className: "w-full bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-sky-700"
         }
-      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch c\u1EE1 ch\u1EEF: ", floatWmSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "45", value: floatWmSize, onChange: (e) => setFloatWmSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 m\u1EDD t\xE0ng h\xECnh: ", floatWmOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "80", step: "5", value: floatWmOpacity, onChange: (e) => setFloatWmOpacity(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-400 italic" }, "Ch\u1EEF m\u1EDD s\u1EBD l\u01B0\u1EDBt ng\u1EABu nhi\xEAn to\xE0n m\xE0n h\xECnh video m\u1ED9t c\xE1ch \xEAm \xE1i, ch\u1ED1ng c\u1EAFt gh\xE9p l\u1EA1i video 100%."))), activeOverlayTab === "outro" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t Video Outro k\u1EBFt th\xFAc:"), /* @__PURE__ */ import_react6.default.createElement(
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "K\xEDch c\u1EE1 ch\u1EEF: ", floatWmSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "45", value: floatWmSize, onChange: (e) => setFloatWmSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "\u0110\u1ED9 m\u1EDD t\xE0ng h\xECnh: ", floatWmOpacity, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "10", max: "80", step: "5", value: floatWmOpacity, onChange: (e) => setFloatWmOpacity(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-400 italic" }, "Ch\u1EEF m\u1EDD s\u1EBD l\u01B0\u1EDBt ng\u1EABu nhi\xEAn to\xE0n m\xE0n h\xECnh video m\u1ED9t c\xE1ch \xEAm \xE1i, ch\u1ED1ng c\u1EAFt gh\xE9p l\u1EA1i video 100%."))), activeOverlayTab === "outro" && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "K\xEDch ho\u1EA1t Video Outro k\u1EBFt th\xFAc:"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
           type: "checkbox",
@@ -24478,7 +24568,33 @@
           onChange: (e) => setEnableOutro(e.target.checked),
           className: "accent-blue-600 w-4 h-4 cursor-pointer"
         }
-      )), enableOutro && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] text-slate-700 font-medium" }, "\u{1F3AC} \u0110ang s\u1EED d\u1EE5ng Outro m\u1EB7c \u0111\u1ECBnh: ", /* @__PURE__ */ import_react6.default.createElement("strong", null, "assets/endgpc.mp4"), " (K\xEAu g\u1ECDi follow G\xF3c Phim Cu\u1ED1n)"), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[10px] text-slate-500" }, "T\u1EF1 \u0111\u1ED9ng n\u1ED1i video outro v\xE0o ngay sau khi k\u1EBFt th\xFAc l\u1EDDi tho\u1EA1i l\u1ED3ng ti\u1EBFng, gi\xFAp video li\u1EC1n m\u1EA1ch chu\u1EA9n k\xEAnh chuy\xEAn nghi\u1EC7p.")))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group" }, videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
+      )), enableOutro && /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-bold text-slate-700" }, "T\u1EC7p Video Outro k\u1EBFt th\xFAc:"), /* @__PURE__ */ import_react6.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            setCustomOutroPreviewUrl("/assets/endgpc.mp4");
+            setServerOutroPath("assets/endgpc.mp4");
+          },
+          className: "text-[10px] text-sky-600 font-bold hover:underline cursor-pointer"
+        },
+        "D\xF9ng m\u1EB7c \u0111\u1ECBnh G\xF3c Phim Cu\u1ED1n"
+      )), /* @__PURE__ */ import_react6.default.createElement("label", { className: "flex flex-col items-center justify-center border-2 border-dashed border-sky-300 hover:border-sky-500 rounded-lg p-2.5 bg-sky-50/50 hover:bg-sky-50 cursor-pointer transition" }, /* @__PURE__ */ import_react6.default.createElement(Upload, { size: 16, className: "text-sky-600 mb-0.5" }), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-bold text-sky-700" }, isUploadingOutro ? "\u0110ang t\u1EA3i l\xEAn..." : "Ch\u1ECDn video Outro t\u1EEB m\xE1y t\xEDnh (.mp4, .mov)"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[9px] text-slate-500" }, "T\u1EF1 \u0111\u1ED9ng n\u1ED1i v\xE0o cu\u1ED1i phim sau khi k\u1EBFt th\xFAc tho\u1EA1i"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "file",
+          accept: "video/mp4,video/quicktime,video/webm",
+          onChange: handleOutroFileUpload,
+          className: "hidden"
+        }
+      ))), customOutroPreviewUrl && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] text-slate-300 font-bold" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F3AC} Xem tr\u01B0\u1EDBc Video Outro:"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[9px] text-sky-400 font-mono truncate max-w-[150px]" }, serverOutroPath)), /* @__PURE__ */ import_react6.default.createElement("div", { className: "max-w-[240px] aspect-[9/16] max-h-[170px] rounded-lg overflow-hidden border border-slate-700 bg-black mx-auto" }, /* @__PURE__ */ import_react6.default.createElement(
+        "video",
+        {
+          src: customOutroPreviewUrl,
+          controls: true,
+          className: "w-full h-full object-contain"
+        }
+      )))))))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "col-span-12 lg:col-span-5 flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-xs flex flex-col gap-3" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-xs font-bold text-gray-900 flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4FA}"), " Canvas Xem Tr\u01B0\u1EDBc & K\xE9o Th\u1EA3 Tr\u1EF1c Ti\u1EBFp"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded" }, "1080x1920 (9:16)")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "relative aspect-[9/16] max-h-[580px] w-full bg-slate-900 rounded-xl overflow-hidden mx-auto flex items-center justify-center border border-slate-800 shadow-inner group" }, videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
         "video",
         {
           src: videoUrl,
@@ -24496,10 +24612,20 @@
             opacity: logoOpacity / 100,
             transform: `rotate(${logoRotation}deg)`
           },
-          className: "cursor-move select-none p-1 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity",
-          title: "K\xE9o th\u1EA3 \u0111\u1EC3 \u0111i\u1EC1u ch\u1EC9nh v\u1ECB tr\xED logo"
+          className: "cursor-move select-none p-0.5 border border-dashed border-sky-400 rounded group-hover:border-white transition-opacity",
+          title: "K\xE9o th\u1EA3 ho\u1EB7c d\xF9ng thanh tr\u01B0\u1EE3t \u0111\u1EC3 ch\u1EC9nh v\u1ECB tr\xED logo"
         },
-        /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-blue-600/90 text-white font-black text-[10px] px-1.5 py-0.5 rounded shadow text-center truncate" }, "VDT Studio")
+        /* @__PURE__ */ import_react6.default.createElement(
+          "img",
+          {
+            src: customLogoPreviewUrl,
+            alt: "Logo",
+            className: "w-full h-auto object-contain pointer-events-none drop-shadow-md",
+            onError: (e) => {
+              e.target.style.display = "none";
+            }
+          }
+        )
       ), burnSubtitles && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
         "div",
         {

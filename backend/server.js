@@ -427,6 +427,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 9.0 API Upload Asset (Logo, Outro video, Custom Media)
+  if (url.pathname === '/api/upload-asset' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      if (!payload.fileData || !payload.fileName) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: 'Thiếu fileData hoặc fileName' }));
+        return;
+      }
+      const uploadDir = path.join(TEMP_DIR, 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const cleanFileName = Date.now() + '_' + path.basename(payload.fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const targetPath = path.join(uploadDir, cleanFileName);
+      
+      const base64Data = payload.fileData.replace(/^data:[^;]+;base64,/, '');
+      fs.writeFileSync(targetPath, Buffer.from(base64Data, 'base64'));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        filePath: targetPath,
+        url: `/audio/temp/uploads/${cleanFileName}`,
+        fileName: cleanFileName
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
   // 9.1 API TTS Audio Generation (StudioVDT Engine)
   if (url.pathname === '/api/tts/generate' && req.method === 'POST') {
     try {
@@ -446,20 +479,32 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 9.2 Serve Temp TTS Audio
+  // 9.2 Serve Temp Audio and Uploads
   if (url.pathname.startsWith('/audio/temp/')) {
-    const filename = path.basename(url.pathname);
-    const audioPath = path.join(TEMP_DIR, filename);
-    if (fs.existsSync(audioPath)) {
+    const relPath = url.pathname.replace('/audio/temp/', '');
+    const audioPath = path.join(TEMP_DIR, relPath);
+    if (fs.existsSync(audioPath) && fs.statSync(audioPath).isFile()) {
+      const ext = path.extname(audioPath).toLowerCase();
+      const mimeMap = {
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+        '.mp4': 'video/mp4',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp'
+      };
+      const contentType = mimeMap[ext] || 'application/octet-stream';
       res.writeHead(200, {
-        'Content-Type': 'audio/mpeg',
+        'Content-Type': contentType,
         'Content-Length': fs.statSync(audioPath).size,
+        'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-cache'
       });
       fs.createReadStream(audioPath).pipe(res);
     } else {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Audio not found');
+      res.end('File not found');
     }
     return;
   }

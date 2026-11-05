@@ -721,8 +721,14 @@ const server = http.createServer(async (req, res) => {
 
   // 12. Serve Local Video File
   if (url.pathname.startsWith('/video/')) {
-    const decodedPath = decodeURIComponent(url.pathname.replace('/video/', ''));
-    const filePath = path.join(TARGET_DIR, decodedPath);
+    let decodedPath = decodeURIComponent(url.pathname.replace('/video/', '')).replace(/\\/g, '/');
+    if (decodedPath.startsWith('Soda_Reels_Videos/')) {
+      decodedPath = decodedPath.replace(/^Soda_Reels_Videos\//, '');
+    }
+    let filePath = path.join(TARGET_DIR, decodedPath);
+    if (!fs.existsSync(filePath) && fs.existsSync(decodedPath)) {
+      filePath = decodedPath;
+    }
     return streamVideoFile(req, res, filePath);
   }
 

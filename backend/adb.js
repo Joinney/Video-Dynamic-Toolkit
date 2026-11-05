@@ -5,6 +5,9 @@ const { ADB_PATH, SUPPORTED_APPS, getAppMode } = require('./config');
 let adbRootChecked = false;
 
 function checkAdbDevice() {
+  if (!fs.existsSync(ADB_PATH)) {
+    return null;
+  }
   try {
     let out = execSync(`"${ADB_PATH}" devices`, { encoding: 'utf8' });
     let lines = out.trim().split('\n').slice(1)

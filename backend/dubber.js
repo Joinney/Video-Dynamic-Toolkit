@@ -11,17 +11,25 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const origVol = options.origVol !== undefined ? options.origVol : 0.15;
   const whisperModel = options.whisperModel || 'small';
 
+  const { TARGET_DIR } = require('./config');
   const dir = path.dirname(inputVideoPath);
   const ext = path.extname(inputVideoPath);
   const base = path.basename(inputVideoPath, ext);
   const outputFileName = `${base}_LongTieng_Viet${ext}`;
   const outputPath = path.join(dir, outputFileName);
 
+  let cleanRel = path.relative(TARGET_DIR, outputPath).replace(/\\/g, '/');
+  if (cleanRel.startsWith('Soda_Reels_Videos/')) {
+    cleanRel = cleanRel.replace(/^Soda_Reels_Videos\//, '');
+  }
+  const cleanVideoUrl = `/video/${encodeURIComponent(cleanRel).replace(/%2F/g, '/')}`;
+
   const jobState = {
     id: jobId,
     inputVideo: inputVideoPath,
     outputVideo: outputPath,
     outputFileName,
+    videoUrl: cleanVideoUrl,
     status: 'starting',
     pct: 0,
     message: 'Đang khởi chạy luồng lồng tiếng AI...',

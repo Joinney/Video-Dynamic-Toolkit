@@ -263,12 +263,15 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
         if (jobData.status === 'completed' || jobData.done) {
           setIsDubbingProcessing(false);
           setDubbingCompleted(true);
-          const outPath = jobData.outputVideo || jobData.output_video || '';
-          const parts = outPath.split(/[\\\/]/);
-          const fName = parts.pop();
-          const subF = parts.pop();
-          const dName = parts.pop();
-          setResultVideoUrl(`/video/${encodeURIComponent(dName)}/${encodeURIComponent(subF)}/${encodeURIComponent(fName)}`);
+          if (jobData.videoUrl) {
+            setResultVideoUrl(jobData.videoUrl);
+          } else {
+            const outPath = (jobData.outputVideo || jobData.output_video || '').replace(/\\/g, '/');
+            const cleanRel = outPath.includes('Soda_Reels_Videos/')
+              ? outPath.split('Soda_Reels_Videos/').pop()
+              : outPath.split('/').slice(-2).join('/');
+            setResultVideoUrl(`/video/${encodeURIComponent(cleanRel).replace(/%2F/g, '/')}`);
+          }
           setDubJobId(null);
         } else if (jobData.status === 'error' || jobData.status === 'failed') {
           setIsDubbingProcessing(false);

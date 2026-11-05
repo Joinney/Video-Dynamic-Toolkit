@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Downloaded videos & media
+Soda_Reels_Videos/
+.temp_preview/
+scratch/
+
+# Temporary screenshots & logs
+*.png
+*.jpg
+*.log
+
+# OS generated
+.DS_Store
+Thumbs.db

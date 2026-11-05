@@ -31,13 +31,13 @@ const TTS_VOICES = [{
   id: 'vi-VN-NamMinhNeural',
   name: 'Nam Minh',
   lang: 'vi',
-  desc: 'Nam Bắc trầm ấm, chững chạc (Review, tin tức)',
+  desc: 'Nam Bắc trầm ấm, chững chạc (Review phim, tin tức)',
   flag: '🇻🇳'
 }, {
   id: 'en-US-JennyNeural',
   name: 'Jenny',
   lang: 'en',
-  desc: 'Nữ Mỹ tự nhiên, trẻ trung',
+  desc: 'Nữ Mỹ tự nhiên, hiện đại',
   flag: '🇺🇸'
 }, {
   id: 'en-US-GuyNeural',
@@ -67,11 +67,11 @@ const TTS_VOICES = [{
   id: 'ko-KR-SunHiNeural',
   name: 'SunHi',
   lang: 'ko',
-  desc: 'Nữ Hàn Quốc tự nhiên, phim Hàn',
+  desc: 'Nữ Hàn Quốc tự nhiên, phim truyền hình',
   flag: '🇰🇷'
 }];
 
-// Sample Scripts for Quick Testing
+// Sample Scripts from StudioVDT
 const SAMPLE_SCRIPTS = [{
   label: 'Review Phim Ngắn',
   text: 'Chào mừng các bạn đã quay trở lại với góc review phim ngắn. Hôm nay chúng ta sẽ cùng theo dõi một câu chuyện vô cùng kịch tính và bất ngờ!'
@@ -79,16 +79,22 @@ const SAMPLE_SCRIPTS = [{
   label: 'Thuyết Minh Kịch Tính',
   text: 'Người đàn ông bí ẩn bước vào căn phòng tối. Hắn không hề biết rằng, mọi hành động của mình đều đã nằm trong kế hoạch của đối phương từ trước.'
 }, {
-  label: 'Giới Thiệu Tập Phim',
+  label: 'Giới Thiệu Tập Mới',
   text: 'Mời quý vị và các bạn tiếp tục theo dõi diễn biến gay cấn của tập tiếp theo. Liệu sự thật có được phơi bày ra ánh sáng hay không?'
 }];
 
 // --- Main App Component ---
 function App() {
+  // Main Tabs: 'home', 'tts', 'dubbing', 'downloader', 'library', 'settings'
   const [activeTab, setActiveTab] = useState('home');
+
+  // Downloader Sub-tab: 'direct' or 'cache'
+  const [downloaderSubTab, setDownloaderSubTab] = useState('direct');
+
+  // Backend Status State
   const [status, setStatus] = useState(null);
   const [directEpisodes, setDirectEpisodes] = useState(null);
-  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' or 'h265'
+  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' (safe) or 'h265'
   const [loading, setLoading] = useState(false);
   const [directLoading, setDirectLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -110,17 +116,18 @@ function App() {
     percent: 0
   });
 
-  // Dubbing studio state (from StudioVDT)
+  // StudioVDT Dubbing state
   const [dubbingTarget, setDubbingTarget] = useState(null);
   const [dubVoice, setDubVoice] = useState('vi-VN-HoaiMyNeural');
   const [dubSpeed, setDubSpeed] = useState('+0%');
   const [dubModel, setDubModel] = useState('base');
   const [dubBgmVol, setDubBgmVol] = useState(0.15);
+  const [dubBurnSub, setDubBurnSub] = useState(true);
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
   const [dubResultVideo, setDubResultVideo] = useState(null);
 
-  // TTS Studio state (from StudioVDT)
+  // StudioVDT TTS Studio state
   const [ttsText, setTtsText] = useState('');
   const [ttsVoice, setTtsVoice] = useState('vi-VN-HoaiMyNeural');
   const [ttsRate, setTtsRate] = useState('+0%');
@@ -442,7 +449,8 @@ function App() {
           voice: dubVoice,
           rate: dubSpeed,
           whisperModel: dubModel,
-          bgmVolume: parseFloat(dubBgmVol)
+          bgmVolume: parseFloat(dubBgmVol),
+          burnSubtitles: dubBurnSub
         })
       });
       const data = await res.json();
@@ -509,49 +517,37 @@ function App() {
   const currentDrama = status?.currentDrama;
   const isConnected = !!status?.connected;
 
-  // Dedicated Tool Tabs Definition
-  const TOOLS_NAV = [{
+  // The Exact 6 Primary Dedicated Tools Requested by User
+  const MAIN_TOOLS_NAV = [{
     id: 'home',
-    label: 'Trang Chủ',
+    label: 'TRANG CHỦ',
     icon: '🏠',
-    badge: null,
-    desc: 'Tổng quan hệ thống'
-  }, {
-    id: 'direct',
-    label: 'Tải Trực Tiếp CDN',
-    icon: '⚡',
-    badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null,
-    desc: 'Tải 1s/tập chuẩn H.264'
-  }, {
-    id: 'cache',
-    label: 'Giả Lập & Quét Cache',
-    icon: '🔄',
-    badge: status?.remoteCacheCount ? `${status.remoteCacheCount}` : null,
-    desc: 'Tua tập & bóc tách máy ảo'
-  }, {
-    id: 'library',
-    label: 'Kho Phim & Video',
-    icon: '🎬',
-    badge: totalLocalVideos ? `${totalLocalVideos}` : null,
-    desc: 'Quản lý & xem video'
-  }, {
-    id: 'dubbing',
-    label: 'Lồng Tiếng Video AI',
-    icon: '🎬',
-    badge: dubJobId ? 'Đang chạy' : null,
-    desc: 'StudioVDT Video Pipeline'
+    badge: null
   }, {
     id: 'tts',
-    label: 'Phòng Thu Giọng Đọc AI',
+    label: 'PHÒNG THU GIỌNG ĐỌC AI (TTS STUDIO)',
     icon: '🎙️',
-    badge: 'Mới',
-    desc: 'StudioVDT TTS Studio'
+    badge: 'StudioVDT'
+  }, {
+    id: 'dubbing',
+    label: 'LỒNG TIẾNG VIDEO AI TỰ ĐỘNG (AI VIDEO DUBBING)',
+    icon: '🎬',
+    badge: dubJobId ? 'Đang chạy' : null
+  }, {
+    id: 'downloader',
+    label: 'TRÌNH TẢI VIDEO SODA REELS & MINUTEDRAMA',
+    icon: '📥',
+    badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null
+  }, {
+    id: 'library',
+    label: 'KHO VIDEO & TRÌNH CHIẾU',
+    icon: '📁',
+    badge: totalLocalVideos ? `${totalLocalVideos}` : null
   }, {
     id: 'settings',
-    label: 'Cài Đặt Hệ Thống',
+    label: 'CÀI ĐẶT HỆ THỐNG',
     icon: '⚙️',
-    badge: null,
-    desc: 'ADB & Hướng dẫn'
+    badge: null
   }];
   return /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col min-h-screen"
@@ -573,8 +569,8 @@ function App() {
   }, /*#__PURE__*/React.createElement("span", null, "Soda Reels & MinuteDrama"), /*#__PURE__*/React.createElement("span", {
     className: "w-1 h-1 rounded-full bg-slate-600"
   }), /*#__PURE__*/React.createElement("span", {
-    className: "text-brand-400 font-semibold"
-  }, "Tích Hợp StudioVDT")))), /*#__PURE__*/React.createElement("div", {
+    className: "text-brand-400 font-bold"
+  }, "StudioVDT Suite")))), /*#__PURE__*/React.createElement("div", {
     className: "hidden md:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => handleSwitchApp('auto'),
@@ -601,12 +597,12 @@ function App() {
     className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 overflow-x-auto"
   }, /*#__PURE__*/React.createElement("nav", {
     className: "flex space-x-1.5 py-2"
-  }, TOOLS_NAV.map(tab => {
+  }, MAIN_TOOLS_NAV.map(tab => {
     const isActive = activeTab === tab.id;
     return /*#__PURE__*/React.createElement("button", {
       key: tab.id,
       onClick: () => setActiveTab(tab.id),
-      className: `flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 ${isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`
+      className: `flex items-center gap-2 px-3.5 py-2 text-xs font-extrabold tracking-wide uppercase rounded-xl whitespace-nowrap transition-all duration-200 ${isActive ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-1 ring-brand-400/40' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`
     }, /*#__PURE__*/React.createElement("span", {
       className: "text-base"
     }, tab.icon), /*#__PURE__*/React.createElement("span", null, tab.label), tab.badge && /*#__PURE__*/React.createElement("span", {
@@ -622,25 +618,22 @@ function App() {
     className: "relative z-10 max-w-3xl"
   }, /*#__PURE__*/React.createElement("span", {
     className: "inline-block px-3 py-1 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30 mb-3"
-  }, "🚀 Kết Hợp Hoàn Hảo: Downloader & StudioVDT AI Suite"), /*#__PURE__*/React.createElement("h1", {
+  }, "🔥 Tích Hợp Đầy Đủ StudioVDT & Trình Tải Phim Soda Reels"), /*#__PURE__*/React.createElement("h1", {
     className: "text-2xl md:text-3xl font-extrabold text-white tracking-tight"
-  }, "Bộ Công Cụ Tải Phim Ngắn & Studio Sáng Tạo AI"), /*#__PURE__*/React.createElement("p", {
+  }, "Bộ Công Cụ Tải Phim Ngắn & Studio Lồng Tiếng AI Toàn Diện"), /*#__PURE__*/React.createElement("p", {
     className: "mt-2 text-sm text-slate-300 leading-relaxed"
-  }, "Tải cả bộ phim siêu tốc 1s/tập chuẩn H.264, quét bộ nhớ đệm giả lập Android, phát video không lỗi codec, tự động lồng tiếng video bằng Whisper và thu âm giọng đọc AI từ công nghệ StudioVDT."), /*#__PURE__*/React.createElement("div", {
+  }, "Tải cả bộ phim siêu tốc từ CDN chuẩn H.264, quét cache giả lập LDPlayer, thu âm kịch bản kịch tính tại Phòng Thu TTS và lồng tiếng phim tự động bằng công nghệ AI StudioVDT."), /*#__PURE__*/React.createElement("div", {
     className: "mt-5 flex flex-wrap items-center gap-3"
   }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setActiveTab('direct'),
-    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
-  }, /*#__PURE__*/React.createElement("span", null, "⚡ Tải Trực Tiếp CDN (1s/tập)")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setActiveTab('dubbing'),
-    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all"
-  }, /*#__PURE__*/React.createElement("span", null, "🎬 Lồng Tiếng Video AI")), /*#__PURE__*/React.createElement("button", {
     onClick: () => setActiveTab('tts'),
-    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all"
-  }, /*#__PURE__*/React.createElement("span", null, "🎙️ Phòng Thu Giọng Đọc AI")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => handleOpenFolder(),
-    className: "px-4 py-2.5 rounded-xl font-semibold text-sm bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
-  }, "📂 Mở Kho Video")))), /*#__PURE__*/React.createElement("div", {
+    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all"
+  }, /*#__PURE__*/React.createElement("span", null, "🎙️ Mở Phòng Thu Giọng Đọc (TTS)")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setActiveTab('dubbing'),
+    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all"
+  }, /*#__PURE__*/React.createElement("span", null, "🎬 Mở Lồng Tiếng Video AI")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setActiveTab('downloader'),
+    className: "px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
+  }, /*#__PURE__*/React.createElement("span", null, "📥 Mở Trình Tải Video (1s/tập)"))))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 md:grid-cols-4 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "glass-card p-4 rounded-2xl flex flex-col justify-between"
@@ -676,7 +669,7 @@ function App() {
     className: "flex items-center justify-between text-slate-400"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-xs font-semibold uppercase tracking-wider"
-  }, "Kho Video Đã Tải"), /*#__PURE__*/React.createElement("span", {
+  }, "Kho Video Đã Lưu"), /*#__PURE__*/React.createElement("span", {
     className: "text-lg"
   }, "💾")), /*#__PURE__*/React.createElement("div", {
     className: "mt-2"
@@ -698,111 +691,331 @@ function App() {
     className: "text-xl font-bold text-purple-400"
   }, totalDubbedVideos, " Tập Lồng Tiếng"), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-slate-400 mt-0.5"
-  }, "Giọng đọc StudioVDT AI")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between mb-3"
-  }, /*#__PURE__*/React.createElement("h2", {
-    className: "text-base font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🛠️ Danh Sách Các Công Cụ Chuyên Biệt")), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-slate-400"
-  }, "Mỗi công cụ được chia thành một trang làm việc riêng biệt")), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+  }, "StudioVDT AI Voice")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "text-base font-bold text-white mb-3 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "🛠️ Các Công Cụ Chính (Bấm Để Chuyển Trang)")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
-    onClick: () => setActiveTab('direct'),
-    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-amber-500/50 transition-all flex flex-col justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
-  }, "⚡"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-amber-400 transition-colors"
-  }, "1. Tải Trực Tiếp CDN Siêu Tốc"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Lấy toàn bộ link CDN cả bộ phim từ database MinuteDrama. Tải 1-2s / tập chuẩn H.264 xem ngay trên Windows Media Player.")), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở công cụ tải"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→"))), /*#__PURE__*/React.createElement("div", {
-    onClick: () => setActiveTab('cache'),
-    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-blue-500/50 transition-all flex flex-col justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
-  }, "🔄"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-blue-400 transition-colors"
-  }, "2. Giả Lập & Quét Cache ADB"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Tự động lướt tập trên Android emulator, nhận diện tập thông minh tránh bị ngược tập 1 và 3, xuất video an toàn khi đã cache 100%.")), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-blue-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở quét cache"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→"))), /*#__PURE__*/React.createElement("div", {
-    onClick: () => setActiveTab('library'),
-    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-emerald-500/50 transition-all flex flex-col justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
-  }, "🎬"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-emerald-400 transition-colors"
-  }, "3. Kho Phim & Trình Chiếu"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Quản lý tất cả tập phim đã tải, xem video trực tiếp bằng trình phát tích hợp, mở nhanh thư mục lưu trữ trong Windows Explorer.")), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-emerald-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở kho phim"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→"))), /*#__PURE__*/React.createElement("div", {
-    onClick: () => setActiveTab('dubbing'),
-    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-purple-500/50 transition-all flex flex-col justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
-  }, "🎬"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-purple-400 transition-colors"
-  }, "4. Lồng Tiếng Video AI (StudioVDT)"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Bóc tách âm thanh video, nhận diện Whisper, tự dịch tiếng Việt, lồng tiếng Edge-TTS, khớp khẩu hình timeline và hòa trộn nhạc nền.")), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-purple-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở phòng lồng tiếng video"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→"))), /*#__PURE__*/React.createElement("div", {
     onClick: () => setActiveTab('tts'),
     className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-indigo-500/50 transition-all flex flex-col justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
   }, "🎙️"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-indigo-400 transition-colors"
-  }, "5. Phòng Thu Giọng Đọc AI (TTS Studio)"), /*#__PURE__*/React.createElement("p", {
+    className: "font-bold text-sm text-white mt-4 group-hover:text-indigo-400 transition-colors uppercase"
+  }, "Phòng Thu Giọng Đọc AI (TTS Studio)"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Chuyển đổi văn bản kịch bản thành giọng nói MP3 chuyên nghiệp. Đa dạng giọng đọc Hoài My, Nam Minh, Jenny với tốc độ tùy chỉnh.")), /*#__PURE__*/React.createElement("div", {
+  }, "Nhập kịch bản, chuyển thành giọng nói MP3 chuyên nghiệp (Hoài My, Nam Minh). Tùy chỉnh tốc độ và tải file tức thì.")), /*#__PURE__*/React.createElement("div", {
     className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-indigo-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở phòng thu giọng đọc"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→"))), /*#__PURE__*/React.createElement("div", {
-    onClick: () => setActiveTab('settings'),
-    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-slate-500/50 transition-all flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("span", null, "Mở phòng thu"), /*#__PURE__*/React.createElement("span", null, "→"))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => setActiveTab('dubbing'),
+    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-purple-500/50 transition-all flex flex-col justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
-  }, "⚙️"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-base text-white mt-4 group-hover:text-slate-300 transition-colors"
-  }, "6. Cài Đặt & Hướng Dẫn Sửa Lỗi"), /*#__PURE__*/React.createElement("p", {
+    className: "w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
+  }, "🎬"), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm text-white mt-4 group-hover:text-purple-400 transition-colors uppercase"
+  }, "Lồng Tiếng Video AI Tự Động"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-2 leading-relaxed"
-  }, "Cấu hình kết nối ADB giả lập, sửa lỗi 0xC00D36C4 của Windows Media Player và hướng dẫn khởi chạy bằng Docker.")), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-slate-400 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Mở cài đặt"), /*#__PURE__*/React.createElement("span", {
-    className: "group-hover:translate-x-1 transition-transform"
-  }, "→")))))), activeTab === 'direct' && /*#__PURE__*/React.createElement("div", {
+  }, "Whisper nhận diện lời thoại, tự động dịch tiếng Việt, ghép giọng đọc AI khớp mốc thời gian và hòa âm nhạc nền gốc.")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-purple-400 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("span", null, "Mở lồng tiếng"), /*#__PURE__*/React.createElement("span", null, "→"))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => setActiveTab('downloader'),
+    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-amber-500/50 transition-all flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
+  }, "📥"), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm text-white mt-4 group-hover:text-amber-400 transition-colors uppercase"
+  }, "Trình Tải Video Soda Reels & MinuteDrama"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-2 leading-relaxed"
+  }, "Tải 1s/tập từ link trực tiếp CDN chuẩn H.264 xem ngay không lỗi, kèm chức năng tự động lướt tập & bóc tách cache máy ảo.")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("span", null, "Mở trình tải"), /*#__PURE__*/React.createElement("span", null, "→"))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => setActiveTab('library'),
+    className: "glass-card p-5 rounded-2xl cursor-pointer group hover:border-emerald-500/50 transition-all flex flex-col justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform"
+  }, "📁"), /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm text-white mt-4 group-hover:text-emerald-400 transition-colors uppercase"
+  }, "Kho Video & Trình Chiếu"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-2 leading-relaxed"
+  }, "Quản lý tất cả tập phim đã lưu trong máy, phát video trực tiếp trên trình phát web tích hợp, mở nhanh thư mục máy tính.")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-emerald-400 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("span", null, "Mở kho video"), /*#__PURE__*/React.createElement("span", null, "→")))))), activeTab === 'tts' && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl"
+    className: "glass-panel p-5 rounded-2xl"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold text-white flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "🎙️ PHÒNG THU GIỌNG ĐỌC AI (TTS STUDIO) - StudioVDT")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Công cụ chuyển đổi kịch bản văn bản thành giọng đọc truyền cảm xúc bằng Edge-TTS. Hỗ trợ tạo file âm thanh MP3 review phim, video ngắn TikTok, Reels.")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-3 gap-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-2 glass-panel p-6 rounded-2xl space-y-5"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "text-xs font-bold uppercase text-slate-400"
+  }, "1. Nhập Kịch Bản Cần Thu Âm:"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-500"
+  }, ttsText.length, " ký tự")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-2 flex-wrap"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-400"
+  }, "Mẫu kịch bản:"), SAMPLE_SCRIPTS.map((s, idx) => /*#__PURE__*/React.createElement("button", {
+    key: idx,
+    onClick: () => setTtsText(s.text),
+    className: "px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-brand-300 border border-slate-700 transition-all"
+  }, "+ ", s.label))), /*#__PURE__*/React.createElement("textarea", {
+    rows: "7",
+    value: ttsText,
+    onChange: e => setTtsText(e.target.value),
+    placeholder: "Nhập hoặc dán văn bản kịch bản tại đây... Ví dụ: Chào mừng các bạn đã quay trở lại với bộ phim hôm nay...",
+    className: "w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors leading-relaxed"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "2. Giọng Đọc Tuyển Chọn:"), /*#__PURE__*/React.createElement("select", {
+    value: ttsVoice,
+    onChange: e => setTtsVoice(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, TTS_VOICES.map(v => /*#__PURE__*/React.createElement("option", {
+    key: v.id,
+    value: v.id
+  }, v.flag, " ", v.name, " (", v.desc, ")")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "3. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
+    value: ttsRate,
+    onChange: e => setTtsRate(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "-20%"
+  }, "0.8x (Chậm rãi, tâm trạng)"), /*#__PURE__*/React.createElement("option", {
+    value: "-10%"
+  }, "0.9x (Hơi chậm)"), /*#__PURE__*/React.createElement("option", {
+    value: "+0%"
+  }, "1.0x (Tốc độ chuẩn)"), /*#__PURE__*/React.createElement("option", {
+    value: "+10%"
+  }, "1.1x (Nhanh nhẹn - Review)"), /*#__PURE__*/React.createElement("option", {
+    value: "+20%"
+  }, "1.2x (Kịch tính, nhanh)"), /*#__PURE__*/React.createElement("option", {
+    value: "+30%"
+  }, "1.3x (Rất nhanh)")))), /*#__PURE__*/React.createElement("button", {
+    onClick: handleGenerateTTS,
+    disabled: ttsGenerating || !ttsText.trim(),
+    className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider"
+  }, /*#__PURE__*/React.createElement("span", null, ttsGenerating ? '⏳' : '🎙️'), /*#__PURE__*/React.createElement("span", null, ttsGenerating ? 'Đang Thu Âm Giọng Đọc AI...' : 'Tạo Giọng Đọc AI Ngay (Render Audio)'))), /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm text-white mb-3 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "🎧 Nghe Thử & Tải File Âm Thanh")), ttsAudioResult ? /*#__PURE__*/React.createElement("div", {
+    className: "space-y-4 p-4 rounded-xl bg-indigo-950/30 border border-indigo-500/40"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-indigo-300 font-semibold flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "✅ Đã tạo file thành công:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-white text-[11px] truncate max-w-xs"
+  }, ttsAudioResult.filename)), /*#__PURE__*/React.createElement("audio", {
+    controls: true,
+    src: ttsAudioResult.url,
+    className: "w-full rounded-lg"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-400"
+  }, "Dung lượng: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-white"
+  }, formatBytes(ttsAudioResult.sizeBytes))), /*#__PURE__*/React.createElement("a", {
+    href: ttsAudioResult.url,
+    download: ttsAudioResult.filename,
+    className: "w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center justify-center gap-1.5 shadow-md"
+  }, /*#__PURE__*/React.createElement("span", null, "📥 Tải File MP3 Về Máy"))) : /*#__PURE__*/React.createElement("div", {
+    className: "p-8 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl space-y-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-3xl"
+  }, "🎙️"), /*#__PURE__*/React.createElement("div", null, "Nhập kịch bản và nhấn ", /*#__PURE__*/React.createElement("strong", null, "Tạo Giọng Đọc AI Ngay"), " để nghe thử file âm thanh tại đây."))), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400"
+  }, "💡 ", /*#__PURE__*/React.createElement("strong", null, "Gợi ý:"), " File MP3 tạo ra có thể dùng làm voiceover cho các video phim ngắn, review TikTok, Reels hoặc YouTube Shorts.")))), activeTab === 'dubbing' && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-5 rounded-2xl"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-xl font-bold text-white flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "🎬 LỒNG TIẾNG VIDEO AI TỰ ĐỘNG (AI VIDEO DUBBING) - StudioVDT")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Quy trình tự động hóa: Bóc tách âm thanh video ➜ Faster-Whisper nhận diện lời thoại ➜ Dịch thuật sang tiếng Việt ➜ Edge-TTS tạo giọng đọc cảm xúc ➜ Khớp timeline ➜ Hòa âm Audio Ducking.")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 md:grid-cols-3 gap-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-2 glass-panel p-6 rounded-2xl space-y-5"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "1. Video Đầu Vào Cần Lồng Tiếng:"), dubbingTarget ? /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded-xl bg-purple-950/30 border border-purple-500/40 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-2xl"
+  }, "🎬"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "font-bold text-sm text-white"
+  }, dubbingTarget.name), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-slate-400 truncate max-w-xs"
+  }, dubbingTarget.path))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setDubbingTarget(null),
+    className: "text-xs text-rose-400 hover:text-rose-300 font-semibold"
+  }, "Đổi video")) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, /*#__PURE__*/React.createElement("select", {
+    onChange: e => {
+      const val = e.target.value;
+      if (!val) return;
+      const parts = val.split('||');
+      setDubbingTarget({
+        name: parts[0],
+        path: parts[1]
+      });
+    },
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
+    defaultValue: ""
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "",
+    disabled: true
+  }, "-- Chọn video từ Kho Phim đã tải --"), status?.localDramas?.map(d => /*#__PURE__*/React.createElement("optgroup", {
+    key: d.name,
+    label: d.name
+  }, d.videos?.map(v => /*#__PURE__*/React.createElement("option", {
+    key: v.path,
+    value: `${d.name} - ${v.filename}||${v.path}`
+  }, v.filename, " (", v.sizeFormatted, ")"))))), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-slate-500"
+  }, "Hoặc chuyển sang tab ", /*#__PURE__*/React.createElement("strong", null, "KHO VIDEO"), " rồi bấm nút \"🎙️ Lồng Tiếng\" trên tập phim mong muốn."))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "2. Giọng Đọc Lồng Tiếng:"), /*#__PURE__*/React.createElement("select", {
+    value: dubVoice,
+    onChange: e => setDubVoice(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "vi-VN-HoaiMyNeural"
+  }, "👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý)"), /*#__PURE__*/React.createElement("option", {
+    value: "vi-VN-NamMinhNeural"
+  }, "👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh - Phim hành động)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "3. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
+    value: dubSpeed,
+    onChange: e => setDubSpeed(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "-10%"
+  }, "0.9x (Hơi chậm)"), /*#__PURE__*/React.createElement("option", {
+    value: "+0%"
+  }, "1.0x (Tốc độ chuẩn)"), /*#__PURE__*/React.createElement("option", {
+    value: "+10%"
+  }, "1.1x (Nhanh nhẹn)"), /*#__PURE__*/React.createElement("option", {
+    value: "+20%"
+  }, "1.2x (Kịch tính)")))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "4. Model Whisper Nhận Dạng:"), /*#__PURE__*/React.createElement("select", {
+    value: dubModel,
+    onChange: e => setDubModel(e.target.value),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "tiny"
+  }, "tiny (Siêu nhanh, ít RAM)"), /*#__PURE__*/React.createElement("option", {
+    value: "base"
+  }, "base (Khuyên dùng - Cân bằng tốt)"), /*#__PURE__*/React.createElement("option", {
+    value: "small"
+  }, "small (Chính xác cao hơn)"), /*#__PURE__*/React.createElement("option", {
+    value: "medium"
+  }, "medium (Rất chính xác)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
+  }, "5. Âm Lượng Nhạc Nền Gốc (Ducking):"), /*#__PURE__*/React.createElement("select", {
+    value: dubBgmVol,
+    onChange: e => setDubBgmVol(parseFloat(e.target.value)),
+    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "0.10"
+  }, "10% (Nhạc nền rất nhỏ)"), /*#__PURE__*/React.createElement("option", {
+    value: "0.15"
+  }, "15% (Chuẩn phim truyền hình)"), /*#__PURE__*/React.createElement("option", {
+    value: "0.25"
+  }, "25% (Nhạc nền vừa phải)"), /*#__PURE__*/React.createElement("option", {
+    value: "0.35"
+  }, "35% (Nhạc nền lớn)")))), /*#__PURE__*/React.createElement("button", {
+    onClick: handleStartDubbing,
+    disabled: !!dubJobId || !dubbingTarget,
+    className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider"
+  }, /*#__PURE__*/React.createElement("span", null, dubJobId ? '⏳' : '🚀'), /*#__PURE__*/React.createElement("span", null, dubJobId ? 'Đang Xử Lý Lồng Tiếng AI...' : 'Bắt Đầu Lồng Tiếng Video Tự Động'))), /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-sm text-white mb-2 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", null, "⚙️ Tiến Trình Xử Lý AI")), dubProgress ? /*#__PURE__*/React.createElement("div", {
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-xs font-bold text-purple-400"
+  }, /*#__PURE__*/React.createElement("span", null, dubProgress.step || 'Đang tiến hành...'), /*#__PURE__*/React.createElement("span", null, dubProgress.percent || 0, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "w-full bg-slate-800 rounded-full h-2.5 overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full transition-all duration-300",
+    style: {
+      width: `${dubProgress.percent || 0}%`
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1"
+  }, /*#__PURE__*/React.createElement("div", null, "Trạng thái: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-white"
+  }, dubProgress.status)), dubProgress.message && /*#__PURE__*/React.createElement("div", {
+    className: "text-slate-400"
+  }, dubProgress.message))) : /*#__PURE__*/React.createElement("div", {
+    className: "p-6 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl"
+  }, "Chưa có tiến trình lồng tiếng nào đang chạy.")), dubResultVideo && /*#__PURE__*/React.createElement("div", {
+    className: "p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-bold text-xs text-emerald-400 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", null, "🎉"), /*#__PURE__*/React.createElement("span", null, "Video Đã Lồng Tiếng Sẵn Sàng!")), /*#__PURE__*/React.createElement("div", {
+    className: "text-xs text-slate-300 truncate"
+  }, "File: ", dubResultVideo.replace(/^.*[\\\/]/, '')), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      const parts = dubResultVideo.split(/[\\\/]/);
+      const fileName = parts.pop();
+      const subFolder = parts.pop();
+      const dramaFolder = parts.pop();
+      setVideoModal({
+        title: `Video Lồng Tiếng - ${fileName}`,
+        url: `/video/${encodeURIComponent(dramaFolder)}/${encodeURIComponent(subFolder)}/${encodeURIComponent(fileName)}`
+      });
+    },
+    className: "w-full py-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", null, "▶️ Phát Video Lồng Tiếng")))))), activeTab === 'downloader' && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-xl font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "⚡ Công Cụ Tải Phim Siêu Tốc Từ Link Trực Tiếp CDN")), /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("span", null, "📥 TRÌNH TẢI VIDEO SODA REELS & MINUTEDRAMA")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1"
-  }, "Trích xuất link CDN từ database MinuteDrama. Tải toàn bộ phim chỉ mất 1-2 giây / tập (tốc độ ~35-50 Mbps).")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 flex-wrap"
+  }, "Hai chế độ tải mạnh mẽ: Tải trực tiếp siêu tốc 1s/tập từ link CDN hoặc Tự động lướt & bóc tách cache từ giả lập Android.")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setDownloaderSubTab('direct'),
+    className: `px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${downloaderSubTab === 'direct' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'}`
+  }, /*#__PURE__*/React.createElement("span", null, "⚡ Tải Trực Tiếp CDN (1s/tập)")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setDownloaderSubTab('cache'),
+    className: `px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${downloaderSubTab === 'cache' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`
+  }, /*#__PURE__*/React.createElement("span", null, "🔄 Quét Cache Giả Lập & Lướt Tập")))), downloaderSubTab === 'direct' && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-4 rounded-xl flex items-center justify-between flex-wrap gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => fetchDirectEpisodes(),
     disabled: directLoading,
     className: "px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all"
-  }, /*#__PURE__*/React.createElement("span", null, "🔄"), /*#__PURE__*/React.createElement("span", null, directLoading ? 'Đang đọc...' : 'Quét Lại Database')), directEpisodes && directEpisodes.episodes && directEpisodes.episodes.length > 0 && /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, "🔄"), /*#__PURE__*/React.createElement("span", null, directLoading ? 'Đang đọc...' : 'Quét Lại Database Phim'))), directEpisodes && directEpisodes.episodes && directEpisodes.episodes.length > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: handleDownloadAllDirect,
     disabled: batchDownloading,
     className: "px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all"
-  }, /*#__PURE__*/React.createElement("span", null, batchDownloading ? '⏳' : '🚀'), /*#__PURE__*/React.createElement("span", null, batchDownloading ? `Đang Tải (Tập ${batchProgress.activeEp}/${batchProgress.total})...` : 'Tải Toàn Bộ Các Tập (1-2s / tập)')))), batchDownloading && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, batchDownloading ? '⏳' : '🚀'), /*#__PURE__*/React.createElement("span", null, batchDownloading ? `Đang Tải (Tập ${batchProgress.activeEp}/${batchProgress.total})...` : 'Tải Tự Động Toàn Bộ Các Tập (1-2s / tập)'))), batchDownloading && /*#__PURE__*/React.createElement("div", {
     className: "glass-card p-4 rounded-2xl border border-amber-500/30"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs font-bold text-amber-400 mb-2"
@@ -902,20 +1115,17 @@ function App() {
     className: "font-bold text-lg text-white mt-3"
   }, "Chưa Tìm Thấy Dữ Liệu Link Trực Tiếp"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 max-w-md mx-auto mt-1"
-  }, "Hãy mở một bộ phim bất kỳ trên ứng dụng ", /*#__PURE__*/React.createElement("strong", null, "MinuteDrama"), " trong máy ảo LDPlayer/Nox, sau đó nhấn nút ", /*#__PURE__*/React.createElement("strong", null, "Quét Lại Database"), " ở góc phải."), /*#__PURE__*/React.createElement("button", {
-    onClick: () => fetchDirectEpisodes(),
-    className: "mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all"
-  }, "🔄 Quét Lại Ngay"))), activeTab === 'cache' && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-6"
+  }, "Hãy mở một bộ phim bất kỳ trên ứng dụng ", /*#__PURE__*/React.createElement("strong", null, "MinuteDrama"), " trong máy ảo LDPlayer/Nox, sau đó nhấn nút ", /*#__PURE__*/React.createElement("strong", null, "Quét Lại Database Phim"), " phía trên."))), downloaderSubTab === 'cache' && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "glass-panel p-5 rounded-2xl space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col md:flex-row md:items-center justify-between gap-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
-    className: "text-xl font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🔄 Công Cụ Quét Cache Giả Lập & Tự Động Lướt Tập")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-1"
-  }, "Bắt các file video được ứng dụng lưu tạm trên máy ảo Android. Nhận diện tập thông minh và tự động lướt tập.")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold text-base text-white"
+  }, "Quét Cache Giả Lập & Tự Động Lướt Tập"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-0.5"
+  }, "Bắt video tạm từ máy ảo Android LDPlayer/Nox. Xuất file an toàn khi đã cache 100%.")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-2 flex-wrap"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: handleExportCache,
@@ -958,12 +1168,6 @@ function App() {
   }, /*#__PURE__*/React.createElement("span", null, autoSwipeStatus?.isRunning ? '⏹️ Dừng Lướt Tập' : '▶️ Bắt Đầu Tự Động Lướt'))))), status?.remoteList && status.remoteList.length > 0 ? /*#__PURE__*/React.createElement("div", {
     className: "glass-panel rounded-2xl overflow-hidden border border-slate-800"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "px-5 py-3 border-b border-slate-800 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-sm text-white"
-  }, "Danh Sách Video Trong Cache Máy Ảo"), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-slate-400 font-semibold"
-  }, status.remoteList.length, " video tìm thấy")), /*#__PURE__*/React.createElement("div", {
     className: "divide-y divide-slate-800/80"
   }, status.remoteList.map((item, idx) => /*#__PURE__*/React.createElement("div", {
     key: idx,
@@ -982,9 +1186,7 @@ function App() {
     className: "text-slate-300"
   }, item.sizeFormatted), item.percentComplete < 100 && /*#__PURE__*/React.createElement("span", {
     className: "text-amber-400 ml-2 font-medium"
-  }, "(Đang cache: ", item.percentComplete, "%)")))), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("button", {
+  }, "(Đang cache: ", item.percentComplete, "%)")))), /*#__PURE__*/React.createElement("button", {
     onClick: async () => {
       showToast(`Đang xuất Tập ${item.suggestedEp}...`, 'info');
       try {
@@ -1007,21 +1209,21 @@ function App() {
       }
     },
     className: "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all"
-  }, "Tải Về Máy")))))) : /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-12 text-center rounded-2xl border border-slate-800"
+  }, "Tải Về Máy"))))) : /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-10 text-center rounded-2xl border border-slate-800"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "text-4xl"
-  }, "💤"), /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-lg text-white mt-3"
-  }, "Chưa Có Video Nào Trong Cache Máy Ảo"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 max-w-md mx-auto mt-1"
-  }, "Hãy bấm vào video trên ứng dụng trong máy ảo để video tải vào bộ nhớ đệm, hoặc sử dụng công cụ ", /*#__PURE__*/React.createElement("strong", null, "Tự Động Lướt Tập"), " phía trên."))), activeTab === 'library' && /*#__PURE__*/React.createElement("div", {
+    className: "text-3xl"
+  }, "💤"), /*#__PURE__*/React.createElement("div", {
+    className: "text-sm font-bold text-white mt-2"
+  }, "Chưa Có Video Trong Cache Giả Lập"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-400 mt-1"
+  }, "Mở video trên app giả lập hoặc bật Tự Động Lướt Tập để video tải vào cache.")))), activeTab === 'library' && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-xl font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🎬 Kho Phim & Video Đã Lưu Trên Máy Tính")), /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("span", null, "📁 KHO VIDEO & TRÌNH CHIẾU")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 mt-1"
   }, "Thư mục lưu trữ: ", /*#__PURE__*/React.createElement("code", {
     className: "text-brand-300"
@@ -1099,7 +1301,7 @@ function App() {
         });
         setActiveTab('dubbing');
       },
-      title: "Chuyển video này sang Studio Lồng Tiếng AI",
+      title: "Chuyển video này sang Lồng Tiếng AI",
       className: "py-1.5 px-3 rounded-lg text-xs font-bold bg-purple-600/30 hover:bg-purple-600 text-purple-200 border border-purple-500/40 transition-all flex items-center gap-1"
     }, /*#__PURE__*/React.createElement("span", null, "🎙️"), /*#__PURE__*/React.createElement("span", null, "Lồng Tiếng")))))) : /*#__PURE__*/React.createElement("div", {
       className: "p-8 text-center text-slate-400 text-xs"
@@ -1112,256 +1314,10 @@ function App() {
     className: "font-bold text-lg text-white mt-3"
   }, "Kho Video Trống"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-400 max-w-md mx-auto mt-1"
-  }, "Bạn chưa tải tập phim nào về máy tính. Hãy chuyển sang tab ", /*#__PURE__*/React.createElement("strong", null, "Tải Trực Tiếp CDN"), " hoặc ", /*#__PURE__*/React.createElement("strong", null, "Giả Lập & Quét Cache"), " để bắt đầu tải!"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setActiveTab('direct'),
+  }, "Bạn chưa tải tập phim nào về máy tính. Hãy chuyển sang tab ", /*#__PURE__*/React.createElement("strong", null, "TRÌNH TẢI VIDEO"), " để bắt đầu tải!"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setActiveTab('downloader'),
     className: "mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all"
-  }, "⚡ Chuyển Sang Tải Trực Tiếp CDN"))), activeTab === 'dubbing' && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-5 rounded-2xl"
-  }, /*#__PURE__*/React.createElement("h2", {
-    className: "text-xl font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🎬 Công Cụ Lồng Tiếng Video AI Tự Động (StudioVDT Engine)")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-1"
-  }, "Quy trình tự động hóa: Bóc tách âm thanh video ➜ Faster-Whisper nhận diện lời thoại ➜ Dịch thuật sang tiếng Việt ➜ Edge-TTS tạo giọng đọc cảm xúc ➜ Khớp timeline ➜ Hòa âm Audio Ducking.")), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 md:grid-cols-3 gap-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md:col-span-2 glass-panel p-6 rounded-2xl space-y-5"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "1. Video Đầu Vào Cần Lồng Tiếng:"), dubbingTarget ? /*#__PURE__*/React.createElement("div", {
-    className: "p-3 rounded-xl bg-purple-950/30 border border-purple-500/40 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-2xl"
-  }, "🎬"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "font-bold text-sm text-white"
-  }, dubbingTarget.name), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] text-slate-400 truncate max-w-xs"
-  }, dubbingTarget.path))), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setDubbingTarget(null),
-    className: "text-xs text-rose-400 hover:text-rose-300 font-semibold"
-  }, "Đổi video")) : /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2"
-  }, /*#__PURE__*/React.createElement("select", {
-    onChange: e => {
-      const val = e.target.value;
-      if (!val) return;
-      const parts = val.split('||');
-      setDubbingTarget({
-        name: parts[0],
-        path: parts[1]
-      });
-    },
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white",
-    defaultValue: ""
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "",
-    disabled: true
-  }, "-- Chọn video từ Kho Phim đã tải --"), status?.localDramas?.map(d => /*#__PURE__*/React.createElement("optgroup", {
-    key: d.name,
-    label: d.name
-  }, d.videos?.map(v => /*#__PURE__*/React.createElement("option", {
-    key: v.path,
-    value: `${d.name} - ${v.filename}||${v.path}`
-  }, v.filename, " (", v.sizeFormatted, ")"))))), /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] text-slate-500"
-  }, "Hoặc chuyển sang tab ", /*#__PURE__*/React.createElement("strong", null, "Kho Phim & Video"), " rồi bấm nút \"🎙️ Lồng Tiếng\" trên tập phim mong muốn."))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "2. Giọng Đọc Lồng Tiếng:"), /*#__PURE__*/React.createElement("select", {
-    value: dubVoice,
-    onChange: e => setDubVoice(e.target.value),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "vi-VN-HoaiMyNeural"
-  }, "👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý)"), /*#__PURE__*/React.createElement("option", {
-    value: "vi-VN-NamMinhNeural"
-  }, "👨 Nam Minh (Nam trầm ấm, chuẩn phát thanh - Phim hành động)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "3. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
-    value: dubSpeed,
-    onChange: e => setDubSpeed(e.target.value),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "-10%"
-  }, "0.9x (Hơi chậm)"), /*#__PURE__*/React.createElement("option", {
-    value: "+0%"
-  }, "1.0x (Tốc độ chuẩn)"), /*#__PURE__*/React.createElement("option", {
-    value: "+10%"
-  }, "1.1x (Nhanh nhẹn)"), /*#__PURE__*/React.createElement("option", {
-    value: "+20%"
-  }, "1.2x (Kịch tính)")))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "4. Model Whisper Nhận Dạng:"), /*#__PURE__*/React.createElement("select", {
-    value: dubModel,
-    onChange: e => setDubModel(e.target.value),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "tiny"
-  }, "tiny (Siêu nhanh, ít RAM)"), /*#__PURE__*/React.createElement("option", {
-    value: "base"
-  }, "base (Khuyên dùng - Cân bằng tốt)"), /*#__PURE__*/React.createElement("option", {
-    value: "small"
-  }, "small (Chính xác cao hơn)"), /*#__PURE__*/React.createElement("option", {
-    value: "medium"
-  }, "medium (Rất chính xác)"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "5. Âm Lượng Nhạc Nền Gốc (Ducking):"), /*#__PURE__*/React.createElement("select", {
-    value: dubBgmVol,
-    onChange: e => setDubBgmVol(parseFloat(e.target.value)),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "0.10"
-  }, "10% (Nhạc nền rất nhỏ)"), /*#__PURE__*/React.createElement("option", {
-    value: "0.15"
-  }, "15% (Chuẩn phim truyền hình)"), /*#__PURE__*/React.createElement("option", {
-    value: "0.25"
-  }, "25% (Nhạc nền vừa phải)"), /*#__PURE__*/React.createElement("option", {
-    value: "0.35"
-  }, "35% (Nhạc nền lớn)")))), /*#__PURE__*/React.createElement("button", {
-    onClick: handleStartDubbing,
-    disabled: !!dubJobId || !dubbingTarget,
-    className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, dubJobId ? '⏳' : '🚀'), /*#__PURE__*/React.createElement("span", null, dubJobId ? 'Đang Xử Lý Lồng Tiếng AI...' : 'Bắt Đầu Lồng Tiếng Video'))), /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-sm text-white mb-2 flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "⚙️ Tiến Trình Xử Lý AI")), dubProgress ? /*#__PURE__*/React.createElement("div", {
-    className: "space-y-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between text-xs font-bold text-purple-400"
-  }, /*#__PURE__*/React.createElement("span", null, dubProgress.step || 'Đang tiến hành...'), /*#__PURE__*/React.createElement("span", null, dubProgress.percent || 0, "%")), /*#__PURE__*/React.createElement("div", {
-    className: "w-full bg-slate-800 rounded-full h-2.5 overflow-hidden"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full transition-all duration-300",
-    style: {
-      width: `${dubProgress.percent || 0}%`
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1"
-  }, /*#__PURE__*/React.createElement("div", null, "Trạng thái: ", /*#__PURE__*/React.createElement("strong", {
-    className: "text-white"
-  }, dubProgress.status)), dubProgress.message && /*#__PURE__*/React.createElement("div", {
-    className: "text-slate-400"
-  }, dubProgress.message))) : /*#__PURE__*/React.createElement("div", {
-    className: "p-6 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl"
-  }, "Chưa có tiến trình lồng tiếng nào đang chạy.")), dubResultVideo && /*#__PURE__*/React.createElement("div", {
-    className: "p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "font-bold text-xs text-emerald-400 flex items-center gap-1.5"
-  }, /*#__PURE__*/React.createElement("span", null, "🎉"), /*#__PURE__*/React.createElement("span", null, "Video Đã Lồng Tiếng Sẵn Sàng!")), /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-slate-300 truncate"
-  }, "File: ", dubResultVideo.replace(/^.*[\\\/]/, '')), /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      const parts = dubResultVideo.split(/[\\\/]/);
-      const fileName = parts.pop();
-      const subFolder = parts.pop();
-      const dramaFolder = parts.pop();
-      setVideoModal({
-        title: `Video Lồng Tiếng - ${fileName}`,
-        url: `/video/${encodeURIComponent(dramaFolder)}/${encodeURIComponent(subFolder)}/${encodeURIComponent(fileName)}`
-      });
-    },
-    className: "w-full py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-1.5"
-  }, /*#__PURE__*/React.createElement("span", null, "▶️ Phát Video Lồng Tiếng")))))), activeTab === 'tts' && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-5 rounded-2xl"
-  }, /*#__PURE__*/React.createElement("h2", {
-    className: "text-xl font-bold text-white flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🎙️ Phòng Thu Giọng Đọc AI (TTS Studio từ StudioVDT)")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-400 mt-1"
-  }, "Tạo giọng đọc thuyết minh, review phim ngắn hoặc video quảng cáo từ văn bản kịch bản bằng công nghệ Edge-TTS chất lượng cao.")), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 md:grid-cols-3 gap-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "md:col-span-2 glass-panel p-6 rounded-2xl space-y-5"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between mb-2"
-  }, /*#__PURE__*/React.createElement("label", {
-    className: "text-xs font-bold uppercase text-slate-400"
-  }, "1. Nhập Kịch Bản Cần Thu Âm:"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[11px] text-slate-500"
-  }, ttsText.length, " ký tự")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 mb-2 flex-wrap"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[11px] text-slate-400"
-  }, "Mẫu kịch bản:"), SAMPLE_SCRIPTS.map((s, idx) => /*#__PURE__*/React.createElement("button", {
-    key: idx,
-    onClick: () => setTtsText(s.text),
-    className: "px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-brand-300 border border-slate-700 transition-all"
-  }, "+ ", s.label))), /*#__PURE__*/React.createElement("textarea", {
-    rows: "6",
-    value: ttsText,
-    onChange: e => setTtsText(e.target.value),
-    placeholder: "Nhập hoặc dán văn bản kịch bản tại đây... Ví dụ: Chào mừng các bạn đã quay trở lại với bộ phim hôm nay...",
-    className: "w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 sm:grid-cols-2 gap-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "2. Giọng Đọc Tuyển Chọn:"), /*#__PURE__*/React.createElement("select", {
-    value: ttsVoice,
-    onChange: e => setTtsVoice(e.target.value),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, TTS_VOICES.map(v => /*#__PURE__*/React.createElement("option", {
-    key: v.id,
-    value: v.id
-  }, v.flag, " ", v.name, " (", v.desc, ")")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "block text-xs font-bold uppercase text-slate-400 mb-2"
-  }, "3. Tốc Độ Nói (Rate):"), /*#__PURE__*/React.createElement("select", {
-    value: ttsRate,
-    onChange: e => setTtsRate(e.target.value),
-    className: "w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "-20%"
-  }, "0.8x (Chậm rãi, truyền cảm)"), /*#__PURE__*/React.createElement("option", {
-    value: "-10%"
-  }, "0.9x (Hơi chậm)"), /*#__PURE__*/React.createElement("option", {
-    value: "+0%"
-  }, "1.0x (Tốc độ bình thường)"), /*#__PURE__*/React.createElement("option", {
-    value: "+10%"
-  }, "1.1x (Nhanh nhẹn - Review)"), /*#__PURE__*/React.createElement("option", {
-    value: "+20%"
-  }, "1.2x (Kịch tính, nhanh)"), /*#__PURE__*/React.createElement("option", {
-    value: "+30%"
-  }, "1.3x (Rất nhanh)")))), /*#__PURE__*/React.createElement("button", {
-    onClick: handleGenerateTTS,
-    disabled: ttsGenerating || !ttsText.trim(),
-    className: "w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, ttsGenerating ? '⏳' : '🎙️'), /*#__PURE__*/React.createElement("span", null, ttsGenerating ? 'Đang Thu Âm Giọng Đọc AI...' : 'Tạo Giọng Đọc AI Ngay (Render Audio)'))), /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
-    className: "font-bold text-sm text-white mb-3 flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "🎧 Nghe Thử & Tải File Âm Thanh")), ttsAudioResult ? /*#__PURE__*/React.createElement("div", {
-    className: "space-y-4 p-4 rounded-xl bg-indigo-950/30 border border-indigo-500/40"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-xs text-indigo-300 font-semibold flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("span", null, "✅ Đã tạo file thành công:"), /*#__PURE__*/React.createElement("span", {
-    className: "font-mono text-white text-[11px]"
-  }, ttsAudioResult.filename)), /*#__PURE__*/React.createElement("audio", {
-    controls: true,
-    src: ttsAudioResult.url,
-    className: "w-full rounded-lg"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] text-slate-400"
-  }, "Dung lượng: ", /*#__PURE__*/React.createElement("strong", {
-    className: "text-white"
-  }, formatBytes(ttsAudioResult.sizeBytes))), /*#__PURE__*/React.createElement("a", {
-    href: ttsAudioResult.url,
-    download: ttsAudioResult.filename,
-    className: "w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center justify-center gap-1.5 shadow-md"
-  }, /*#__PURE__*/React.createElement("span", null, "📥 Tải File MP3 Về Máy"))) : /*#__PURE__*/React.createElement("div", {
-    className: "p-8 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl space-y-2"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-3xl"
-  }, "🎙️"), /*#__PURE__*/React.createElement("div", null, "Nhập kịch bản và nhấn ", /*#__PURE__*/React.createElement("strong", null, "Tạo Giọng Đọc AI Ngay"), " để nghe thử file âm thanh tại đây."))), /*#__PURE__*/React.createElement("div", {
-    className: "p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400"
-  }, "💡 ", /*#__PURE__*/React.createElement("strong", null, "Gợi ý:"), " File MP3 tạo ra có thể dùng làm voiceover cho các video phim ngắn, review TikTok, Reels hoặc YouTube Shorts.")))), activeTab === 'settings' && /*#__PURE__*/React.createElement("div", {
+  }, "📥 Chuyển Sang Trình Tải Video"))), activeTab === 'settings' && /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
     className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-4"
@@ -1397,9 +1353,9 @@ function App() {
     className: "font-bold text-white text-sm"
   }, "3 Cách Khắc Phục Đơn Giản Nhất:"), /*#__PURE__*/React.createElement("div", {
     className: "space-y-1.5 text-slate-300"
-  }, /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 1 (Khuyên dùng):"), " Trong tab ", /*#__PURE__*/React.createElement("strong", null, "Tải Trực Tiếp CDN"), " của tool, luôn chọn nút ", /*#__PURE__*/React.createElement("strong", {
+  }, /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 1 (Khuyên dùng):"), " Trong tab ", /*#__PURE__*/React.createElement("strong", null, "TRÌNH TẢI VIDEO"), " của tool, luôn chọn nút ", /*#__PURE__*/React.createElement("strong", {
     className: "text-emerald-400"
-  }, "🟢 H.264 (Chuẩn Windows)"), ". Tool sẽ tự động lấy link H.264 bản chuẩn để mở ngay trên Windows Media Player mà không bao giờ bị lỗi!"), /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 2:"), " Xem video trực tiếp trong tab ", /*#__PURE__*/React.createElement("strong", null, "Kho Phim & Video"), " trên giao diện web của tool. Trình phát web đã tích hợp bộ giải mã tương thích."), /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 3:"), " Khi bạn đưa video vào ", /*#__PURE__*/React.createElement("strong", null, "Lồng Tiếng Video AI"), ", hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo."))))), /*#__PURE__*/React.createElement("div", {
+  }, "🟢 H.264 (Chuẩn Windows)"), ". Tool sẽ tự động lấy link H.264 bản chuẩn để mở ngay trên Windows Media Player mà không bao giờ bị lỗi!"), /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 2:"), " Xem video trực tiếp trong tab ", /*#__PURE__*/React.createElement("strong", null, "KHO VIDEO"), " trên giao diện web của tool. Trình phát web đã tích hợp bộ giải mã tương thích."), /*#__PURE__*/React.createElement("div", null, "✅ ", /*#__PURE__*/React.createElement("strong", null, "Cách 3:"), " Khi bạn đưa video vào ", /*#__PURE__*/React.createElement("strong", null, "LỒNG TIẾNG VIDEO AI"), ", hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo."))))), /*#__PURE__*/React.createElement("div", {
     className: "glass-panel p-6 rounded-2xl border border-slate-800 space-y-3"
   }, /*#__PURE__*/React.createElement("h2", {
     className: "text-lg font-bold text-white flex items-center gap-2"
@@ -1427,7 +1383,7 @@ function App() {
     className: "max-h-[70vh] w-auto rounded-lg"
   }, "Trình duyệt không hỗ trợ phát video này.")))), /*#__PURE__*/React.createElement("footer", {
     className: "mt-auto border-t border-slate-800 py-4 text-center text-xs text-slate-500"
-  }, "Video Dynamic Toolkit • Kết Hợp Hoàn Hảo Soda Reels, MinuteDrama & StudioVDT AI Suite • 2026"));
+  }, "Video Dynamic Toolkit • Tích Hợp Soda Reels, MinuteDrama & StudioVDT AI Suite • 2026"));
 }
 
 // Render React App

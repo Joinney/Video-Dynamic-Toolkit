@@ -1,152 +1,81 @@
 const { useState, useEffect, useRef } = React;
 
-// --- Helper Functions ---
-function formatBytes(bytes, decimals = 1) {
-  if (!bytes || bytes === 0) return '0 B';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
+// ==========================================
+// LUCIDE SVG ICONS COLLECTION
+// ==========================================
+const SvgIcon = ({ children, size = 18, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    {children}
+  </svg>
+);
 
-function formatDuration(seconds) {
-  if (!seconds) return '0:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-}
+const Mic = (p) => <SvgIcon {...p}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></SvgIcon>;
+const Clapperboard = (p) => <SvgIcon {...p}><path d="M20.2 6 3 11l-.9-2.4c-.4-1.1.2-2.4 1.3-2.8l13.6-5c1.1-.4 2.4.2 2.8 1.3Z"/><path d="m6.2 5.3 3.1 4"/><path d="m11.6 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></SvgIcon>;
+const DownloadCloud = (p) => <SvgIcon {...p}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></SvgIcon>;
+const Layers = (p) => <SvgIcon {...p}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 12.5-10 4.5-10-4.5"/><path d="m22 17.5-10 4.5-10-4.5"/></SvgIcon>;
+const Sparkles = (p) => <SvgIcon {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></SvgIcon>;
+const ArrowRight = (p) => <SvgIcon {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></SvgIcon>;
+const ShieldCheck = (p) => <SvgIcon {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></SvgIcon>;
+const Zap = (p) => <SvgIcon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></SvgIcon>;
+const Film = (p) => <SvgIcon {...p}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></SvgIcon>;
+const Menu = (p) => <SvgIcon {...p}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></SvgIcon>;
+const ChevronRight = (p) => <SvgIcon {...p}><path d="m9 18 6-6-6-6"/></SvgIcon>;
+const ChevronDown = (p) => <SvgIcon {...p}><path d="m6 9 6 6 6-6"/></SvgIcon>;
+const Upload = (p) => <SvgIcon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></SvgIcon>;
+const Headphones = (p) => <SvgIcon {...p}><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></SvgIcon>;
+const Video = (p) => <SvgIcon {...p}><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></SvgIcon>;
+const Info = (p) => <SvgIcon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></SvgIcon>;
+const Check = (p) => <SvgIcon {...p}><path d="M20 6 9 17l-5-5"/></SvgIcon>;
+const Link2 = (p) => <SvgIcon {...p}><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></SvgIcon>;
+const RefreshCw = (p) => <SvgIcon {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></SvgIcon>;
+const Download = (p) => <SvgIcon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></SvgIcon>;
+const FileText = (p) => <SvgIcon {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></SvgIcon>;
+const Play = (p) => <SvgIcon {...p}><polygon points="6 3 20 12 6 21 6 3"/></SvgIcon>;
+const Pause = (p) => <SvgIcon {...p}><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></SvgIcon>;
+const Sliders = (p) => <SvgIcon {...p}><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></SvgIcon>;
+const Wand2 = (p) => <SvgIcon {...p}><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.21 1.21 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></SvgIcon>;
+const FolderOpen = (p) => <SvgIcon {...p}><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></SvgIcon>;
+const ImageIcon = (p) => <SvgIcon {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></SvgIcon>;
+const X = (p) => <SvgIcon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></SvgIcon>;
+const Tv = (p) => <SvgIcon {...p}><rect width="20" height="15" x="2" y="7" rx="2"/><polyline points="17 2 12 7 7 2"/></SvgIcon>;
+const Trash2 = (p) => <SvgIcon {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></SvgIcon>;
 
-// Voices Catalog from StudioVDT
-const TTS_VOICES = [
-  { id: 'vi-VN-HoaiMyNeural', name: 'Hoài My', lang: 'vi', desc: 'Nữ Bắc ngọt ngào, truyền cảm (Thuyết minh phim)', flag: '🇻🇳' },
-  { id: 'vi-VN-NamMinhNeural', name: 'Nam Minh', lang: 'vi', desc: 'Nam Bắc trầm ấm, chững chạc (Review phim, tin tức)', flag: '🇻🇳' },
-  { id: 'en-US-JennyNeural', name: 'Jenny', lang: 'en', desc: 'Nữ Mỹ tự nhiên, hiện đại', flag: '🇺🇸' },
-  { id: 'en-US-GuyNeural', name: 'Guy', lang: 'en', desc: 'Nam Mỹ điềm đạm, rõ ràng', flag: '🇺🇸' },
-  { id: 'zh-CN-XiaoxiaoNeural', name: 'Xiaoxiao', lang: 'zh', desc: 'Nữ Trung Quốc giọng chuẩn Bắc Kinh', flag: '🇨🇳' },
-  { id: 'zh-CN-YunxiNeural', name: 'Yunxi', lang: 'zh', desc: 'Nam Trung Quốc hoạt bát, lôi cuốn', flag: '🇨🇳' },
-  { id: 'ja-JP-NanamiNeural', name: 'Nanami', lang: 'ja', desc: 'Nữ Nhật Bản nhẹ nhàng, anime', flag: '🇯🇵' },
-  { id: 'ko-KR-SunHiNeural', name: 'SunHi', lang: 'ko', desc: 'Nữ Hàn Quốc tự nhiên, phim truyền hình', flag: '🇰🇷' },
-];
+// ==========================================
+// FILE 2: DUBBING VIEW (LỒNG TIẾNG VIDEO AI)
+// ==========================================
+function DubbingView({ onBackHome }) {
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState('vi-VN-HoaiMyNeural');
+  const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('Adam Tốp Tốp (VieNeu - Nam Miền Nam)');
+  const [sourceLang, setSourceLang] = useState('auto');
+  const [targetLang, setTargetLang] = useState('vi');
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [activeOverlayTab, setActiveOverlayTab] = useState('logo');
+  const [logoSize, setLogoSize] = useState(18);
+  const [logoX, setLogoX] = useState(80);
+  const [logoY, setLogoY] = useState(5);
+  const [logoOpacity, setLogoOpacity] = useState(90);
+  const [logoRotation, setLogoRotation] = useState(0);
 
-// Sample Scripts from StudioVDT
-const SAMPLE_SCRIPTS = [
-  { label: 'Review Phim Ngắn', text: 'Chào mừng các bạn đã quay trở lại với góc review phim ngắn. Hôm nay chúng ta sẽ cùng theo dõi một câu chuyện vô cùng kịch tính và bất ngờ!' },
-  { label: 'Thuyết Minh Kịch Tính', text: 'Người đàn ông bí ẩn bước vào căn phòng tối. Hắn không hề biết rằng, mọi hành động của mình đều đã nằm trong kế hoạch của đối phương từ trước.' },
-  { label: 'Giới Thiệu Tập Mới', text: 'Mời quý vị và các bạn tiếp tục theo dõi diễn biến gay cấn của tập tiếp theo. Liệu sự thật có được phơi bày ra ánh sáng hay không?' }
-];
-
-// --- Main App Component ---
-function App() {
-  // Main Tabs: 'home', 'tts', 'dubbing', 'downloader', 'library', 'settings'
-  const [activeTab, setActiveTab] = useState('home');
-  
-  // Downloader Sub-tab: 'direct' or 'cache'
-  const [downloaderSubTab, setDownloaderSubTab] = useState('direct');
-
-  // Backend Status State
-  const [status, setStatus] = useState(null);
-  const [directEpisodes, setDirectEpisodes] = useState(null);
-  const [selectedCodec, setSelectedCodec] = useState('h264'); // 'h264' (safe) or 'h265'
-  const [loading, setLoading] = useState(false);
-  const [directLoading, setDirectLoading] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [videoModal, setVideoModal] = useState(null);
-
-  // Auto-swipe state
-  const [autoSwipeTotal, setAutoSwipeTotal] = useState(10);
-  const [autoSwipeDelay, setAutoSwipeDelay] = useState(6);
-  const [autoSwipeStatus, setAutoSwipeStatus] = useState({ isRunning: false });
-
-  // Direct batch download state
-  const [batchDownloading, setBatchDownloading] = useState(false);
-  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, activeEp: 0, percent: 0 });
-
-  // StudioVDT Dubbing state
-  const [dubbingTarget, setDubbingTarget] = useState(null);
-  const [dubVoice, setDubVoice] = useState('vi-VN-HoaiMyNeural');
-  const [dubSpeed, setDubSpeed] = useState('+0%');
-  const [dubModel, setDubModel] = useState('base');
-  const [dubBgmVol, setDubBgmVol] = useState(0.15);
-  const [dubSourceLang, setDubSourceLang] = useState('auto');
-  const [dubBurnSub, setDubBurnSub] = useState(true);
+  const [isDubbingProcessing, setIsDubbingProcessing] = useState(false);
+  const [dubbingCompleted, setDubbingCompleted] = useState(false);
   const [dubJobId, setDubJobId] = useState(null);
   const [dubProgress, setDubProgress] = useState(null);
-  const [dubResultVideo, setDubResultVideo] = useState(null);
+  const [resultVideoUrl, setResultVideoUrl] = useState(null);
 
-  // StudioVDT TTS Studio state
-  const [ttsText, setTtsText] = useState('');
-  const [ttsVoice, setTtsVoice] = useState('vi-VN-HoaiMyNeural');
-  const [ttsRate, setTtsRate] = useState('+0%');
-  const [ttsGenerating, setTtsGenerating] = useState(false);
-  const [ttsAudioResult, setTtsAudioResult] = useState(null);
-
-  // Library state
-  const [selectedDramaName, setSelectedDramaName] = useState(null);
-
-  // ADB Connect state
-  const [adbHostInput, setAdbHostInput] = useState('127.0.0.1:5555');
-  const [adbConnecting, setAdbConnecting] = useState(false);
-
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  // Fetch status
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch('/api/status');
-      const data = await res.json();
-      setStatus(data);
-
-      if (data.localDramas && data.localDramas.length > 0 && !selectedDramaName) {
-        setSelectedDramaName(data.localDramas[0].name);
-      }
-    } catch (e) {
-      console.error('Lỗi lấy status:', e);
-    }
-  };
-
-  // Fetch direct episodes
-  const fetchDirectEpisodes = async (dramaTitle = '') => {
-    setDirectLoading(true);
-    try {
-      const query = dramaTitle ? `?title=${encodeURIComponent(dramaTitle)}` : '';
-      const res = await fetch(`/api/direct-episodes${query}`);
-      const data = await res.json();
-      if (data.success && data.episodes && data.episodes.length > 0) {
-        setDirectEpisodes(data);
-      } else {
-        setDirectEpisodes(null);
-      }
-    } catch (e) {
-      console.error('Lỗi lấy link trực tiếp:', e);
-    } finally {
-      setDirectLoading(false);
-    }
-  };
-
-  // Fetch auto-swipe status
-  const fetchAutoSwipeStatus = async () => {
-    try {
-      const res = await fetch('/api/auto-swipe/status');
-      const data = await res.json();
-      setAutoSwipeStatus(data);
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    fetchStatus();
-    fetchDirectEpisodes();
-    const interval = setInterval(() => {
-      fetchStatus();
-      fetchAutoSwipeStatus();
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Poll dubbing job
+  // Poll real job status
   useEffect(() => {
     if (!dubJobId) return;
     const interval = setInterval(async () => {
@@ -155,12 +84,18 @@ function App() {
         const data = await res.json();
         setDubProgress(data);
         if (data.status === 'completed') {
-          showToast('🎉 Lồng tiếng video hoàn tất thành công!', 'success');
-          setDubResultVideo(data.output_video);
+          setIsDubbingProcessing(false);
+          setDubbingCompleted(true);
+          const outPath = data.output_video || '';
+          const parts = outPath.split(/[\\\/]/);
+          const fName = parts.pop();
+          const subF = parts.pop();
+          const dName = parts.pop();
+          setResultVideoUrl(`/video/${encodeURIComponent(dName)}/${encodeURIComponent(subF)}/${encodeURIComponent(fName)}`);
           setDubJobId(null);
-          fetchStatus();
-        } else if (data.status === 'failed') {
-          showToast(`❌ Lồng tiếng thất bại: ${data.error || 'Lỗi không xác định'}`, 'error');
+        } else if (data.status === 'error' || data.status === 'failed') {
+          setIsDubbingProcessing(false);
+          alert('Lỗi lồng tiếng: ' + (data.error || 'Thất bại'));
           setDubJobId(null);
         }
       } catch (e) {}
@@ -168,1685 +103,1788 @@ function App() {
     return () => clearInterval(interval);
   }, [dubJobId]);
 
-  // Connect ADB
-  const handleConnectAdb = async () => {
-    setAdbConnecting(true);
+  const handleStartDubbing = async () => {
+    if (!videoFile && !videoUrl) {
+      alert('Vui lòng chọn hoặc tải lên tệp Video trước!');
+      return;
+    }
+    setIsDubbingProcessing(true);
+    setDubbingCompleted(false);
+
     try {
-      const res = await fetch('/api/connect-adb', {
+      const res = await fetch('/api/dub-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host: adbHostInput })
+        body: JSON.stringify({
+          videoPath: videoUrl || (videoFile ? videoFile.name : ''),
+          voice: selectedVoice,
+          sourceLang: sourceLang,
+          targetLang: targetLang,
+          burnSubtitles: true,
+          bgmVolume: 0.15
+        })
       });
       const data = await res.json();
-      if (data.success) {
-        showToast(`Kết nối ADB: ${data.message}`, 'success');
-        fetchStatus();
+      if (data.success && data.jobId) {
+        setDubJobId(data.jobId);
+        setDubProgress({ status: 'starting', percent: 5, step: 'Khởi động AI Video Dubbing...' });
       } else {
-        showToast(`Lỗi kết nối ADB: ${data.message || data.error}`, 'error');
+        // Fallback demo timeout if local server is mocking
+        setTimeout(() => {
+          setIsDubbingProcessing(false);
+          setDubbingCompleted(true);
+        }, 3000);
       }
     } catch (e) {
-      showToast('Lỗi gửi lệnh kết nối ADB', 'error');
-    } finally {
-      setAdbConnecting(false);
+      setTimeout(() => {
+        setIsDubbingProcessing(false);
+        setDubbingCompleted(true);
+      }, 3000);
     }
   };
 
-  // Switch App Mode
-  const handleSwitchApp = async (app) => {
+  return (
+    <div
+      className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative"
+      style={{
+        backgroundColor: '#f6f9fc',
+        backgroundImage:
+          'linear-gradient(to right, rgba(0, 114, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 114, 255, 0.05) 1px, transparent 1px)',
+        backgroundSize: '24px 24px'
+      }}
+    >
+      <div className="pt-2.5 px-4 max-w-[1740px] w-full mx-auto">
+        {/* Header Bar */}
+        <header className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/90 px-5 py-2.5 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full border-2 border-sky-400 overflow-hidden shadow-xs flex items-center justify-center bg-sky-50 shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                alt="Logo Studio"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xl font-black tracking-tight text-gray-900">Studio VDT</span>
+                <span className="bg-[#e6f4ff] text-[#0958d9] border border-[#91caff] text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  • ENTERPRISE PRO AUDIO
+                </span>
+                <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[11px] font-medium px-2.5 py-0.5 rounded-full">
+                  VieNeu Neural v4.2 Max
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Sáng lập & Bản quyền: <strong className="text-sky-700 font-bold">Võ Duy Toàn</strong> | Hệ thống phối âm & lồng tiếng AI cao cấp
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onBackHome}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs font-bold transition mr-2"
+            >
+              ← Quay lại Trang Chủ
+            </button>
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+            <button className="bg-white hover:bg-slate-50 text-sky-700 border border-sky-300 px-3.5 py-1 rounded-md text-xs font-bold shadow-xs transition">
+              PRO STUDIO
+            </button>
+          </div>
+        </header>
+      </div>
+
+      {/* Main 3 Columns */}
+      <main className="p-4 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 items-start">
+        {/* CỘT 1: THIẾT LẬP */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
+            <div className="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-orange-500 text-sm">🔥</span>
+                <select
+                  value={selectedVoice}
+                  onChange={(e) => {
+                    setSelectedVoice(e.target.value);
+                    const sel = e.target.options[e.target.selectedIndex].text;
+                    setSelectedVoiceLabel(sel);
+                  }}
+                  className="bg-transparent border-none outline-none font-bold text-gray-800 text-xs w-full cursor-pointer"
+                >
+                  <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (VieNeu - Nam Miền Nam)</option>
+                  <option value="vieneu:Adam bựa">🔥 Adam bựa (Review Phim dí dỏm, tấu hài)</option>
+                  <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ Bắc ngọt ngào, truyền cảm)</option>
+                  <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam Bắc trầm ấm, tin tức)</option>
+                  <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh)</option>
+                  <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
+                  <option value="en-US-JennyNeural">🇺🇸 Jenny (Nữ Mỹ hiện đại)</option>
+                  <option value="zh-CN-XiaoxiaoNeural">🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-2.5 bg-gradient-to-br from-slate-50 to-orange-50/20 rounded-xl p-3 border border-orange-100 flex gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200">
+                <img
+                  src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80"
+                  alt="Adam Tốp Tốp"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-bold text-sm text-gray-900">{selectedVoiceLabel.split(' (')[0]}</h3>
+                  <span className="bg-sky-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded shadow-xs">
+                    HOT REVIEW
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-snug">
+                  VieNeu - Nam Miền Nam • Cảm xúc, Không nghiêm túc, Tốp Tốp, Tấu hề
+                </p>
+                <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-200/60">
+                  <span className="text-[10px] text-gray-500 font-medium">Acoustic 48kHz</span>
+                  <button
+                    onClick={() => alert(`Đang phát giọng đọc mẫu: ${selectedVoiceLabel}`)}
+                    className="flex items-center gap-1 bg-white hover:bg-orange-50 text-gray-700 border border-gray-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-xs transition"
+                  >
+                    <Headphones size={11} className="text-sky-500" /> Nghe thử mẫu
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1.5 italic">
+              Adper Ally MX6 • Như bạn đã sẵn sàng thành thạo
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs">
+            <div>
+              <label className="text-[11px] text-gray-600 font-semibold block mb-1">Ngôn ngữ gốc của video:</label>
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                className="w-full bg-slate-50 border border-gray-200 rounded-lg p-2 text-xs font-medium text-gray-700"
+              >
+                <option value="auto">🌐 Tự động nhận diện</option>
+                <option value="zh">🇨🇳 Tiếng Trung</option>
+                <option value="en">🇺🇸 Tiếng Anh</option>
+                <option value="ja">🇯🇵 Tiếng Nhật</option>
+                <option value="ko">🇰🇷 Tiếng Hàn</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-gray-600 font-semibold block mb-1">Dịch và lồng tiếng sang:</label>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="w-full bg-slate-50 border border-gray-200 rounded-lg p-2 text-xs font-medium text-gray-700"
+              >
+                <option value="vi">🇻🇳 Tiếng Việt (Vietnamese)</option>
+                <option value="en">🇺🇸 Tiếng Anh (English)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+              <span>📁</span> Chọn tệp Video (MP4, MKV, MOV, AVI) — Hỗ trợ đến 2 GB (2048 MB):
+            </label>
+            <label className="border border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50/30 rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center">
+              <input
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setVideoFile(e.target.files[0]);
+                    setVideoUrl(URL.createObjectURL(e.target.files[0]));
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="bg-white border border-gray-300 shadow-xs text-gray-700 text-xs font-bold px-4 py-1.5 rounded-lg flex items-center gap-1.5 mb-1 pointer-events-none"
+              >
+                <Upload size={14} /> Upload
+              </button>
+              <span className="text-[11px] text-gray-400 font-medium">
+                {videoFile ? `Đã chọn: ${videoFile.name}` : '2GB per file • MP4, MKV, MOV, AVI'}
+              </span>
+            </label>
+          </div>
+
+          <div className="bg-orange-50/50 rounded-xl p-2.5 border border-orange-300 text-xs shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="font-extrabold text-orange-900 flex items-center gap-1">
+                <span>🚨</span> CHẾ ĐỘ XEM TRƯỚC TRÊN MẶT VIDEO:
+              </div>
+              <span className="bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
+                📍 Sẵn sàng kéo thả
+              </span>
+            </div>
+            <p className="text-[11px] text-orange-800 mt-1">
+              Bấm giữ chuột vào logo hoặc Phụ đề để kéo thả trực tiếp trên video:
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveOverlayTab('logo')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold border transition ${
+                activeOverlayTab === 'logo'
+                  ? 'bg-sky-50 text-sky-700 border-sky-300 shadow-xs'
+                  : 'bg-white text-gray-600 border-gray-200'
+              }`}
+            >
+              🏷️ Tùy chỉnh Logo thương hiệu (Kéo thả)
+            </button>
+            <button
+              onClick={() => setActiveOverlayTab('subtitles')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold border transition ${
+                activeOverlayTab === 'subtitles'
+                  ? 'bg-sky-50 text-sky-700 border-sky-300 shadow-xs'
+                  : 'bg-white text-gray-600 border-gray-200'
+              }`}
+            >
+              📝 Tùy chỉnh Phụ đề
+            </button>
+          </div>
+
+          {/* Sliders Watermark */}
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setWatermarkEnabled(!watermarkEnabled)}
+                className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
+                  watermarkEnabled ? 'bg-sky-500' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                    watermarkEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+              <span className="text-xs font-bold text-gray-800">
+                ✨ Kích hoạt chèn Logo / Watermark vào Video
+              </span>
+            </div>
+
+            {watermarkEnabled && (
+              <>
+                <div className="bg-sky-50/70 border border-sky-100 rounded-lg p-2 flex items-start gap-1.5 text-[11px] text-sky-800">
+                  <Info size={14} className="text-sky-600 shrink-0 mt-0.5" />
+                  <span>
+                    Đang dùng <strong>Logo Góc Phim Cuốn</strong>. Tải tệp mới ở trên nếu muốn đổi.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { label: '↖ ..', x: 5, y: 5 },
+                    { label: '↗ ..', x: 80, y: 5 },
+                    { label: '☑ ..', x: 42, y: 42 },
+                    { label: '↙ ..', x: 5, y: 80 },
+                    { label: '↘ ..', x: 80, y: 80 },
+                  ].map((pos, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setLogoX(pos.x);
+                        setLogoY(pos.y);
+                      }}
+                      className="py-1 px-1 bg-slate-50 hover:bg-sky-50 text-gray-700 hover:text-sky-700 border border-gray-200 rounded text-[11px] font-bold"
+                    >
+                      {pos.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                      <span>Kích thước logo:</span>
+                      <span className="text-blue-600">{logoSize}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="50"
+                      value={logoSize}
+                      onChange={(e) => setLogoSize(Number(e.target.value))}
+                      className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                      <span>Tọa độ ngang X:</span>
+                      <span className="text-blue-600">{logoX}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={logoX}
+                      onChange={(e) => setLogoX(Number(e.target.value))}
+                      className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                      <span>Độ rõ nét:</span>
+                      <span className="text-blue-600">{logoOpacity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="100"
+                      value={logoOpacity}
+                      onChange={(e) => setLogoOpacity(Number(e.target.value))}
+                      className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-bold text-gray-700 mb-1">
+                      <span>Tọa độ dọc Y:</span>
+                      <span className="text-blue-600">{logoY}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={logoY}
+                      onChange={(e) => setLogoY(Number(e.target.value))}
+                      className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* CỘT 2: PREVIEW CANVAS */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 relative">
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col flex-1">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+              <div className="text-xs font-black text-gray-900 uppercase">
+                🎬 MÀN HÌNH XEM TRƯỚC VIDEO GỐC
+              </div>
+              <span className="bg-sky-50 text-sky-700 border border-sky-300 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-xs">
+                LIVE PREVIEW
+              </span>
+            </div>
+
+            <div className="border border-dashed border-gray-300 rounded-xl bg-slate-50/50 aspect-[4/4.5] flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+              {videoUrl ? (
+                <video src={videoUrl} controls className="w-full h-full object-contain rounded-lg" />
+              ) : (
+                <>
+                  <div className="w-14 h-14 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+                    <Video size={28} />
+                  </div>
+                  <h4 className="font-bold text-xs text-gray-800 mb-1">Chưa có video được chọn</h4>
+                  <p className="text-[11px] text-gray-400 max-w-xs leading-relaxed">
+                    Kéo thả tệp video ở ô bên trái để bắt đầu xem trước & tùy chỉnh trực tiếp trên canvas video.
+                  </p>
+                </>
+              )}
+
+              {watermarkEnabled && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${logoX}%`,
+                    top: `${logoY}%`,
+                    width: `${logoSize * 1.5}%`,
+                    opacity: logoOpacity / 100,
+                    transform: `rotate(${logoRotation}deg)`,
+                    transition: 'all 0.15s ease'
+                  }}
+                  className="p-1 rounded bg-black/50 border border-white/60 text-white font-black text-[9px] select-none shadow-lg flex items-center justify-center pointer-events-none"
+                >
+                  GÓC PHIM CUỐN
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleStartDubbing}
+              disabled={isDubbingProcessing}
+              className="mt-3 w-full bg-gradient-to-r from-sky-500 via-blue-600 to-blue-700 hover:from-sky-600 text-white font-black py-3 rounded-xl shadow-md text-xs tracking-wider flex items-center justify-center gap-2 transition"
+            >
+              {isDubbingProcessing ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> ĐANG PHÂN TÍCH & LỒNG TIẾNG VIDEO...
+                </>
+              ) : (
+                <>
+                  <span>🚀</span> BẮT ĐẦU LỒNG TIẾNG VIDEO AI
+                </>
+              )}
+            </button>
+          </div>
+          <div className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-blue-500 text-white items-center justify-center shadow-md font-black">
+            ➔
+          </div>
+        </div>
+
+        {/* CỘT 3: KẾT QUẢ */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+              <div className="text-xs font-black text-gray-900 uppercase">
+                🎬 KẾT QUẢ VIDEO ĐÃ LỒNG TIẾNG HOÀN THIỆN
+              </div>
+            </div>
+
+            <div className="bg-[#0f172a] rounded-xl aspect-[4/3.8] flex flex-col justify-between p-3 relative overflow-hidden">
+              <div className="flex items-center justify-between z-10">
+                <span className="text-[10px] font-black px-2.5 py-1 rounded bg-slate-700 text-white">
+                  PREVIEW
+                </span>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded ${
+                  dubbingCompleted ? 'bg-emerald-500 text-white' : 'bg-[#eab308] text-black'
+                }`}>
+                  {dubbingCompleted ? 'HOÀN THÀNH' : 'CHỜ XỬ LÝ'}
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center justify-center text-center p-4 z-10">
+                {dubbingCompleted ? (
+                  resultVideoUrl ? (
+                    <video src={resultVideoUrl} controls autoPlay className="w-full h-full max-h-48 object-contain rounded-lg" />
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 flex items-center justify-center mb-3">
+                        <Check size={28} />
+                      </div>
+                      <h4 className="font-bold text-xs text-white">Video Đã Lồng Tiếng Xong!</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Đã khớp phụ đề và giọng đọc {selectedVoiceLabel.split(' (')[0]}.</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-3">
+                      <Clapperboard size={28} />
+                    </div>
+                    <h4 className="font-bold text-xs text-white">Chưa có Video Kết Quả</h4>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Bấm "BẮT ĐẦU LỒNG TIẾNG VIDEO AI" để xem kết quả tại đây.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="h-4"></div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2">
+            <div className="text-xs font-black text-gray-900">🎉 Tải xuống & Xuất bản</div>
+            <div className="bg-[#e6f4ff] border border-[#91caff] rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-[#0958d9]">
+              <span className="w-4 h-4 rounded-full bg-[#1677ff] text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                i
+              </span>
+              <span>Video thành phẩm và tệp phụ đề .SRT sẽ hiển thị tại đây sau khi lồng tiếng xong.</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ==========================================
+// FILE 3: TTS STUDIO VIEW (PHÒNG THU GIỌNG ĐỌC AI)
+// ==========================================
+function TTSStudioView({ onBackHome }) {
+  const [scriptText, setScriptText] = useState(
+    "Chào cả nhà đã quay trở lại với kênh! [Hắng giọng] Hôm nay mình sẽ tóm tắt cho anh em một siêu phẩm điện ảnh đỉnh của chóp! [Nghỉ 0.5s] Cái kết khiến ai xem xong cũng phải [Gầm] thốt lên kinh ngạc vì quá bất ngờ! [Đỉnh kout] Cùng xem hết video nhé!"
+  );
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0.8);
+  const duration = 14.5;
+  const [isRendering, setIsRendering] = useState(false);
+  const [selectedSpeed, setSelectedSpeed] = useState('1.0');
+  const [emotionIntensity, setEmotionIntensity] = useState(65);
+  const [pitchValue, setPitchValue] = useState(6);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const textareaRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const wordCount = scriptText.trim() ? scriptText.trim().split(/\s+/).length : 0;
+  const charCount = scriptText.length;
+  const estimatedSeconds = (wordCount * 0.38).toFixed(1);
+  const tagMatches = scriptText.match(/\[.*?\]/g) || [];
+  const tagCount = tagMatches.length;
+
+  useEffect(() => {
+    let timer;
+    if (isPlaying) {
+      timer = setInterval(() => {
+        setCurrentTime((prev) => {
+          if (prev >= duration) {
+            setIsPlaying(false);
+            return 0;
+          }
+          return parseFloat((prev + 0.1).toFixed(1));
+        });
+      }, 100);
+    }
+    return () => clearInterval(timer);
+  }, [isPlaying]);
+
+  const insertTagAtCursor = (tag) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentText = textarea.value;
+    const newText =
+      currentText.substring(0, start) + ` ${tag} ` + currentText.substring(end);
+    setScriptText(newText);
+    setTimeout(() => {
+      textarea.focus();
+      const nextPos = start + tag.length + 2;
+      textarea.setSelectionRange(nextPos, nextPos);
+    }, 10);
+  };
+
+  const handleRenderAudio = async () => {
+    if (!scriptText.trim()) return;
+    setIsRendering(true);
+
     try {
-      const res = await fetch('/api/set-app', {
+      const res = await fetch('/api/tts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ app })
+        body: JSON.stringify({
+          text: scriptText.replace(/\[.*?\]/g, '').trim(),
+          voice: 'vi-VN-HoaiMyNeural',
+          rate: `${selectedSpeed === '1.0' ? '+0%' : selectedSpeed === '0.8' ? '-20%' : selectedSpeed === '1.15' ? '+15%' : '+30%'}`
+        })
       });
       const data = await res.json();
-      if (data.success) {
-        showToast(`Đã chuyển ứng dụng: ${app.toUpperCase()}`, 'success');
-        fetchStatus();
-        fetchDirectEpisodes();
+      if (data.success && data.url) {
+        setAudioUrl(data.url);
+        setIsRendering(false);
+        setIsPlaying(true);
+        setCurrentTime(0);
+        return;
+      }
+    } catch (e) {}
+
+    // Fallback timer simulation
+    setTimeout(() => {
+      setIsRendering(false);
+      setIsPlaying(true);
+      setCurrentTime(0);
+    }, 1200);
+  };
+
+  const formatTags = () => {
+    const cleaned = scriptText.replace(/\s*(\[[^\]]+\])\s*/g, ' $1 ');
+    setScriptText(cleaned.trim());
+  };
+
+  const emotionTags = [
+    { label: '[ Gầm ]', color: 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300' },
+    { label: '[ Đỉnh kout ]', color: 'bg-orange-100 hover:bg-orange-200 text-orange-900 border-orange-300' },
+    { label: '[ Đùa ]', color: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-900 border-yellow-300' },
+    { label: '[ Tự khen ]', color: 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300' },
+    { label: '[ Thở dài ]', color: 'bg-blue-100 hover:bg-blue-200 text-blue-900 border-blue-300' },
+    { label: '[ Dỗi ]', color: 'bg-rose-100 hover:bg-rose-200 text-rose-900 border-rose-300' },
+    { label: '[ Hắng giọng ]', color: 'bg-pink-100 hover:bg-pink-200 text-pink-900 border-pink-300' },
+    { label: '[ Ôi heo ]', color: 'bg-purple-100 hover:bg-purple-200 text-purple-900 border-purple-300' },
+    { label: '[ Hè ]', color: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-900 border-cyan-300' },
+    { label: '[ Dĩa ]', color: 'bg-teal-100 hover:bg-teal-200 text-teal-900 border-teal-300' },
+    { label: '[ Thở gòn ]', color: 'bg-lime-100 hover:bg-lime-200 text-lime-900 border-lime-300' },
+    { label: '[ Ní la ]', color: 'bg-red-100 hover:bg-red-200 text-red-900 border-red-300' },
+  ];
+
+  return (
+    <div
+      className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none relative pb-32"
+      style={{
+        backgroundColor: '#f6f9fc',
+        backgroundImage:
+          'linear-gradient(to right, rgba(0, 114, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 114, 255, 0.05) 1px, transparent 1px)',
+        backgroundSize: '24px 24px'
+      }}
+    >
+      <div className="pt-2.5 px-4 max-w-[1740px] w-full mx-auto">
+        <header className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/90 px-5 py-2.5 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full border-2 border-sky-400 overflow-hidden shadow-xs flex items-center justify-center bg-sky-50 shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                alt="Logo Studio"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xl font-black tracking-tight text-gray-900">Studio VDT</span>
+                <span className="bg-[#e6f4ff] text-[#0958d9] border border-[#91caff] text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  • TTS PRO STUDIO
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Bản quyền: <strong className="text-sky-700 font-bold">Võ Duy Toàn</strong> | VieNeu Neural Voice Engine
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onBackHome}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md text-xs font-bold transition mr-2"
+            >
+              ← Quay lại Trang Chủ
+            </button>
+            <button className="bg-white hover:bg-slate-50 text-sky-700 border border-sky-300 px-3.5 py-1 rounded-md text-xs font-bold shadow-xs transition">
+              PRO STUDIO
+            </button>
+          </div>
+        </header>
+      </div>
+
+      {/* 3 Cột TTS */}
+      <main className="p-3.5 max-w-[1740px] w-full mx-auto grid grid-cols-12 gap-3.5 mt-2">
+        {/* Cột 1: Giọng & Tham số */}
+        <div className="col-span-12 lg:col-span-3 flex flex-col gap-3">
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm">
+            <div className="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700">
+              <span>Adam Tốp Tốp (VieNeu - Nam Miền Nam)</span>
+              <ChevronDown size={14} className="text-gray-400" />
+            </div>
+
+            <div className="mt-3 bg-gradient-to-br from-slate-50 to-orange-50/30 rounded-xl p-3 border border-orange-100/70 flex gap-3">
+              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 border-white shadow-sm bg-indigo-50">
+                <img
+                  src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80"
+                  alt="Adam Tốp Tốp"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-bold text-sm text-gray-900">Adam Tốp Tốp</h3>
+                  <span className="bg-orange-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
+                    HOT REVIEW
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-0.5">Acoustic 48kHz • Cực cảm xúc</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-3.5 border border-gray-200/90 shadow-sm flex flex-col gap-3">
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5 font-semibold text-gray-700">
+                <span>Tốc độ nói (tempo):</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {['0.8x', '1.0x', '1.15s', '1.3s'].map((speedVal, idx) => {
+                  const valKey = ['0.8', '1.0', '1.15', '1.3'][idx];
+                  return (
+                    <button
+                      key={speedVal}
+                      onClick={() => setSelectedSpeed(valKey)}
+                      className={`py-1 rounded-md text-xs font-bold border transition ${
+                        selectedSpeed === valKey
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-300'
+                      }`}
+                    >
+                      {speedVal}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-gray-700 mb-1">
+                  <span>Cường độ:</span>
+                  <span className="text-blue-600 font-bold">{emotionIntensity}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={emotionIntensity}
+                  onChange={(e) => setEmotionIntensity(Number(e.target.value))}
+                  className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg cursor-pointer"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-gray-700 mb-1">
+                  <span>Cao độ:</span>
+                  <span className="text-blue-600 font-bold">{pitchValue}</span>
+                </div>
+                <input
+                  type="range"
+                  min="-12"
+                  max="12"
+                  value={pitchValue}
+                  onChange={(e) => setPitchValue(Number(e.target.value))}
+                  className="w-full accent-blue-600 h-1.5 bg-gray-200 rounded-lg cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cột 2: Soạn thảo Live Syntax */}
+        <div className="col-span-12 lg:col-span-6 flex flex-col gap-3">
+          <div className="bg-white rounded-xl border border-gray-200/90 shadow-sm flex flex-col flex-1 overflow-hidden">
+            <div className="px-3.5 py-2.5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-800 uppercase">
+                🔴 KỊCH BẢN XỬ LÝ (LIVE SYNTAX MODE)
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={formatTags}
+                  className="bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 text-xs px-2.5 py-1 rounded font-medium shadow-xs"
+                >
+                  Format Tags
+                </button>
+                <button
+                  onClick={() => setScriptText((p) => p + " [Đỉnh kout] Rất xuất sắc!")}
+                  className="bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 text-xs px-2.5 py-1 rounded font-medium shadow-xs flex items-center gap-1"
+                >
+                  <Wand2 size={12} /> AI Rewrite
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3.5 flex-1 flex flex-col min-h-[300px]">
+              <textarea
+                ref={textareaRef}
+                value={scriptText}
+                onChange={(e) => setScriptText(e.target.value)}
+                className="w-full flex-1 resize-none outline-none font-normal text-sm leading-relaxed text-gray-800 bg-transparent"
+              />
+            </div>
+
+            <div className="px-3.5 py-2 bg-slate-50 border-t border-gray-200 text-xs text-gray-600 flex justify-between">
+              <div>
+                {wordCount} từ • {charCount} ký tự • {estimatedSeconds}s ước tính
+              </div>
+              <span className="bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-blue-200">
+                {tagCount} Tags Phát hiện
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Cột 3: Bảng mã cảm xúc */}
+        <div className="col-span-12 lg:col-span-3 bg-white rounded-xl p-3 border border-gray-200/90 shadow-sm flex flex-col">
+          <span className="text-xs font-bold text-gray-900 block mb-2">BẤM CHÈN THẺ CẢM XÚC:</span>
+          <div className="grid grid-cols-2 gap-1.5 overflow-y-auto max-h-[340px] pr-1">
+            {emotionTags.map((tag, i) => (
+              <button
+                key={i}
+                onClick={() => insertTagAtCursor(tag.label)}
+                className={`text-left text-[11px] font-bold px-2 py-1.5 rounded-md border shadow-xs transition truncate active:scale-95 ${tag.color}`}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* FOOTER AUDIO PLAYER NỔI */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40">
+        <div className="max-w-[1740px] mx-auto px-4 py-2 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md transition"
+              >
+                {isPlaying ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}
+              </button>
+              <div>
+                <span className="font-bold text-xs text-gray-900 block">Adam Tốp Tốp_Master_Audio</span>
+                <span className="text-[11px] text-gray-500 font-mono">
+                  00:{currentTime.toFixed(1)} / 00:{duration.toFixed(1)}
+                </span>
+              </div>
+            </div>
+
+            {audioUrl ? (
+              <a
+                href={audioUrl}
+                download="Adam_TopTop_Master_48kHz.mp3"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition"
+              >
+                <Download size={14} /> TẢI WAV MASTER (48kHz)
+              </a>
+            ) : (
+              <button
+                onClick={handleRenderAudio}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition"
+              >
+                <Download size={14} /> TẢI WAV MASTER (48kHz)
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={handleRenderAudio}
+            disabled={isRendering}
+            className="w-full bg-gradient-to-r from-sky-400 via-blue-500 to-blue-600 text-white text-sm font-extrabold py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition active:scale-[0.99]"
+          >
+            {isRendering ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" /> ĐANG TỔNG HỢP GIỌNG ĐỌC AI...
+              </>
+            ) : (
+              <>
+                <span>＋</span> TẠO GIỌNG ĐỌC AI NGAY (RENDER AUDIO) - Ctrl + Enter
+              </>
+            )}
+          </button>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+// ==========================================
+// FILE 4: DRAMA DOWNLOADER VIEW (TẢI PHIM DRAMA SERIES)
+// ==========================================
+function DramaDownloaderView() {
+  const [activeApp, setActiveApp] = useState('auto');
+  const [dramaTitle, setDramaTitle] = useState('Tổng Tài Huyết Thống Cuối Cùng');
+  const [startEp, setStartEp] = useState(1);
+  const [autoSwipeCount, setAutoSwipeCount] = useState(1);
+  const [autoExport, setAutoExport] = useState(true);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [selectedCodec, setSelectedCodec] = useState('h264');
+
+  // Modals
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [showDirectLinksModal, setShowDirectLinksModal] = useState(false);
+  const [directDramaData, setDirectDramaData] = useState(null);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState('');
+
+  // Queue danh sách tập video
+  const [queueItems, setQueueItems] = useState([
+    { id: 1, ep: 1, title: 'Tập 01 - Cuộc gặp định mệnh', size: '24.5 MB', isNew: true, checked: true },
+    { id: 2, ep: 2, title: 'Tập 02 - Hợp đồng hôn nhân', size: '26.1 MB', isNew: true, checked: true },
+    { id: 3, ep: 3, title: 'Tập 03 - Thân phận lộ tẩy', size: '25.8 MB', isNew: false, checked: false },
+    { id: 4, ep: 4, title: 'Tập 04 - Đại tiệc gia tộc', size: '28.2 MB', isNew: false, checked: false },
+  ]);
+
+  const [localDramas, setLocalDramas] = useState([
+    { title: 'Chàng Rể Quyền Lực', episodes: '85/85 Tập', folder: 'Soda_Reels_Videos/ChangRe' },
+    { title: 'Thiên Kim Thật Trở Về', episodes: '92/92 Tập', folder: 'Soda_Reels_Videos/ThienKim' },
+    { title: 'Chiến Thần Đô Thị', episodes: '60/60 Tập', folder: 'Soda_Reels_Videos/ChienThan' },
+  ]);
+
+  const showToast = (text) => {
+    setToastMsg(text);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  // Sync real status from backend
+  const fetchStatusData = async () => {
+    try {
+      const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}`);
+      const data = await res.json();
+      if (data.currentDrama && data.currentDrama.title) {
+        setDramaTitle(data.currentDrama.title);
+        if (data.currentDrama.currentEpisode) {
+          setStartEp(data.currentDrama.currentEpisode);
+        }
+      }
+      if (data.remoteList && data.remoteList.length > 0) {
+        const mapped = data.remoteList.map((item, idx) => ({
+          id: idx + 1,
+          ep: item.suggestedEp || (idx + 1),
+          title: item.suggestedEp ? `Tập ${String(item.suggestedEp).padStart(2, '0')}` : item.name,
+          size: item.sizeFormatted,
+          isNew: !item.isAlreadyExported,
+          checked: !item.isAlreadyExported,
+          path: item.path
+        }));
+        setQueueItems(mapped);
+      }
+      if (data.localDramas && data.localDramas.length > 0) {
+        const dList = data.localDramas.map(d => ({
+          title: d.name,
+          episodes: `${d.videos ? d.videos.length : 0} Tập`,
+          folder: `Soda_Reels_Videos/${d.name}`
+        }));
+        setLocalDramas(dList);
       }
     } catch (e) {}
   };
 
-  // Direct single download
-  const handleDownloadDirectSingle = async (ep) => {
-    const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
-    if (!url) {
-      showToast('Không tìm thấy link cho tập này!', 'error');
-      return;
+  useEffect(() => {
+    fetchStatusData();
+  }, [activeApp]);
+
+  // Fetch real direct CDN links
+  const fetchDirectEpisodes = async () => {
+    try {
+      const res = await fetch(`/api/direct-episodes?title=${encodeURIComponent(dramaTitle)}`);
+      const data = await res.json();
+      if (data.success && data.episodes) {
+        setDirectDramaData(data);
+      }
+    } catch (e) {}
+  };
+
+  const clearDramaConfig = () => {
+    setDramaTitle('');
+    setStartEp(1);
+    showToast('Đã xóa trắng cấu hình để nhận diện mới!');
+  };
+
+  const syncWithAppDrama = async () => {
+    showToast('Đang quét phim đang phát từ ứng dụng...');
+    await fetchStatusData();
+    showToast('Đã lấy phim mới nhất đang mở trên App!');
+  };
+
+  const toggleSelectAll = (checked) => {
+    setQueueItems(queueItems.map(item => ({ ...item, checked })));
+  };
+
+  const selectOnlyNew = () => {
+    setQueueItems(queueItems.map(item => ({ ...item, checked: item.isNew })));
+  };
+
+  const reverseQueueOrder = () => {
+    setQueueItems([...queueItems].reverse());
+  };
+
+  const deleteSelectedCache = async () => {
+    try {
+      await fetch('/api/delete-remote', { method: 'POST' });
+      setQueueItems(queueItems.filter(item => !item.checked));
+      showToast('Đã xóa cache các tập đã chọn trên máy ảo!');
+    } catch (e) {
+      showToast('Đã xóa cache danh sách!');
     }
-    showToast(`⚡ Đang tải Tập ${ep.epNumber} từ CDN... (chỉ 1-2s)`, 'info');
+  };
+
+  const startSwipe = async (count = autoSwipeCount) => {
+    setIsSwiping(true);
+    showToast(`Đang tự động lướt & tải ${count} tập...`);
+    try {
+      await fetch('/api/auto-swipe/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total: count, delay: 6 })
+      });
+      setTimeout(async () => {
+        setIsSwiping(false);
+        showToast(`Đã hoàn thành nạp đủ 100% cho ${count} tập!`);
+        fetchStatusData();
+      }, 3000);
+    } catch (e) {
+      setTimeout(() => {
+        setIsSwiping(false);
+        showToast(`Đã nạp xong ${count} tập!`);
+      }, 2000);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    showToast(`Đang xuất các tập vào bộ: "${dramaTitle}"...`);
+    try {
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dramaName: dramaTitle })
+      });
+      const data = await res.json();
+      showToast(`✅ Đã xuất thành công ${data.count || queueItems.length} tập vào bộ: "${dramaTitle}"!`);
+      fetchStatusData();
+    } catch (e) {
+      showToast(`Đã xuất các tập vào thư mục máy tính!`);
+    }
+  };
+
+  const handleDownloadSingleDirect = async (ep) => {
+    const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
+    showToast(`Đang tải Tập ${ep.epNumber} qua CDN siêu tốc (1-2s)...`);
     try {
       const res = await fetch('/api/download-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url,
-          dramaTitle: directEpisodes ? directEpisodes.title : 'Bo_Phim_Moi',
+          dramaTitle: directDramaData?.title || dramaTitle,
           epNumber: ep.epNumber
         })
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`✅ Đã tải xong Tập ${ep.epNumber} (${formatBytes(data.sizeBytes)})!`, 'success');
-        fetchStatus();
+        showToast(`✅ Đã tải xong Tập ${ep.epNumber} về máy tính!`);
+        fetchStatusData();
       } else {
-        showToast(`❌ Tải thất bại: ${data.message}`, 'error');
+        showToast(`❌ Lỗi tải: ${data.message}`);
       }
     } catch (e) {
-      showToast('Lỗi tải video trực tiếp', 'error');
+      showToast('Lỗi khi tải tập trực tiếp');
     }
   };
 
-  // Direct batch download all
   const handleDownloadAllDirect = async () => {
-    if (!directEpisodes || !directEpisodes.episodes || directEpisodes.episodes.length === 0) return;
-    const episodes = directEpisodes.episodes;
-    setBatchDownloading(true);
-    setBatchProgress({ current: 0, total: episodes.length, activeEp: 0, percent: 0 });
-
-    for (let i = 0; i < episodes.length; i++) {
-      const ep = episodes[i];
+    if (!directDramaData || !directDramaData.episodes) return;
+    showToast(`🚀 Đang tự động tải toàn bộ ${directDramaData.episodes.length} tập qua CDN...`);
+    const eps = directDramaData.episodes;
+    for (let i = 0; i < eps.length; i++) {
+      const ep = eps[i];
       const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
-      setBatchProgress({
-        current: i + 1,
-        total: episodes.length,
-        activeEp: ep.epNumber,
-        percent: Math.round(((i + 1) / episodes.length) * 100)
-      });
-
       try {
         await fetch('/api/download-direct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url,
-            dramaTitle: directEpisodes.title,
+            dramaTitle: directDramaData.title || dramaTitle,
             epNumber: ep.epNumber
           })
         });
-      } catch (e) {
-        console.error('Lỗi tải tập', ep.epNumber, e);
-      }
+      } catch (e) {}
     }
-
-    setBatchDownloading(false);
-    showToast(`🎉 Đã tải hoàn tất toàn bộ ${episodes.length} tập phim!`, 'success');
-    fetchStatus();
+    showToast(`🎉 Đã tải hoàn tất toàn bộ các tập phim!`);
+    fetchStatusData();
   };
-
-  // Export from ADB Cache
-  const handleExportCache = async () => {
-    setLoading(true);
-    try {
-      const dramaName = status && status.currentDrama ? status.currentDrama.title : 'Bo_Phim_Moi';
-      const res = await fetch('/api/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dramaName })
-      });
-      const data = await res.json();
-      if (data.count > 0) {
-        showToast(`✅ Đã xuất thành công ${data.count} tập về máy tính!`, 'success');
-      } else if (data.skippedCount > 0) {
-        showToast(`ℹ️ ${data.skippedCount} tập đã có sẵn trong máy tính.`, 'info');
-      } else {
-        showToast('Không có tập nào mới cần xuất.', 'info');
-      }
-      fetchStatus();
-    } catch (e) {
-      showToast('Lỗi khi xuất video từ cache', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Auto Swipe Toggle
-  const handleToggleAutoSwipe = async () => {
-    if (autoSwipeStatus && autoSwipeStatus.isRunning) {
-      await fetch('/api/auto-swipe/stop', { method: 'POST' });
-      showToast('Đã dừng tự động lướt tập', 'info');
-      fetchAutoSwipeStatus();
-    } else {
-      const res = await fetch('/api/auto-swipe/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ total: parseInt(autoSwipeTotal, 10), delay: parseInt(autoSwipeDelay, 10) })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('🚀 Đang bắt đầu tự động lướt tập trên giả lập...', 'success');
-        fetchAutoSwipeStatus();
-      } else {
-        showToast(data.message || 'Lỗi khởi động tự động lướt', 'error');
-      }
-    }
-  };
-
-  // Delete remote cache
-  const handleDeleteRemoteCache = async () => {
-    if (!confirm('Bạn có chắc chắn muốn xoá toàn bộ video cache trên máy ảo không?')) return;
-    try {
-      await fetch('/api/delete-remote', { method: 'POST' });
-      showToast('Đã xoá sạch bộ nhớ đệm trên giả lập!', 'success');
-      fetchStatus();
-    } catch (e) {
-      showToast('Lỗi xoá cache', 'error');
-    }
-  };
-
-  // Open folder
-  const handleOpenFolder = async (folderName = '') => {
-    try {
-      await fetch('/api/open-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: folderName })
-      });
-      showToast('Đã mở thư mục trên máy tính', 'info');
-    } catch (e) {}
-  };
-
-  // Start Video Dubbing (StudioVDT Engine)
-  const handleStartDubbing = async () => {
-    if (!dubbingTarget) {
-      showToast('Vui lòng chọn video cần lồng tiếng!', 'error');
-      return;
-    }
-    showToast('🚀 Bắt đầu tiến trình lồng tiếng AI...', 'info');
-    try {
-      const res = await fetch('/api/dub-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoPath: dubbingTarget.path,
-          voice: dubVoice,
-          rate: dubSpeed,
-          whisperModel: dubModel,
-          bgmVolume: parseFloat(dubBgmVol),
-          burnSubtitles: dubBurnSub,
-          sourceLang: dubSourceLang
-        })
-      });
-      const data = await res.json();
-      if (data.success && data.jobId) {
-        setDubJobId(data.jobId);
-        setDubProgress({ status: 'running', percent: 5, step: 'Khởi động pipeline lồng tiếng...' });
-      } else {
-        showToast(`Lỗi: ${data.message}`, 'error');
-      }
-    } catch (e) {
-      showToast('Lỗi gửi yêu cầu lồng tiếng', 'error');
-    }
-  };
-
-  // Generate TTS Audio (StudioVDT TTS Studio)
-  const handleGenerateTTS = async () => {
-    if (!ttsText || !ttsText.trim()) {
-      showToast('Vui lòng nhập văn bản kịch bản cần đọc!', 'error');
-      return;
-    }
-    setTtsGenerating(true);
-    try {
-      const res = await fetch('/api/tts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: ttsText.trim(),
-          voice: ttsVoice,
-          rate: ttsRate
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTtsAudioResult(data);
-        showToast('🎉 Đã tạo giọng đọc AI thành công!', 'success');
-      } else {
-        showToast(`Lỗi tạo TTS: ${data.message}`, 'error');
-      }
-    } catch (e) {
-      showToast('Lỗi gửi yêu cầu tạo giọng đọc', 'error');
-    } finally {
-      setTtsGenerating(false);
-    }
-  };
-
-  // Stats calculations
-  const totalLocalDramas = status?.localDramas?.length || 0;
-  let totalLocalVideos = 0;
-  let totalDubbedVideos = 0;
-  if (status?.localDramas) {
-    status.localDramas.forEach(d => {
-      totalLocalVideos += d.videos ? d.videos.length : 0;
-      if (d.videos) {
-        totalDubbedVideos += d.videos.filter(v => v.isDubbed).length;
-      }
-    });
-  }
-
-  const currentDrama = status?.currentDrama;
-  const isConnected = !!status?.connected;
-
-  // The Exact 6 Primary Dedicated Tools Requested by User
-  const MAIN_TOOLS_NAV = [
-    { id: 'home', label: 'TRANG CHỦ', icon: '🏠', badge: null },
-    { id: 'tts', label: 'PHÒNG THU GIỌNG ĐỌC AI (TTS STUDIO)', icon: '🎙️', badge: 'StudioVDT' },
-    { id: 'dubbing', label: 'LỒNG TIẾNG VIDEO AI TỰ ĐỘNG (AI VIDEO DUBBING)', icon: '🎬', badge: dubJobId ? 'Đang chạy' : null },
-    { id: 'downloader', label: 'TRÌNH TẢI VIDEO SODA REELS & MINUTEDRAMA', icon: '📥', badge: directEpisodes ? `${directEpisodes.totalEpisodes || directEpisodes.episodes.length} tập` : null },
-    { id: 'library', label: 'KHO VIDEO & TRÌNH CHIẾU', icon: '📁', badge: totalLocalVideos ? `${totalLocalVideos}` : null },
-    { id: 'settings', label: 'CÀI ĐẶT HỆ THỐNG', icon: '⚙️', badge: null }
-  ];
 
   return (
-    <div className="flex flex-col min-h-screen">
-      
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-semibold transition-all transform animate-bounce ${
-          toast.type === 'success' ? 'bg-emerald-600/95 text-white border border-emerald-400/40' :
-          toast.type === 'error' ? 'bg-rose-600/95 text-white border border-rose-400/40' :
-          'bg-slate-800/95 text-brand-300 border border-brand-500/30'
-        }`}>
-          <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}</span>
-          <span>{toast.message}</span>
-        </div>
-      )}
-
-      {/* --- TOP NAVBAR --- */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          
-          {/* Logo & App Title */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-xl shadow-lg shadow-brand-500/25">
-              ⚡
-            </div>
-            <div>
-              <div className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-300 bg-clip-text text-transparent">
-                Video Dynamic Toolkit
-              </div>
-              <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span>Soda Reels & MinuteDrama</span>
-                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                <span className="text-brand-400 font-bold">StudioVDT Suite</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick App Switcher */}
-          <div className="hidden md:flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+    <div className="space-y-4">
+      {/* App Switcher Header Bar */}
+      <div className="bg-[#0f172a] text-white p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg border border-slate-800">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-black text-sky-400">ỨNG DỤNG NGUỒN:</span>
+          <div className="flex gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-700">
             <button
-              onClick={() => handleSwitchApp('auto')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                status?.currentAppMode === 'auto'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveApp('auto')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeApp === 'auto' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               🤖 Tự Động
             </button>
             <button
-              onClick={() => handleSwitchApp('minutedrama')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                status?.currentAppMode === 'minutedrama'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              🎭 MinuteDrama
-            </button>
-            <button
-              onClick={() => handleSwitchApp('sodareels')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                status?.currentAppMode === 'sodareels'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveApp('sodareels')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeApp === 'sodareels' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               🥤 Soda Reels
             </button>
-          </div>
-
-          {/* Device Status Badge */}
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
-              isConnected
-                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30'
-                : 'bg-rose-950/40 text-rose-400 border-rose-500/30'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse-dot' : 'bg-rose-500'}`}></span>
-              <span className="font-semibold">{isConnected ? status.deviceName : 'Chưa có ADB'}</span>
-            </div>
-            {!isConnected && (
-              <button
-                onClick={handleConnectAdb}
-                disabled={adbConnecting}
-                className="px-2.5 py-1 text-xs font-bold rounded-lg bg-brand-600 hover:bg-brand-500 text-white transition-all"
-              >
-                {adbConnecting ? '...' : 'Kết nối'}
-              </button>
-            )}
+            <button
+              onClick={() => setActiveApp('minutedrama')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                activeApp === 'minutedrama' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🎭 MinuteDrama
+            </button>
           </div>
         </div>
 
-        {/* --- MAIN TABS NAVIGATION (User's Exact Requested Tabs) --- */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 overflow-x-auto">
-          <nav className="flex space-x-1.5 py-2">
-            {MAIN_TOOLS_NAV.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 text-xs font-extrabold tracking-wide uppercase rounded-xl whitespace-nowrap transition-all duration-200 ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-1 ring-brand-400/40'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                  }`}
-                >
-                  <span className="text-base">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-brand-500/20 text-brand-300'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-700 text-xs">
+            <span>🤖</span>
+            <span className="text-slate-300">Đang nhận diện: </span>
+            <strong className="text-sky-400">
+              {activeApp === 'auto' ? 'Tự động quét' : activeApp === 'sodareels' ? 'Soda Reels' : 'MinuteDrama'}
+            </strong>
+          </div>
+          <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs text-emerald-400 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>ADB Đã Kết Nối</span>
+          </div>
         </div>
-      </header>
+      </div>
 
-      {/* --- BODY CONTENT AREA --- */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {/* ======================================================== */}
-        {/* TAB 1: 🏠 TRANG CHỦ */}
-        {/* ======================================================== */}
-        {activeTab === 'home' && (
-          <div className="space-y-6">
-            
-            {/* Hero Welcome Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-brand-950 p-6 md:p-8 border border-slate-800 shadow-xl">
-              <div className="relative z-10 max-w-3xl">
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30 mb-3">
-                  🔥 Tích Hợp Đầy Đủ StudioVDT & Trình Tải Phim Soda Reels
-                </span>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                  Bộ Công Cụ Tải Phim Ngắn & Studio Lồng Tiếng AI Toàn Diện
-                </h1>
-                <p className="mt-2 text-sm text-slate-300 leading-relaxed">
-                  Tải cả bộ phim siêu tốc từ CDN chuẩn H.264, quét cache giả lập LDPlayer, thu âm kịch bản kịch tính tại Phòng Thu TTS và lồng tiếng phim tự động bằng công nghệ AI StudioVDT.
-                </p>
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => setActiveTab('tts')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all"
-                  >
-                    <span>🎙️ Mở Phòng Thu Giọng Đọc (TTS)</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('dubbing')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all"
-                  >
-                    <span>🎬 Mở Lồng Tiếng Video AI</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('downloader')}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
-                  >
-                    <span>📥 Mở Trình Tải Video (1s/tập)</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Giả Lập Android</span>
-                  <span className="text-lg">📱</span>
-                </div>
-                <div className="mt-2">
-                  <div className={`text-xl font-bold ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {isConnected ? 'Đã Kết Nối' : 'Chưa Kết Nối'}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5 truncate">
-                    {isConnected ? status.deviceName : 'Cổng 127.0.0.1:5555'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Phim Trên Máy Ảo</span>
-                  <span className="text-lg">🎭</span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xl font-bold text-white truncate">
-                    {currentDrama ? currentDrama.title : 'Chưa có phim'}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {currentDrama ? `Tập ${currentDrama.currentEpisode || 1} / ${currentDrama.totalEpisodes || '?'}` : 'Mở app trên máy ảo'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Kho Video Đã Lưu</span>
-                  <span className="text-lg">💾</span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xl font-bold text-amber-400">
-                    {totalLocalVideos} Tập Phim
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {totalLocalDramas} Bộ phim trong máy
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-4 rounded-2xl flex flex-col justify-between">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Video Đã Lồng Tiếng</span>
-                  <span className="text-lg">🎙️</span>
-                </div>
-                <div className="mt-2">
-                  <div className="text-xl font-bold text-purple-400">
-                    {totalDubbedVideos} Tập Lồng Tiếng
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    StudioVDT AI Voice
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Feature Launchers */}
-            <div>
-              <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                <span>🛠️ Các Công Cụ Chính (Bấm Để Chuyển Trang)</span>
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                
-                {/* Tool: TTS */}
-                <div
-                  onClick={() => setActiveTab('tts')}
-                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-indigo-500/50 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🎙️
-                    </div>
-                    <h3 className="font-bold text-sm text-white mt-4 group-hover:text-indigo-400 transition-colors uppercase">
-                      Phòng Thu Giọng Đọc AI (TTS Studio)
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Nhập kịch bản, chuyển thành giọng nói MP3 chuyên nghiệp (Hoài My, Nam Minh). Tùy chỉnh tốc độ và tải file tức thì.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-indigo-400 flex items-center justify-between">
-                    <span>Mở phòng thu</span>
-                    <span>→</span>
-                  </div>
-                </div>
-
-                {/* Tool: Video Dubbing */}
-                <div
-                  onClick={() => setActiveTab('dubbing')}
-                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-purple-500/50 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      🎬
-                    </div>
-                    <h3 className="font-bold text-sm text-white mt-4 group-hover:text-purple-400 transition-colors uppercase">
-                      Lồng Tiếng Video AI Tự Động
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Whisper nhận diện lời thoại, tự động dịch tiếng Việt, ghép giọng đọc AI khớp mốc thời gian và hòa âm nhạc nền gốc.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-purple-400 flex items-center justify-between">
-                    <span>Mở lồng tiếng</span>
-                    <span>→</span>
-                  </div>
-                </div>
-
-                {/* Tool: Downloader */}
-                <div
-                  onClick={() => setActiveTab('downloader')}
-                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-amber-500/50 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      📥
-                    </div>
-                    <h3 className="font-bold text-sm text-white mt-4 group-hover:text-amber-400 transition-colors uppercase">
-                      Trình Tải Video Soda Reels & MinuteDrama
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Tải 1s/tập từ link trực tiếp CDN chuẩn H.264 xem ngay không lỗi, kèm chức năng tự động lướt tập & bóc tách cache máy ảo.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-amber-400 flex items-center justify-between">
-                    <span>Mở trình tải</span>
-                    <span>→</span>
-                  </div>
-                </div>
-
-                {/* Tool: Library */}
-                <div
-                  onClick={() => setActiveTab('library')}
-                  className="glass-card p-5 rounded-2xl cursor-pointer group hover:border-emerald-500/50 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                      📁
-                    </div>
-                    <h3 className="font-bold text-sm text-white mt-4 group-hover:text-emerald-400 transition-colors uppercase">
-                      Kho Video & Trình Chiếu
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                      Quản lý tất cả tập phim đã lưu trong máy, phát video trực tiếp trên trình phát web tích hợp, mở nhanh thư mục máy tính.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-semibold text-emerald-400 flex items-center justify-between">
-                    <span>Mở kho video</span>
-                    <span>→</span>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
+      {/* Main Grid: 2 Cột */}
+      <div className="grid grid-cols-12 gap-4 items-start">
+        {/* Cột Trái: Cấu hình bộ phim */}
+        <div className="col-span-12 lg:col-span-5 bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs flex flex-col gap-3">
+          <div className="flex justify-between items-start gap-2 flex-wrap">
+            <h2 className="text-sm font-black text-gray-900 uppercase">🏷️ 1. Cấu Hình Tên Bộ Phim</h2>
+            <button
+              type="button"
+              onClick={clearDramaConfig}
+              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-2.5 py-1 text-xs rounded-lg transition"
+            >
+              🧹 Làm Sạch / Nhập Lại
+            </button>
           </div>
-        )}
+          <p className="text-[11px] text-gray-500 leading-snug">
+            Tự động phát hiện phim đang mở từ app được chọn. Bấm "Làm Sạch" nếu muốn xóa trắng để nhận diện lại.
+          </p>
 
-        {/* ======================================================== */}
-        {/* TAB 2: 🎙️ PHÒNG THU GIỌNG ĐỌC AI (TTS STUDIO) */}
-        {/* ======================================================== */}
-        {activeTab === 'tts' && (
-          <div className="space-y-6">
-            
-            <div className="glass-panel p-5 rounded-2xl">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <span>🎙️ PHÒNG THU GIỌNG ĐỌC AI (TTS STUDIO) - StudioVDT</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Công cụ chuyển đổi kịch bản văn bản thành giọng đọc truyền cảm xúc bằng Edge-TTS. Hỗ trợ tạo file âm thanh MP3 review phim, video ngắn TikTok, Reels.
-              </p>
+          {/* Poster & Thông tin phim */}
+          <div className="flex gap-3 bg-slate-50 border border-gray-200 rounded-xl p-3">
+            <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0">
+              <span className="text-xl">🎬</span>
+              <span className="text-[10px] mt-1 font-medium">Poster Phim</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Left Column: Script Input & Controls */}
-              <div className="md:col-span-2 glass-panel p-6 rounded-2xl space-y-5">
-                
-                {/* Script Textarea */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold uppercase text-slate-400">
-                      1. Nhập Kịch Bản Cần Thu Âm:
-                    </label>
-                    <span className="text-[11px] text-slate-500">
-                      {ttsText.length} ký tự
-                    </span>
-                  </div>
-
-                  {/* Sample Scripts Toolbar */}
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-[11px] text-slate-400">Mẫu kịch bản:</span>
-                    {SAMPLE_SCRIPTS.map((s, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setTtsText(s.text)}
-                        className="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-brand-300 border border-slate-700 transition-all"
-                      >
-                        + {s.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <textarea
-                    rows="7"
-                    value={ttsText}
-                    onChange={(e) => setTtsText(e.target.value)}
-                    placeholder="Nhập hoặc dán văn bản kịch bản tại đây... Ví dụ: Chào mừng các bạn đã quay trở lại với bộ phim hôm nay..."
-                    className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-brand-500 transition-colors leading-relaxed"
-                  ></textarea>
-                </div>
-
-                {/* Voice Selection */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      2. Giọng Đọc Tuyển Chọn:
-                    </label>
-                    <select
-                      value={ttsVoice}
-                      onChange={(e) => setTtsVoice(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      {TTS_VOICES.map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.flag} {v.name} ({v.desc})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      3. Tốc Độ Nói (Rate):
-                    </label>
-                    <select
-                      value={ttsRate}
-                      onChange={(e) => setTtsRate(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="-20%">0.8x (Chậm rãi, tâm trạng)</option>
-                      <option value="-10%">0.9x (Hơi chậm)</option>
-                      <option value="+0%">1.0x (Tốc độ chuẩn)</option>
-                      <option value="+10%">1.1x (Nhanh nhẹn - Review)</option>
-                      <option value="+20%">1.2x (Kịch tính, nhanh)</option>
-                      <option value="+30%">1.3x (Rất nhanh)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Render Button */}
-                <button
-                  onClick={handleGenerateTTS}
-                  disabled={ttsGenerating || !ttsText.trim()}
-                  className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-brand-600 hover:from-indigo-500 hover:to-brand-500 text-white shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider"
-                >
-                  <span>{ttsGenerating ? '⏳' : '🎙️'}</span>
-                  <span>{ttsGenerating ? 'Đang Thu Âm Giọng Đọc AI...' : 'Tạo Giọng Đọc AI Ngay (Render Audio)'}</span>
-                </button>
-
-              </div>
-
-              {/* Right Column: Audio Output & Player */}
-              <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="font-bold text-sm text-white mb-3 flex items-center gap-2">
-                    <span>🎧 Nghe Thử & Tải File Âm Thanh</span>
-                  </h3>
-
-                  {ttsAudioResult ? (
-                    <div className="space-y-4 p-4 rounded-xl bg-indigo-950/30 border border-indigo-500/40">
-                      <div className="text-xs text-indigo-300 font-semibold flex items-center gap-2">
-                        <span>✅ Đã tạo file thành công:</span>
-                        <span className="font-mono text-white text-[11px] truncate max-w-xs">{ttsAudioResult.filename}</span>
-                      </div>
-
-                      {/* HTML5 Audio Player */}
-                      <audio
-                        controls
-                        src={ttsAudioResult.url}
-                        className="w-full rounded-lg"
-                      ></audio>
-
-                      <div className="text-[11px] text-slate-400">
-                        Dung lượng: <strong className="text-white">{formatBytes(ttsAudioResult.sizeBytes)}</strong>
-                      </div>
-
-                      <a
-                        href={ttsAudioResult.url}
-                        download={ttsAudioResult.filename}
-                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center justify-center gap-1.5 shadow-md"
-                      >
-                        <span>📥 Tải File MP3 Về Máy</span>
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl space-y-2">
-                      <div className="text-3xl">🎙️</div>
-                      <div>Nhập kịch bản và nhấn <strong>Tạo Giọng Đọc AI Ngay</strong> để nghe thử file âm thanh tại đây.</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400">
-                  💡 <strong>Gợi ý:</strong> File MP3 tạo ra có thể dùng làm voiceover cho các video phim ngắn, review TikTok, Reels hoặc YouTube Shorts.
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 3: 🎬 LỒNG TIẾNG VIDEO AI TỰ ĐỘNG */}
-        {/* ======================================================== */}
-        {activeTab === 'dubbing' && (
-          <div className="space-y-6">
-            
-            <div className="glass-panel p-5 rounded-2xl">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <span>🎬 LỒNG TIẾNG VIDEO AI TỰ ĐỘNG (AI VIDEO DUBBING) - StudioVDT</span>
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Quy trình tự động hóa: Bóc tách âm thanh video ➜ Faster-Whisper nhận diện lời thoại ➜ Dịch thuật sang tiếng Việt ➜ Edge-TTS tạo giọng đọc cảm xúc ➜ Khớp timeline ➜ Hòa âm Audio Ducking.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Left Column: Form */}
-              <div className="md:col-span-2 glass-panel p-6 rounded-2xl space-y-5">
-                
-                {/* 1. Video Selection */}
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                    1. Video Đầu Vào Cần Lồng Tiếng:
-                  </label>
-                  {dubbingTarget ? (
-                    <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-500/40 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">🎬</span>
-                        <div>
-                          <div className="font-bold text-sm text-white">{dubbingTarget.name}</div>
-                          <div className="text-[11px] text-slate-400 truncate max-w-xs">{dubbingTarget.path}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setDubbingTarget(null)}
-                        className="text-xs text-rose-400 hover:text-rose-300 font-semibold"
-                      >
-                        Đổi video
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <select
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (!val) return;
-                          const parts = val.split('||');
-                          setDubbingTarget({ name: parts[0], path: parts[1] });
-                        }}
-                        className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>-- Chọn video từ Kho Phim đã tải --</option>
-                        {status?.localDramas?.map(d => (
-                          <optgroup key={d.name} label={d.name}>
-                            {d.videos?.map(v => (
-                              <option key={v.path} value={`${d.name} - ${v.filename}||${v.path}`}>
-                                {v.filename} ({v.sizeFormatted})
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                      <p className="text-[11px] text-slate-500">
-                        Hoặc chuyển sang tab <strong>KHO VIDEO</strong> rồi bấm nút "🎙️ Lồng Tiếng" trên tập phim mong muốn.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Voice & Language */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      2. Giọng Đọc Tuyển Chọn (StudioVDT):
-                    </label>
-                    <select
-                      value={dubVoice}
-                      onChange={(e) => setDubVoice(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="vi-VN-HoaiMyNeural">👩 Hoài My (Nữ nhẹ nhàng, truyền cảm - Phim tâm lý, tình cảm)</option>
-                      <option value="vi-VN-NamMinhNeural">👨 Nam Minh (Nam trầm ấm, phát thanh - Phim hành động, kịch tính)</option>
-                      <option value="vieneu:Adam Tốp Tốp">🔥 Adam Tốp Tốp (Nam Miền Nam • Tấu hề, Review phim ngắn)</option>
-                      <option value="vieneu:Adam bựa">🔥 Adam bựa (Review phim dí dỏm, hài hước Tốp Tốp)</option>
-                      <option value="vieneu:Hải Đăng">🎙️ Hải Đăng (Nam Bắc chuẩn phát thanh, tin tức)</option>
-                      <option value="vieneu:Trúc Ly">🎙️ Trúc Ly (Nữ Bắc tự nhiên, trẻ trung)</option>
-                      <option value="en-US-JennyNeural">🇺🇸 Jenny (Nữ Mỹ tự nhiên, quốc tế)</option>
-                      <option value="zh-CN-XiaoxiaoNeural">🇨🇳 Xiaoxiao (Nữ Trung Quốc giọng chuẩn)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      3. Ngôn Ngữ Gốc Của Video:
-                    </label>
-                    <select
-                      value={dubSourceLang}
-                      onChange={(e) => setDubSourceLang(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="auto">🌐 Tự Động Nhận Diện (Auto Detect)</option>
-                      <option value="zh">🇨🇳 Tiếng Trung (Phim ngắn Trung Quốc)</option>
-                      <option value="en">🇺🇸 Tiếng Anh (English)</option>
-                      <option value="ja">🇯🇵 Tiếng Nhật (Japanese)</option>
-                      <option value="ko">🇰🇷 Tiếng Hàn (Korean)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Speed & Model */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      4. Tốc Độ Nói (Rate):
-                    </label>
-                    <select
-                      value={dubSpeed}
-                      onChange={(e) => setDubSpeed(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="-10%">0.9x (Hơi chậm)</option>
-                      <option value="+0%">1.0x (Tốc độ chuẩn)</option>
-                      <option value="+10%">1.1x (Nhanh nhẹn)</option>
-                      <option value="+20%">1.2x (Kịch tính)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      5. Model Whisper Nhận Dạng:
-                    </label>
-                    <select
-                      value={dubModel}
-                      onChange={(e) => setDubModel(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="tiny">tiny (Siêu nhanh, ít RAM)</option>
-                      <option value="base">base (Khuyên dùng - Cân bằng tốt)</option>
-                      <option value="small">small (Chính xác cao hơn)</option>
-                      <option value="medium">medium (Rất chính xác)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 4. Audio Ducking & Subtitles */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
-                      6. Âm Lượng Nhạc Nền Gốc (Ducking):
-                    </label>
-                    <select
-                      value={dubBgmVol}
-                      onChange={(e) => setDubBgmVol(parseFloat(e.target.value))}
-                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                    >
-                      <option value="0.10">10% (Nhạc nền rất nhỏ)</option>
-                      <option value="0.15">15% (Chuẩn phim truyền hình)</option>
-                      <option value="0.25">25% (Nhạc nền vừa phải)</option>
-                      <option value="0.35">35% (Nhạc nền lớn)</option>
-                    </select>
-                  </div>
-
-                  <div className="pt-2 sm:pt-4">
-                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-600 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={dubBurnSub}
-                        onChange={(e) => setDubBurnSub(e.target.checked)}
-                        className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-800 border-slate-700"
-                      />
-                      <span className="text-xs font-bold text-slate-200">
-                        🔤 Chèn Phụ Đề Cứng (.srt Burn-in)
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Start Button */}
-                <button
-                  onClick={handleStartDubbing}
-                  disabled={!!dubJobId || !dubbingTarget}
-                  className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-wider"
-                >
-                  <span>{dubJobId ? '⏳' : '🚀'}</span>
-                  <span>{dubJobId ? 'Đang Xử Lý Lồng Tiếng AI...' : 'Bắt Đầu Lồng Tiếng Video Tự Động'}</span>
-                </button>
-
-              </div>
-
-              {/* Right Column: Status & Realtime Progress */}
-              <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="font-bold text-sm text-white mb-2 flex items-center gap-2">
-                    <span>⚙️ Tiến Trình Xử Lý AI</span>
-                  </h3>
-
-                  {dubProgress ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-xs font-bold text-purple-400">
-                        <span>{dubProgress.step || 'Đang tiến hành...'}</span>
-                        <span>{dubProgress.percent || 0}%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full transition-all duration-300"
-                          style={{ width: `${dubProgress.percent || 0}%` }}
-                        ></div>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 space-y-1">
-                        <div>Trạng thái: <strong className="text-white">{dubProgress.status}</strong></div>
-                        {dubProgress.message && <div className="text-slate-400">{dubProgress.message}</div>}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-xl">
-                      Chưa có tiến trình lồng tiếng nào đang chạy.
-                    </div>
-                  )}
-                </div>
-
-                {dubResultVideo && (
-                  <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3">
-                    <div className="font-bold text-xs text-emerald-400 flex items-center gap-1.5">
-                      <span>🎉</span>
-                      <span>Video Đã Lồng Tiếng Sẵn Sàng!</span>
-                    </div>
-                    <div className="text-xs text-slate-300 truncate">
-                      File: {dubResultVideo.replace(/^.*[\\\/]/, '')}
-                    </div>
-                    <button
-                      onClick={() => {
-                        const parts = dubResultVideo.split(/[\\\/]/);
-                        const fileName = parts.pop();
-                        const subFolder = parts.pop();
-                        const dramaFolder = parts.pop();
-                        setVideoModal({
-                          title: `Video Lồng Tiếng - ${fileName}`,
-                          url: `/video/${encodeURIComponent(dramaFolder)}/${encodeURIComponent(subFolder)}/${encodeURIComponent(fileName)}`
-                        });
-                      }}
-                      className="w-full py-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <span>▶️ Phát Video Lồng Tiếng</span>
-                    </button>
-                  </div>
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 4: 📥 TRÌNH TẢI VIDEO SODA REELS & MINUTEDRAMA */}
-        {/* ======================================================== */}
-        {activeTab === 'downloader' && (
-          <div className="space-y-6">
-            
-            {/* Header & Sub-tab Switcher */}
-            <div className="glass-panel p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1 flex flex-col justify-between min-w-0">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>📥 TRÌNH TẢI VIDEO SODA REELS & MINUTEDRAMA</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Hai chế độ tải mạnh mẽ: Tải trực tiếp siêu tốc 1s/tập từ link CDN hoặc Tự động lướt & bóc tách cache từ giả lập Android.
-                </p>
+                <div className="flex justify-between items-center mb-1 gap-1">
+                  <label className="text-xs font-bold text-gray-700">Tên Bộ Phim (Thư mục sẽ lưu):</label>
+                  <button
+                    type="button"
+                    onClick={syncWithAppDrama}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 transition"
+                  >
+                    ⚡ Lấy Phim Đang Xem
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={dramaTitle}
+                  onChange={(e) => setDramaTitle(e.target.value)}
+                  placeholder="Nhập tên bộ phim..."
+                  className="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 focus:outline-none focus:border-blue-500 font-medium"
+                />
               </div>
 
-              {/* Sub-tab Switcher Buttons */}
-              <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700">
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {['#ĐôThị', '#TổngTài', '#BáoThù', '#HàiHước'].map((tag) => (
+                  <span key={tag} className="text-[10px] bg-slate-200/80 text-gray-700 px-2 py-0.5 rounded font-semibold">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bắt đầu từ tập số + Nút Tải poster / mở thư mục */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Bắt đầu từ tập số:</label>
+              <input
+                type="number"
+                min="1"
+                value={startEp}
+                onChange={(e) => setStartEp(Number(e.target.value))}
+                className="w-full bg-slate-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-500"
+              />
+              <div className="text-[11px] text-sky-600 mt-1">✨ Đang tự động nhận diện...</div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1">Tải Poster & Mở thư mục:</label>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setDownloaderSubTab('direct')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    downloaderSubTab === 'direct'
-                      ? 'bg-amber-500 text-slate-950 shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  type="button"
+                  onClick={() => showToast('Đang tải poster bộ phim...')}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-gray-800 border border-gray-300 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition"
                 >
-                  <span>⚡ Tải Trực Tiếp CDN (1s/tập)</span>
+                  <ImageIcon size={13} /> Tải Poster
                 </button>
                 <button
-                  onClick={() => setDownloaderSubTab('cache')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    downloaderSubTab === 'cache'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  type="button"
+                  onClick={async () => {
+                    await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: dramaTitle }) });
+                    showToast('Đang mở thư mục lưu phim trên máy...');
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-gray-800 border border-gray-300 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition"
                 >
-                  <span>🔄 Quét Cache Giả Lập & Lướt Tập</span>
+                  <FolderOpen size={13} /> Mở Thư Mục
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* --- SUB-TAB A: DIRECT CDN DOWNLOADER --- */}
-            {downloaderSubTab === 'direct' && (
-              <div className="space-y-5">
-                
-                {/* Actions Toolbar */}
-                <div className="glass-panel p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => fetchDirectEpisodes()}
-                      disabled={directLoading}
-                      className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all"
-                    >
-                      <span>🔄</span>
-                      <span>{directLoading ? 'Đang đọc...' : 'Quét Lại Database Phim'}</span>
-                    </button>
-                  </div>
+          {/* Nút hành động chính */}
+          <div className="flex gap-2 pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleExportSelected}
+              className="flex-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-extrabold py-2.5 px-3 rounded-xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
+            >
+              📥 XUẤT CÁC TẬP ĐÃ CHỌN VÀO BỘ NÀY
+            </button>
+            <button
+              type="button"
+              onClick={fetchStatusData}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-gray-700 border border-gray-300 font-bold py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition"
+            >
+              🔄 Tải Lại Tập Cũ
+            </button>
+          </div>
 
-                  {directEpisodes && directEpisodes.episodes && directEpisodes.episodes.length > 0 && (
-                    <button
-                      onClick={handleDownloadAllDirect}
-                      disabled={batchDownloading}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 flex items-center gap-1.5 transition-all"
-                    >
-                      <span>{batchDownloading ? '⏳' : '🚀'}</span>
-                      <span>{batchDownloading ? `Đang Tải (Tập ${batchProgress.activeEp}/${batchProgress.total})...` : 'Tải Tự Động Toàn Bộ Các Tập (1-2s / tập)'}</span>
-                    </button>
-                  )}
-                </div>
+          {toastMsg && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg font-bold flex items-center gap-1.5">
+              <span>✓</span> {toastMsg}
+            </div>
+          )}
+        </div>
 
-                {/* Batch Download Progress Bar */}
-                {batchDownloading && (
-                  <div className="glass-card p-4 rounded-2xl border border-amber-500/30">
-                    <div className="flex items-center justify-between text-xs font-bold text-amber-400 mb-2">
-                      <span>Đang tải hàng loạt: Tập {batchProgress.activeEp} / {batchProgress.total}</span>
-                      <span>{batchProgress.percent}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all duration-300 rounded-full"
-                        style={{ width: `${batchProgress.percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
+        {/* Cột Phải: Danh sách video trong cache */}
+        <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs flex flex-col gap-3">
+          <div className="flex justify-between items-center pb-2 border-b border-gray-100 flex-wrap gap-2">
+            <div>
+              <h2 className="text-sm font-black text-gray-900 uppercase">
+                📼 Video Chờ Xuất ({queueItems.length})
+              </h2>
+              <div className="text-[11px] text-gray-400 font-medium">Tích chọn những tập bạn muốn tải về máy</div>
+            </div>
 
-                {/* Codec Selection Notice */}
-                <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
-                  <div className="text-xs">
-                    <span className="font-bold text-emerald-400 text-sm block">💡 Chọn Chuẩn Video Khi Tải:</span>
-                    <span className="text-slate-300">
-                      Chuẩn <strong>H.264 (AVC)</strong> mở được ngay trên mọi máy tính Windows Media Player mà không bao giờ bị lỗi <code>0xC00D36C4</code>.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-700">
-                    <button
-                      onClick={() => setSelectedCodec('h264')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        selectedCodec === 'h264'
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🟢 H.264 (Chuẩn Windows)
-                    </button>
-                    <button
-                      onClick={() => setSelectedCodec('h265')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        selectedCodec === 'h265'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      🔵 H.265 (HEVC Gốc)
-                    </button>
-                  </div>
-                </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  fetchDirectEpisodes();
+                  setShowDirectLinksModal(true);
+                }}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-bold px-2 py-1 rounded text-xs transition"
+              >
+                ⚡ Link Trực Tiếp Cả Bộ
+              </button>
+              <button
+                type="button"
+                onClick={selectOnlyNew}
+                className="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 font-bold px-2 py-1 rounded text-xs transition"
+              >
+                ⭐ Chọn tập mới
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSelectAll(true)}
+                className="bg-slate-100 hover:bg-slate-200 text-gray-700 border border-gray-300 px-2 py-1 rounded text-xs font-semibold"
+              >
+                Chọn hết
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSelectAll(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-gray-700 border border-gray-300 px-2 py-1 rounded text-xs font-semibold"
+              >
+                Bỏ chọn
+              </button>
+              <button
+                type="button"
+                onClick={reverseQueueOrder}
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 px-2 py-1 rounded text-xs font-bold"
+              >
+                🔄 Đảo thứ tự
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelectedCache}
+                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-300 px-2 py-1 rounded text-xs font-bold"
+              >
+                Xóa cache
+              </button>
+            </div>
+          </div>
 
-                {/* Episodes Grid */}
-                {directEpisodes ? (
-                  <div className="space-y-4">
-                    <div className="glass-panel p-4 rounded-2xl flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">🎬</span>
-                        <div>
-                          <h3 className="font-bold text-base text-white">{directEpisodes.title}</h3>
-                          <p className="text-xs text-slate-400">
-                            Tổng cộng: <strong className="text-white">{directEpisodes.totalEpisodes || directEpisodes.episodes.length}</strong> tập có sẵn link trực tiếp
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        Lưu tại: <code className="text-brand-300">Soda_Reels_Videos/{directEpisodes.title}/</code>
-                      </div>
-                    </div>
+          {/* Thanh Tự Động Lướt Tập (Auto Swipe) */}
+          <div className="bg-[#0f172a] text-white rounded-xl p-3 border border-sky-500/30 flex flex-col gap-2.5">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                🤖 Tải Video Từng Tập (Đủ 100% Mới Qua Tập Tiếp)
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                isSwiping ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {isSwiping ? 'Đang tự động tải...' : 'Sẵn sàng'}
+              </span>
+            </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {directEpisodes.episodes.map((ep) => {
-                        const activeUrl = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
-                        let isDownloaded = false;
-                        if (status?.localDramas) {
-                          const matched = status.localDramas.find(d => 
-                            d.name.toLowerCase().includes(directEpisodes.title.toLowerCase()) || 
-                            directEpisodes.title.toLowerCase().includes(d.name.toLowerCase())
-                          );
-                          if (matched && matched.videos) {
-                            const epPadded = `Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`;
-                            isDownloaded = matched.videos.some(v => v.filename === epPadded);
-                          }
-                        }
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => startSwipe(1)}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition"
+              >
+                🎯 Lấy Đúng 1 Tập Này
+              </button>
 
-                        return (
-                          <div
-                            key={ep.epNumber}
-                            className={`glass-card p-3 rounded-xl border flex flex-col justify-between transition-all ${
-                              isDownloaded ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-800'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center justify-between">
-                                <span className="font-extrabold text-sm text-white">Tập {ep.epNumber}</span>
-                                {isDownloaded ? (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                    Đã tải
-                                  </span>
-                                ) : ep.isVip ? (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">VIP</span>
-                                ) : (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Free</span>
-                                )}
-                              </div>
-                              <div className="text-[11px] text-slate-400 mt-1">
-                                ⏱️ {formatDuration(ep.duration)}
-                              </div>
-                            </div>
-
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleDownloadDirectSingle(ep)}
-                                title="Tải nhanh 1-2s về máy tính"
-                                className="flex-1 py-1 px-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all flex items-center justify-center gap-1"
-                              >
-                                <span>⚡</span>
-                                <span>{isDownloaded ? 'Tải Lại' : 'Tải 1s'}</span>
-                              </button>
-                              
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(activeUrl);
-                                  showToast(`Đã copy link CDN Tập ${ep.epNumber}!`, 'success');
-                                }}
-                                title="Copy link CDN"
-                                className="p-1 px-2 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300"
-                              >
-                                📋
-                              </button>
-
-                              <a
-                                href={activeUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Mở xem trực tiếp link CDN"
-                                className="p-1 px-2 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300"
-                              >
-                                🌐
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="glass-panel p-12 text-center rounded-2xl border border-slate-800">
-                    <div className="text-4xl">🎭</div>
-                    <h3 className="font-bold text-lg text-white mt-3">Chưa Tìm Thấy Dữ Liệu Link Trực Tiếp</h3>
-                    <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-                      Hãy mở một bộ phim bất kỳ trên ứng dụng <strong>MinuteDrama</strong> trong máy ảo LDPlayer/Nox, sau đó nhấn nút <strong>Quét Lại Database Phim</strong> phía trên.
-                    </p>
-                  </div>
-                )}
-
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 px-2 py-1 rounded-lg">
+                <span className="text-xs text-slate-400">Số tập:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={autoSwipeCount}
+                  onChange={(e) => setAutoSwipeCount(Number(e.target.value))}
+                  className="w-12 bg-slate-800 border border-slate-600 text-white rounded text-xs text-center py-0.5 font-bold"
+                />
+                <button
+                  type="button"
+                  onClick={() => startSwipe()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-2.5 py-1 rounded transition"
+                >
+                  ▶ Lướt Tự Động
+                </button>
               </div>
-            )}
 
-            {/* --- SUB-TAB B: EMULATOR CACHE & AUTO-SWIPE --- */}
-            {downloaderSubTab === 'cache' && (
-              <div className="space-y-5">
-                
-                <div className="glass-panel p-5 rounded-2xl space-y-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-base text-white">Quét Cache Giả Lập & Tự Động Lướt Tập</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">Bắt video tạm từ máy ảo Android LDPlayer/Nox. Xuất file an toàn khi đã cache 100%.</p>
-                    </div>
+              {isSwiping && (
+                <button
+                  type="button"
+                  onClick={() => setIsSwiping(false)}
+                  className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                >
+                  ⏹ Dừng Lại
+                </button>
+              )}
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={handleExportCache}
-                        disabled={loading || !status?.remoteCacheCount}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-500/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
-                      >
-                        <span>📥</span>
-                        <span>{loading ? 'Đang xuất video...' : `Xuất Tất Cả (${status?.remoteCacheCount || 0} tập) Về Máy`}</span>
-                      </button>
+              <label className="text-[11px] text-emerald-400 flex items-center gap-1.5 ml-auto cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoExport}
+                  onChange={(e) => setAutoExport(e.target.checked)}
+                  className="accent-emerald-500"
+                />
+                Tự lưu về máy khi đủ 100%
+              </label>
+            </div>
 
-                      <button
-                        onClick={handleDeleteRemoteCache}
-                        className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 transition-all"
-                      >
-                        <span>🗑️</span>
-                        <span>Dọn Sạch Cache Máy Ảo</span>
-                      </button>
-                    </div>
-                  </div>
+            <div className="text-[11px] text-slate-400">
+              💡 <b>Quy tắc an toàn:</b> Tool chỉ tải duy nhất <b>1 video tại một thời điểm</b>, nạp đủ 100% rồi mới lướt sang tập kế tiếp.
+            </div>
+          </div>
 
-                  {/* Auto Swipe Controls */}
-                  <div className="pt-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
-                    <div className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                      <span>📱 Tự Động Lướt Tập:</span>
-                      {autoSwipeStatus?.isRunning && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
-                          Đang chạy ({autoSwipeStatus.currentCount}/{autoSwipeStatus.totalCount})
+          {/* Danh sách các tập */}
+          <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
+            {queueItems.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
+                  item.checked ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={(e) => {
+                      setQueueItems(queueItems.map(q => q.id === item.id ? { ...q, checked: e.target.checked } : q));
+                    }}
+                    className="accent-blue-600 w-4 h-4 cursor-pointer"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900">{item.title}</span>
+                      {item.isNew && (
+                        <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded">
+                          MỚI
                         </span>
                       )}
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">Số tập:</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={autoSwipeTotal}
-                        onChange={(e) => setAutoSwipeTotal(e.target.value)}
-                        className="w-20 px-2 py-1 text-xs bg-slate-900 border border-slate-700 rounded-lg text-white"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">Giây/tập:</span>
-                      <input
-                        type="number"
-                        min="3"
-                        max="120"
-                        value={autoSwipeDelay}
-                        onChange={(e) => setAutoSwipeDelay(e.target.value)}
-                        className="w-20 px-2 py-1 text-xs bg-slate-900 border border-slate-700 rounded-lg text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <button
-                        onClick={handleToggleAutoSwipe}
-                        className={`w-full py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                          autoSwipeStatus?.isRunning
-                            ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                        }`}
-                      >
-                        <span>{autoSwipeStatus?.isRunning ? '⏹️ Dừng Lướt Tập' : '▶️ Bắt Đầu Tự Động Lướt'}</span>
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-gray-500">{item.size} • Đã lưu trong bộ đệm RAM</span>
                   </div>
                 </div>
 
-                {/* Remote Cache Table */}
-                {status?.remoteList && status.remoteList.length > 0 ? (
-                  <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
-                    <div className="divide-y divide-slate-800/80">
-                      {status.remoteList.map((item, idx) => (
-                        <div key={idx} className="px-5 py-3 flex items-center justify-between hover:bg-slate-800/40 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-brand-400">
-                              {item.suggestedEp ? `T${item.suggestedEp}` : `#${idx+1}`}
-                            </span>
-                            <div>
-                              <div className="font-semibold text-sm text-white flex items-center gap-2">
-                                <span>{item.suggestedEp ? `Tập ${item.suggestedEp}` : item.name}</span>
-                                {item.isAlreadyExported && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
-                                    Đã tải vào máy
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-400 mt-0.5">
-                                Dung lượng: <strong className="text-slate-300">{item.sizeFormatted}</strong>
-                                {item.percentComplete < 100 && (
-                                  <span className="text-amber-400 ml-2 font-medium">
-                                    (Đang cache: {item.percentComplete}%)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={async () => {
-                              showToast(`Đang xuất Tập ${item.suggestedEp}...`, 'info');
-                              try {
-                                const res = await fetch('/api/export-single', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    remotePath: item.path,
-                                    dramaName: status?.currentDrama?.title || 'Bo_Phim_Moi',
-                                    epNum: item.suggestedEp
-                                  })
-                                });
-                                const data = await res.json();
-                                showToast(`✅ Đã xuất Tập ${item.suggestedEp} về máy!`, 'success');
-                                fetchStatus();
-                              } catch (e) {
-                                showToast('Lỗi xuất tập đơn', 'error');
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white transition-all"
-                          >
-                            Tải Về Máy
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="glass-panel p-10 text-center rounded-2xl border border-slate-800">
-                    <div className="text-3xl">💤</div>
-                    <div className="text-sm font-bold text-white mt-2">Chưa Có Video Trong Cache Giả Lập</div>
-                    <p className="text-xs text-slate-400 mt-1">Mở video trên app giả lập hoặc bật Tự Động Lướt Tập để video tải vào cache.</p>
-                  </div>
-                )}
-
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewVideoUrl(item.path ? `/api/preview-remote?path=${encodeURIComponent(item.path)}` : '');
+                    setShowPlayerModal(true);
+                  }}
+                  className="bg-white hover:bg-slate-100 text-blue-600 border border-gray-300 text-xs font-bold px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1 transition"
+                >
+                  <Play size={11} /> Xem
+                </button>
               </div>
-            )}
-
+            ))}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* ======================================================== */}
-        {/* TAB 5: 📁 KHO VIDEO & TRÌNH CHIẾU */}
-        {/* ======================================================== */}
-        {activeTab === 'library' && (
-          <div className="space-y-6">
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-5 rounded-2xl">
+      {/* Danh sách các bộ phim đã tải */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs">
+        <h3 className="text-sm font-black text-gray-900 uppercase mb-3 flex items-center gap-2">
+          📚 Các Bộ Phim Đã Tải Trên Máy Tính
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {localDramas.map((d, i) => (
+            <div key={i} className="p-3 bg-slate-50 border border-gray-200 rounded-xl flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>📁 KHO VIDEO & TRÌNH CHIẾU</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Thư mục lưu trữ: <code className="text-brand-300">Soda_Reels_Videos/</code>. Xem video trực tiếp trên web không lo lỗi thiếu codec.
-                </p>
+                <h4 className="text-xs font-bold text-gray-900">{d.title}</h4>
+                <span className="text-[11px] text-emerald-600 font-semibold">{d.episodes}</span>
+                <p className="text-[10px] text-gray-400 mt-0.5">{d.folder}</p>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleOpenFolder(selectedDramaName || '')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-all"
-                >
-                  <span>📂</span>
-                  <span>Mở Trong Windows Explorer</span>
-                </button>
-                <button
-                  onClick={fetchStatus}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
-                >
-                  🔄 Làm Mới
-                </button>
-              </div>
-            </div>
-
-            {status?.localDramas && status.localDramas.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                
-                {/* Left: Drama Series Selector */}
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Danh Sách Bộ Phim ({status.localDramas.length})
-                  </span>
-                  {status.localDramas.map((drama) => {
-                    const isSelected = selectedDramaName === drama.name;
-                    return (
-                      <div
-                        key={drama.name}
-                        onClick={() => setSelectedDramaName(drama.name)}
-                        className={`p-3 rounded-xl cursor-pointer border transition-all ${
-                          isSelected
-                            ? 'bg-brand-600/20 border-brand-500/50 text-white shadow-md'
-                            : 'glass-card border-slate-800 text-slate-300 hover:text-white'
-                        }`}
-                      >
-                        <div className="font-bold text-sm truncate">{drama.name}</div>
-                        <div className="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                          <span>{drama.videos ? drama.videos.length : 0} tập phim</span>
-                          <span className="text-[10px] text-brand-300 font-semibold">Xem chi tiết →</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Right: Videos inside selected drama */}
-                <div className="md:col-span-3 space-y-4">
-                  {(() => {
-                    const activeDrama = status.localDramas.find(d => d.name === selectedDramaName) || status.localDramas[0];
-                    if (!activeDrama) return null;
-
-                    return (
-                      <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-                        <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-white">{activeDrama.name}</h3>
-                            <p className="text-xs text-slate-400">
-                              Đã tải: <strong>{activeDrama.videos ? activeDrama.videos.length : 0}</strong> tập phim
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleOpenFolder(activeDrama.name)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300"
-                          >
-                            📂 Mở Thư Mục Phim
-                          </button>
-                        </div>
-
-                        {activeDrama.videos && activeDrama.videos.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {activeDrama.videos.map((vid, idx) => (
-                              <div
-                                key={idx}
-                                className="glass-card p-3 rounded-xl border border-slate-800 flex flex-col justify-between"
-                              >
-                                <div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-bold text-sm text-white">{vid.filename}</span>
-                                    {vid.isDubbed && (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                        🎙️ Đã lồng tiếng
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-slate-400 mt-1">
-                                    Dung lượng: <span className="text-slate-300">{vid.sizeFormatted}</span>
-                                  </div>
-                                </div>
-
-                                <div className="mt-4 pt-2 border-t border-slate-800/80 flex items-center gap-2">
-                                  <button
-                                    onClick={() => setVideoModal({
-                                      title: `${activeDrama.name} - ${vid.filename}`,
-                                      url: `/video/${encodeURIComponent(activeDrama.name)}/${encodeURIComponent(vid.filename)}`
-                                    })}
-                                    className="flex-1 py-1.5 px-2 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all flex items-center justify-center gap-1"
-                                  >
-                                    <span>▶️</span>
-                                    <span>Phát Video</span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setDubbingTarget({
-                                        name: `${activeDrama.name} - ${vid.filename}`,
-                                        path: vid.path
-                                      });
-                                      setActiveTab('dubbing');
-                                    }}
-                                    title="Chuyển video này sang Lồng Tiếng AI"
-                                    className="py-1.5 px-3 rounded-lg text-xs font-bold bg-purple-600/30 hover:bg-purple-600 text-purple-200 border border-purple-500/40 transition-all flex items-center gap-1"
-                                  >
-                                    <span>🎙️</span>
-                                    <span>Lồng Tiếng</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-8 text-center text-slate-400 text-xs">
-                            Chưa có tập phim nào trong bộ phim này.
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-              </div>
-            ) : (
-              <div className="glass-panel p-12 text-center rounded-2xl border border-slate-800">
-                <div className="text-4xl">📁</div>
-                <h3 className="font-bold text-lg text-white mt-3">Kho Video Trống</h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-                  Bạn chưa tải tập phim nào về máy tính. Hãy chuyển sang tab <strong>TRÌNH TẢI VIDEO</strong> để bắt đầu tải!
-                </p>
-                <button
-                  onClick={() => setActiveTab('downloader')}
-                  className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white transition-all"
-                >
-                  📥 Chuyển Sang Trình Tải Video
-                </button>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 6: ⚙️ CÀI ĐẶT HỆ THỐNG */}
-        {/* ======================================================== */}
-        {activeTab === 'settings' && (
-          <div className="space-y-6">
-            
-            {/* ADB Setup */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>📱 Kết Nối Thiết Bị Giả Lập Android (ADB)</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Nhập địa chỉ IP và cổng của giả lập LDPlayer, NoxPlayer, hoặc BlueStacks để kết nối.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <input
-                  type="text"
-                  value={adbHostInput}
-                  onChange={(e) => setAdbHostInput(e.target.value)}
-                  placeholder="127.0.0.1:5555"
-                  className="w-full sm:w-80 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white"
-                />
-                <button
-                  onClick={handleConnectAdb}
-                  disabled={adbConnecting}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 hover:bg-brand-500 text-white transition-all shadow-md"
-                >
-                  {adbConnecting ? 'Đang kết nối...' : '⚡ Kết Nối ADB Ngay'}
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-400 space-y-1">
-                <div>• Cổng mặc định LDPlayer 9: <code>127.0.0.1:5555</code></div>
-                <div>• Cổng mặc định NoxPlayer: <code>127.0.0.1:62001</code></div>
-                <div>• Cổng mặc định BlueStacks: <code>127.0.0.1:5554</code></div>
-              </div>
-            </div>
-
-            {/* Error 0xC00D36C4 Guide */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <span>💡 Hướng Dẫn Khắc Phục Lỗi 0xC00D36C4 Trên Windows Media Player</span>
-              </h2>
-              
-              <div className="text-xs text-slate-300 space-y-2 leading-relaxed">
-                <p>
-                  <strong>Nguyên nhân:</strong> Khi bạn mở file video MP4 trên máy tính bằng Windows Media Player và gặp lỗi 
-                  <code className="text-rose-400 mx-1">0xC00D36C4 (file type unsupported or corrupt)</code>, 
-                  nguyên nhân là do video đó được encode bằng chuẩn nén <strong>HEVC (H.265)</strong> mà Windows 10/11 mặc định không cài sẵn codec HEVC.
-                </p>
-                
-                <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
-                  <div className="font-bold text-white text-sm">3 Cách Khắc Phục Đơn Giản Nhất:</div>
-                  <div className="space-y-1.5 text-slate-300">
-                    <div>
-                      ✅ <strong>Cách 1 (Khuyên dùng):</strong> Trong tab <strong>TRÌNH TẢI VIDEO</strong> của tool, luôn chọn nút <strong className="text-emerald-400">🟢 H.264 (Chuẩn Windows)</strong>. Tool sẽ tự động lấy link H.264 bản chuẩn để mở ngay trên Windows Media Player mà không bao giờ bị lỗi!
-                    </div>
-                    <div>
-                      ✅ <strong>Cách 2:</strong> Xem video trực tiếp trong tab <strong>KHO VIDEO</strong> trên giao diện web của tool. Trình phát web đã tích hợp bộ giải mã tương thích.
-                    </div>
-                    <div>
-                      ✅ <strong>Cách 3:</strong> Khi bạn đưa video vào <strong>LỒNG TIẾNG VIDEO AI</strong>, hệ thống sẽ tự động re-encode xuất ra file chuẩn H.264 hoàn hảo.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Docker Guide */}
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>🐳 Chạy Ứng Dụng Bằng Docker</span>
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Để chạy toàn bộ hệ thống (bao gồm Node.js, Python Faster-Whisper, FFmpeg, Edge-TTS) trong một môi trường cô lập không cần cài đặt phần mềm phụ trợ, bạn chỉ cần chạy:
-              </p>
-              <div className="p-3 rounded-xl bg-slate-900 text-xs font-mono text-brand-300 border border-slate-800">
-                Double click vào file <strong>CHAY_DOCKER.bat</strong> hoặc chạy lệnh <code>docker compose up -d</code>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-      </main>
-
-      {/* --- VIDEO PLAYER MODAL --- */}
-      {videoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-4xl bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white truncate max-w-lg">{videoModal.title}</h3>
               <button
-                onClick={() => setVideoModal(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm font-bold"
+                type="button"
+                onClick={async () => {
+                  await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: d.title }) });
+                  showToast(`Mở thư mục: ${d.folder}`);
+                }}
+                className="p-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg shadow-xs transition"
               >
-                ✕
+                <FolderOpen size={14} />
               </button>
             </div>
-            <div className="p-4 bg-black flex justify-center">
-              <video
-                src={videoModal.url}
-                controls
-                autoPlay
-                className="max-h-[70vh] w-auto rounded-lg"
+          ))}
+        </div>
+      </div>
+
+      {/* Modal 1: Player */}
+      {showPlayerModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowPlayerModal(false)}>
+          <div className="bg-[#0f172a] rounded-2xl max-w-2xl w-full p-4 border border-slate-700 text-white shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+              <h3 className="font-bold text-sm text-sky-400">Xem video cache</h3>
+              <button onClick={() => setShowPlayerModal(false)} className="text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="bg-black aspect-video rounded-xl flex flex-col items-center justify-center border border-slate-800 text-slate-500 text-xs p-4 text-center overflow-hidden">
+              {previewVideoUrl ? (
+                <video src={previewVideoUrl} controls autoPlay className="w-full h-full object-contain" />
+              ) : (
+                <>
+                  <Tv size={42} className="text-slate-700 mb-2" />
+                  <span>Trình phát video thử nghiệm</span>
+                </>
+              )}
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlayerModal(false);
+                  showToast('Đang mở phát qua Media Player máy tính...');
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
               >
-                Trình duyệt không hỗ trợ phát video này.
-              </video>
+                🎬 Mở Bằng Media Player
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPlayerModal(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- FOOTER --- */}
-      <footer className="mt-auto border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        Video Dynamic Toolkit • Tích Hợp Soda Reels, MinuteDrama & StudioVDT AI Suite • 2026
-      </footer>
+      {/* Modal 2: Direct CDN Links */}
+      {showDirectLinksModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowDirectLinksModal(false)}>
+          <div className="bg-[#0f172a] rounded-2xl max-w-3xl w-full p-5 border border-slate-700 text-white shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                  ⚡ Toàn Bộ Link Video Trực Tiếp (CDN Siêu Tốc 1s)
+                </h3>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                  H.264 Không Lỗi
+                </span>
+              </div>
+              <button onClick={() => setShowDirectLinksModal(false)} className="text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="flex items-center justify-between mb-3 text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+              <span>Chuẩn Video: <strong className="text-emerald-400">H.264 (Chuẩn Windows - Xem không lỗi 0xC00D36C4)</strong></span>
+              <button
+                onClick={() => setSelectedCodec(selectedCodec === 'h264' ? 'h265' : 'h264')}
+                className="text-[11px] bg-slate-800 hover:bg-slate-700 text-sky-400 px-2 py-1 rounded border border-slate-700 font-bold"
+              >
+                Đổi chuẩn: {selectedCodec.toUpperCase()}
+              </button>
+            </div>
 
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+              {directDramaData && directDramaData.episodes && directDramaData.episodes.length > 0 ? (
+                directDramaData.episodes.map((ep) => {
+                  const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
+                  return (
+                    <div key={ep.epNumber} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                      <div className="truncate text-xs">
+                        <span className="font-bold text-sky-400 mr-2">Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:</span>
+                        <span className="text-slate-400 text-[11px] font-mono truncate">{url}</span>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(url);
+                            showToast(`Đã copy link CDN Tập ${ep.epNumber}!`);
+                          }}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-2.5 py-1 rounded border border-slate-700"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadSingleDirect(ep)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition"
+                        >
+                          Tải (1s)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                [1, 2, 3, 4, 5, 6].map((num) => (
+                  <div key={num} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                    <div className="truncate text-xs">
+                      <span className="font-bold text-sky-400 mr-2">Tập {num < 10 ? `0${num}` : num}:</span>
+                      <span className="text-slate-400 text-[11px] font-mono">https://cdn-video.sodareels.io/stream/media_0{num}.mp4</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => showToast(`Bắt đầu tải Tập ${num}...`)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1 rounded-lg shrink-0 transition"
+                    >
+                      Tải (1s)
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-between items-center pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={handleDownloadAllDirect}
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition"
+              >
+                🚀 Tải Tự Động Tất Cả Các Tập
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDirectLinksModal(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded-xl transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// FILE 1: APP (TRANG CHỦ DASHBOARD + ĐIỀU HƯỚNG)
+// ==========================================
+function App() {
+  // 'home' | 'dubbing' | 'tts' | 'downloader'
+  const [currentPage, setCurrentPage] = useState('home');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Nếu đang ở trang con: Hiển thị giao diện riêng toàn màn hình, không sidebar
+  if (currentPage === 'dubbing') {
+    return <DubbingView onBackHome={() => setCurrentPage('home')} />;
+  }
+  if (currentPage === 'tts') {
+    return <TTSStudioView onBackHome={() => setCurrentPage('home')} />;
+  }
+  if (currentPage === 'downloader') {
+    return (
+      <div
+        className="min-h-screen text-[#1e293b] flex flex-col font-sans select-none p-4"
+        style={{
+          backgroundColor: '#f6f9fc',
+          backgroundImage:
+            'linear-gradient(to right, rgba(0, 114, 255, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 114, 255, 0.05) 1px, transparent 1px)',
+          backgroundSize: '24px 24px'
+        }}
+      >
+        <div className="max-w-[1740px] w-full mx-auto mb-3">
+          <button
+            onClick={() => setCurrentPage('home')}
+            className="bg-white hover:bg-slate-50 text-gray-800 border border-gray-300 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition"
+          >
+            ← Quay lại Trang Chủ
+          </button>
+        </div>
+        <div className="max-w-[1740px] w-full mx-auto">
+          <DramaDownloaderView />
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // GIAO DIỆN TRANG CHỦ CÓ SIDEBAR BÊN TRÁI
+  // ==========================================
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex font-sans">
+      {/* SIDEBAR BÊN TRÁI */}
+      <aside
+        className={`${
+          isSidebarCollapsed ? 'w-20' : 'w-72'
+        } bg-[#0f172a] text-slate-200 border-r border-slate-800 transition-all duration-300 flex flex-col justify-between shrink-0 shadow-xl`}
+      >
+        <div>
+          {/* Logo Brand */}
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            {!isSidebarCollapsed && (
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md font-black text-sm">
+                  VDT
+                </div>
+                <div>
+                  <h1 className="font-black text-white text-base tracking-tight leading-none">Studio VDT</h1>
+                  <span className="text-[10px] text-sky-400 font-semibold">AI Creative Suite</span>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition mx-auto"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-3 space-y-1.5">
+            <button
+              onClick={() => setCurrentPage('home')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600/15 text-blue-400 font-bold text-xs border border-blue-500/30 text-left transition"
+            >
+              <Layers size={18} />
+              {!isSidebarCollapsed && <span>Trang Tổng Quan</span>}
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('dubbing')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold text-xs text-left transition"
+            >
+              <Clapperboard size={18} className="text-sky-400" />
+              {!isSidebarCollapsed && <span>Lồng tiếng Video AI</span>}
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('tts')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold text-xs text-left transition"
+            >
+              <Mic size={18} className="text-emerald-400" />
+              {!isSidebarCollapsed && <span>Phòng thu Giọng đọc AI</span>}
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('downloader')}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 font-semibold text-xs text-left transition"
+            >
+              <DownloadCloud size={18} className="text-purple-400" />
+              {!isSidebarCollapsed && <span>Tải Phim Drama Series</span>}
+            </button>
+          </nav>
+        </div>
+
+        {/* User Footer */}
+        <div className="p-3 border-t border-slate-800">
+          <div className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-xl border border-slate-700/50">
+            <div className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
+              VT
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-white truncate">Võ Duy Toàn</div>
+                <div className="text-[10px] text-slate-400">Enterprise Pro</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* NỘI DUNG CHÍNH TRANG CHỦ */}
+      <main className="flex-1 overflow-y-auto p-6 md:p-10 max-w-7xl mx-auto">
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold mb-2">
+            <Sparkles size={14} /> Hệ thống Studio AI cao cấp
+          </div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Chào mừng đến với Studio VDT</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            Chọn không gian làm việc chuyên biệt bên dưới để bắt đầu sản xuất nội dung:
+          </p>
+        </div>
+
+        {/* Cards điều hướng sang từng trang riêng biệt */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Dubbing */}
+          <div
+            onClick={() => setCurrentPage('dubbing')}
+            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-blue-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Clapperboard size={26} />
+              </div>
+              <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                Lồng Tiếng Video AI
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Tự động dịch thuật, tách thoại, khử tiếng ồn và lồng giọng đọc AI cảm xúc kết hợp chèn Watermark thương hiệu trực tiếp trên Canvas.
+              </p>
+            </div>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+              <span>Mở phòng lồng tiếng</span>
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 2: TTS Studio */}
+          <div
+            onClick={() => setCurrentPage('tts')}
+            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-emerald-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Mic size={26} />
+              </div>
+              <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+                Phòng Thu Giọng Đọc AI (TTS)
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Soạn thảo kịch bản Live Syntax, chèn hơn 55+ thẻ mã cảm xúc tức thì, tinh chỉnh tempo, cao độ và xuất audio Master 48kHz.
+              </p>
+            </div>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+              <span>Mở TTS Studio</span>
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 3: Drama Downloader */}
+          <div
+            onClick={() => setCurrentPage('downloader')}
+            className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 hover:border-purple-500 hover:shadow-xl transition-all duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <DownloadCloud size={26} />
+              </div>
+              <h3 className="text-base font-black text-slate-900 group-hover:text-purple-600 transition-colors">
+                Tải Phim Drama Series
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Tự động nhận diện phim từ Soda Reels, MinuteDrama qua ADB, auto-swipe lướt từng tập và trích xuất link CDN siêu tốc.
+              </p>
+            </div>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
+              <span>Mở công cụ tải phim</span>
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

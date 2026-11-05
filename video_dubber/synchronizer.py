@@ -4,7 +4,7 @@ Aligns generated speech with the original speech timestamps.
 """
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 from pydub import AudioSegment
 try:
     from .transcriber import Segment

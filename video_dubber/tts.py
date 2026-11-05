@@ -4,7 +4,7 @@ Text-to-Speech (TTS) module supporting Microsoft Edge-TTS and VieNeu-TTS (Adam T
 import asyncio
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 try:
     from .transcriber import Segment
 except ImportError:

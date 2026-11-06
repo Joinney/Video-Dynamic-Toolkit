@@ -175,3 +175,50 @@ class TTSService:
         progress_callback: Optional[object] = None,
     ) -> List[Segment]:
         return self.generate_speech_for_segments(segments, output_dir, progress_callback=progress_callback)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate TTS audio file")
+    parser.add_argument("--text", required=True, help="Text to convert to speech")
+    parser.add_argument("--voice", default="vi-VN-HoaiMyNeural", help="Voice model")
+    parser.add_argument("--rate", default="+0%", help="Rate speed")
+    parser.add_argument("--volume", default="+0%", help="Volume")
+    parser.add_argument("--output", required=True, help="Output file path")
+    args = parser.parse_args()
+
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if args.voice.startswith("vieneu:"):
+        try:
+            from vieneu_tts import VieNeuTTS
+        except ImportError:
+            from .vieneu_tts import VieNeuTTS
+        vtts = VieNeuTTS()
+        vtts.generate_speech(args.text, out_path, voice=args.voice.split(":", 1)[1])
+    else:
+        async def run_edge():
+            import edge_tts
+            from pydub import AudioSegment
+            try:
+                from .vieneu_tts import enhance_vocal
+            except ImportError:
+                from vieneu_tts import enhance_vocal
+            raw_tmp = out_path.with_suffix(".raw.mp3")
+            communicate = edge_tts.Communicate(text=args.text, voice=args.voice, rate=args.rate, volume=args.volume)
+            await communicate.save(str(raw_tmp))
+            if raw_tmp.exists() and raw_tmp.stat().st_size > 0:
+                try:
+                    snd = AudioSegment.from_file(str(raw_tmp))
+                    snd = enhance_vocal(snd, voice_name=args.voice, deep_warmth=True)
+                    fmt = "mp3" if out_path.suffix.lower() == ".mp3" else "wav"
+                    snd.export(str(out_path), format=fmt)
+                except Exception:
+                    if raw_tmp != out_path:
+                        import shutil
+                        shutil.copy2(str(raw_tmp), str(out_path))
+                if raw_tmp.exists() and raw_tmp != out_path:
+                    raw_tmp.unlink(missing_ok=True)
+        asyncio.run(run_edge())
+

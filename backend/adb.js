@@ -3,9 +3,18 @@ const { execSync } = require('child_process');
 const { ADB_PATH, SUPPORTED_APPS, getAppMode } = require('./config');
 
 let adbRootChecked = false;
+let cachedDevice = null;
+let lastDeviceCheck = 0;
 
 function checkAdbDevice() {
+  const now = Date.now();
+  if (cachedDevice !== null && (now - lastDeviceCheck < 3500)) {
+    return cachedDevice;
+  }
+
   if (!fs.existsSync(ADB_PATH)) {
+    cachedDevice = null;
+    lastDeviceCheck = now;
     return null;
   }
   try {
@@ -30,12 +39,18 @@ function checkAdbDevice() {
         adbRootChecked = true;
         try { execSync(`"${ADB_PATH}" -s ${dev} root`, { stdio: 'ignore', timeout: 3000 }); } catch (e) {}
       }
+      cachedDevice = dev;
+      lastDeviceCheck = now;
       return dev;
     }
     adbRootChecked = false;
+    cachedDevice = null;
+    lastDeviceCheck = now;
     return null;
   } catch (e) {
     adbRootChecked = false;
+    cachedDevice = null;
+    lastDeviceCheck = now;
     return null;
   }
 }

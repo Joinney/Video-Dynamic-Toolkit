@@ -5,16 +5,24 @@ const { execSync } = require('child_process');
 const { ADB_PATH } = require('./config');
 
 const pushedDevices = new Set();
+let cachedCompleteness = {
+  key: '',
+  time: 0,
+  data: { map: {}, newest: null, list: [] }
+};
 
 function ensureDeviceCheckerScript(device) {
-  if (pushedDevices.has(device)) return;
   const localScript = path.join(__dirname, 'cache_checker.sh');
-  if (!fs.existsSync(localScript)) {
-    const content = `#!/system/bin/sh
+  const content = `#!/system/bin/sh
 APP="$1"
+FILTER="$2"
 
 if [ "$APP" = "minutedrama" ]; then
-  FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null)
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/\${FILTER}*.mp4 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null)
+  fi
   for f in $FILES; do
     if [ -f "$f" ]; then
       SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
@@ -27,7 +35,11 @@ if [ "$APP" = "minutedrama" ]; then
     fi
   done
 else
-  FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/\${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  fi
   for f in $FILES; do
     if [ -f "$f" ]; then
       SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
@@ -42,21 +54,31 @@ else
   done
 fi
 `;
+  if (!fs.existsSync(localScript) || fs.readFileSync(localScript, 'utf8').replace(/\r\n/g, '\n') !== content.replace(/\r\n/g, '\n')) {
     fs.writeFileSync(localScript, content, 'utf8');
+    pushedDevices.delete(device);
   }
 
+  if (pushedDevices.has(device)) return;
+
   try {
-    execSync(`"${ADB_PATH}" -s ${device} push "${localScript}" /data/local/tmp/cache_checker.sh`, { stdio: 'ignore' });
-    execSync(`"${ADB_PATH}" -s ${device} shell "chmod 755 /data/local/tmp/cache_checker.sh"`, { stdio: 'ignore' });
+    execSync(`"${ADB_PATH}" -s ${device} push "${localScript}" /data/local/tmp/cache_checker.sh`, { stdio: 'ignore', timeout: 3000 });
+    execSync(`"${ADB_PATH}" -s ${device} shell "chmod 755 /data/local/tmp/cache_checker.sh"`, { stdio: 'ignore', timeout: 2000 });
     pushedDevices.add(device);
   } catch (e) {}
 }
 
-function getRemoteCacheCompletenessMap(device, appKey = 'sodareels') {
+function getRemoteCacheCompletenessMap(device, appKey = 'sodareels', filterPrefix = '') {
   if (!device) return { map: {}, newest: null, list: [] };
+  const cacheKey = `${device}_${appKey}_${filterPrefix}`;
+  const now = Date.now();
+  if (cachedCompleteness.key === cacheKey && (now - cachedCompleteness.time < 3500)) {
+    return cachedCompleteness.data;
+  }
+
   ensureDeviceCheckerScript(device);
   try {
-    const raw = execSync(`"${ADB_PATH}" -s ${device} shell "su 0 /data/local/tmp/cache_checker.sh ${appKey}"`, { encoding: 'utf8' });
+    const raw = execSync(`"${ADB_PATH}" -s ${device} shell "su 0 /data/local/tmp/cache_checker.sh ${appKey} ${filterPrefix || ''}"`, { encoding: 'utf8', timeout: 3500 });
     const lines = raw.trim().split(/\r?\n/).filter(Boolean);
     const map = {};
     const list = [];
@@ -120,9 +142,15 @@ function getRemoteCacheCompletenessMap(device, appKey = 'sodareels') {
     });
 
     const newest = list.length > 0 ? list[list.length - 1] : null;
-    return { map, newest, list };
+    const result = { map, newest, list };
+    cachedCompleteness = {
+      key: cacheKey,
+      time: now,
+      data: result
+    };
+    return result;
   } catch (e) {
-    return { map: {}, newest: null, list: [] };
+    return cachedCompleteness.data || { map: {}, newest: null, list: [] };
   }
 }
 
@@ -197,8 +225,8 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
     } catch (e) {}
 
     // LỌC CHUẨN: Chỉ giữ lại các tập thuộc ĐÚNG bộ phim đang xem/lướt hiện tại, loại bỏ các file cũ của phim khác
+    let activePrefix = '';
     if (appKey === 'sodareels') {
-      let activePrefix = null;
       for (const l of lines) {
         const parts = l.trim().split(/\s+/);
         const fName = path.basename(parts[parts.length - 1]);
@@ -225,7 +253,7 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
     // Đảo ngược danh sách để file tạo đầu tiên (Tập 1) luôn nằm ở vị trí đầu danh sách
     lines.reverse();
 
-    const completenessInfo = getRemoteCacheCompletenessMap(device, appKey);
+    const completenessInfo = getRemoteCacheCompletenessMap(device, appKey, activePrefix);
 
     // Thu thập danh sách các tập video đã tải về máy tính
     let maxDownloadedEp = 0;
@@ -316,6 +344,7 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
 
     return list;
   } catch (e) {
+    console.error('getRemoteCacheList ERROR:', e);
     return [];
   }
 }

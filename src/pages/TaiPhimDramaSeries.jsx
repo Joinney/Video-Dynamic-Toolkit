@@ -114,7 +114,7 @@ export default function TaiPhimDramaSeries({
 
   useEffect(() => {
     fetchStatusData();
-    const interval = setInterval(fetchStatusData, 3000);
+    const interval = setInterval(fetchStatusData, 5000);
     return () => clearInterval(interval);
   }, [activeApp, dramaTitle]);
 
@@ -711,8 +711,16 @@ export default function TaiPhimDramaSeries({
                               MỚI
                             </span>
                           )}
+                          {item.pct !== undefined && item.pct < 100 && (
+                            <span className="bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded animate-pulse">
+                              {item.pct}%
+                            </span>
+                          )}
                         </div>
-                        <span className="text-[10px] text-gray-500">{item.size} • Đã lưu trong bộ đệm RAM</span>
+                        <span className="text-[10px] text-gray-500">
+                          {item.size ? `${item.size} • ` : ''}
+                          {item.pct !== undefined && item.pct < 100 ? `Đang tải đệm ${item.pct}%` : 'Đã lưu trong bộ đệm RAM'}
+                        </span>
                       </div>
                     </div>
 

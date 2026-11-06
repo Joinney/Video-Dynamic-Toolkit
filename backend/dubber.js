@@ -4,18 +4,48 @@ const fs = require('fs');
 
 const dubJobs = new Map();
 
+let cachedRunner = null;
+let lastRunnerCheck = 0;
+
 function resolvePythonExecution(args) {
   // If running inside Docker / Linux:
   if (process.platform !== 'win32') {
     return { cmd: 'python3', args };
   }
 
+  // Cache runner discovery for 60 seconds to prevent repeated slow execSync calls
+  const now = Date.now();
+  if (cachedRunner && (now - lastRunnerCheck < 60000)) {
+    if (cachedRunner.type === 'docker') {
+      const projRoot = path.resolve(__dirname, '..').replace(/\\/g, '/');
+      const toContainerPath = (p) => {
+        if (typeof p !== 'string') return p;
+        const normalized = p.replace(/\\/g, '/');
+        if (normalized.toLowerCase().startsWith(projRoot.toLowerCase())) {
+          return '/app' + normalized.substring(projRoot.length);
+        }
+        return normalized;
+      };
+      const containerArgs = args.map(arg => {
+        if (typeof arg === 'string' && (arg.includes(':\\') || arg.includes(':/'))) {
+          return toContainerPath(arg);
+        }
+        return arg;
+      });
+      return { cmd: 'docker', args: ['exec', '-i', 'reelssoda_studio', 'python', ...containerArgs] };
+    } else {
+      return { cmd: cachedRunner.cmd, args };
+    }
+  }
+
   // If running on Windows host:
   // 1. Check if Docker container reelssoda_studio is running
   try {
     const { execSync } = require('child_process');
-    const running = execSync('docker ps --filter "name=reelssoda_studio" --filter "status=running" -q', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const running = execSync('docker ps --filter "name=reelssoda_studio" --filter "status=running" -q', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
     if (running) {
+      cachedRunner = { type: 'docker' };
+      lastRunnerCheck = now;
       const projRoot = path.resolve(__dirname, '..').replace(/\\/g, '/');
       const toContainerPath = (p) => {
         if (typeof p !== 'string') return p;
@@ -50,13 +80,17 @@ function resolvePythonExecution(args) {
   for (const c of candidates) {
     try {
       const { execSync } = require('child_process');
-      const out = execSync(`"${c}" --version`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      const out = execSync(`"${c}" --version`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
       if (out && out.includes('Python')) {
+        cachedRunner = { type: 'local', cmd: c };
+        lastRunnerCheck = now;
         return { cmd: c, args };
       }
     } catch (e) {}
   }
 
+  cachedRunner = { type: 'local', cmd: 'python' };
+  lastRunnerCheck = now;
   return { cmd: 'python', args };
 }
 

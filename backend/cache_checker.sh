@@ -1,8 +1,13 @@
 #!/system/bin/sh
 APP="$1"
+FILTER="$2"
 
 if [ "$APP" = "minutedrama" ]; then
-  FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null)
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/${FILTER}*.mp4 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null)
+  fi
   for f in $FILES; do
     if [ -f "$f" ]; then
       SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
@@ -15,7 +20,11 @@ if [ "$APP" = "minutedrama" ]; then
     fi
   done
 else
-  FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  fi
   for f in $FILES; do
     if [ -f "$f" ]; then
       SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)

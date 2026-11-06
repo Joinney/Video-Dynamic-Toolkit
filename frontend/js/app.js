@@ -25628,7 +25628,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     };
     (0, import_react8.useEffect)(() => {
       fetchStatusData();
-      const interval = setInterval(fetchStatusData, 3e3);
+      const interval = setInterval(fetchStatusData, 5e3);
       return () => clearInterval(interval);
     }, [activeApp, dramaTitle]);
     const fetchDirectEpisodes = async (overrideTitle) => {
@@ -26100,7 +26100,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             },
             className: "accent-blue-600 w-4 h-4 cursor-pointer"
           }
-        ), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-bold text-gray-900" }, item.title), item.isNew && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, "M\u1EDAI")), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-gray-500" }, item.size, " \u2022 \u0110\xE3 l\u01B0u trong b\u1ED9 \u0111\u1EC7m RAM"))),
+        ), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-bold text-gray-900" }, item.title), item.isNew && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, "M\u1EDAI"), item.pct !== void 0 && item.pct < 100 && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded animate-pulse" }, item.pct, "%")), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-gray-500" }, item.size ? `${item.size} \u2022 ` : "", item.pct !== void 0 && item.pct < 100 ? `\u0110ang t\u1EA3i \u0111\u1EC7m ${item.pct}%` : "\u0110\xE3 l\u01B0u trong b\u1ED9 \u0111\u1EC7m RAM"))),
         /* @__PURE__ */ import_react8.default.createElement(
           "button",
           {

@@ -212,6 +212,12 @@ function parseJsonBody(req) {
   });
 }
 
+let globalStatusCache = {
+  time: 0,
+  key: '',
+  data: null
+};
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -229,9 +235,19 @@ const server = http.createServer(async (req, res) => {
 
   // 2. API Status & Information
   if (url.pathname === '/api/status') {
-    const device = checkAdbDevice();
-    const reqApp = url.searchParams.get('app');
+    const reqApp = url.searchParams.get('app') || '';
     const dramaQuery = url.searchParams.get('drama') || '';
+    const cacheKey = `${reqApp}_${dramaQuery}`;
+    const now = Date.now();
+
+    // Cache trong 3500ms để giải phóng 100% tài nguyên CPU / ADB, không bị nghẽn Event Loop
+    if (globalStatusCache.data && (now - globalStatusCache.time < 3500) && globalStatusCache.key === cacheKey) {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(globalStatusCache.data);
+      return;
+    }
+
+    const device = checkAdbDevice();
     const activeApp = resolveActiveApp(device, reqApp);
     const dramaInfo = getDramaInfoFromDevice(device, activeApp);
     const localDramas = getLocalDramas();
@@ -250,8 +266,7 @@ const server = http.createServer(async (req, res) => {
     const localVideos = matchedLocal ? matchedLocal.videos : [];
     const remoteList = getRemoteCacheList(device, activeApp, dramaInfo.currentEpisode || 1, localVideos);
 
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
+    const payload = JSON.stringify({
       connected: !!device,
       deviceName: device || 'Chưa tìm thấy giả lập',
       activeApp,
@@ -262,7 +277,16 @@ const server = http.createServer(async (req, res) => {
       remoteCacheCount: remoteList.length,
       remoteList,
       localDramas
-    }));
+    });
+
+    globalStatusCache = {
+      time: now,
+      key: cacheKey,
+      data: payload
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(payload);
     return;
   }
 

@@ -116,12 +116,11 @@ class Transcriber:
         dev, comp = self._resolve_device_and_compute()
         model = get_shared_whisper_model(target_model, device=dev, compute_type=comp)
 
-        # Tạo prompt ngữ cảnh phim ảnh hỗ trợ nhận diện chính xác từ ngữ, tên nhân vật
+        # Tạo prompt ngữ cảnh tổng quát hỗ trợ nhận diện rõ thoại phim, không thiên vị nội dung
         if not initial_prompt:
-            p_name = audio_path.stem.lower()
-            if whisper_lang in ("zh", "zh-cn", "zh-tw") or any(k in p_name for k in ["tap", "tiệm", "tạp hóa", "âm dương", "phim", "trung"]):
-                initial_prompt = "这是一部精彩的微短剧，讲述阴阳杂货铺里的故事，纸上白纸黑字写得清清楚楚。"
-            elif whisper_lang in ("en", "english") or "en" in p_name:
+            if whisper_lang in ("zh", "zh-cn", "zh-tw"):
+                initial_prompt = "普通话影视剧精彩对白，口语对话。"
+            elif whisper_lang in ("en", "english"):
                 initial_prompt = "Dramatic movie dialogue between characters with emotional speech, natural expressions and clear lines."
 
         logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}' (prompt: {bool(initial_prompt)})...")
@@ -169,8 +168,9 @@ class Transcriber:
                         cur_pct
                     )
 
-            # Ngưỡng phát hiện âm thanh không lời / ảo giác
-            if getattr(s, "no_speech_prob", 0.0) > 0.88:
+            # Ngưỡng phát hiện âm thanh không lời: chỉ lọc khi chắc chắn > 96% không có thoại
+            # Đảm bảo giữ trọn vẹn 100% tiếng nhân vật nói nhỏ, thì thầm hoặc bị nhạc nền át
+            if getattr(s, "no_speech_prob", 0.0) > 0.96:
                 continue
             text = s.text.strip()
             if not text:
@@ -180,15 +180,15 @@ class Transcriber:
             if any(re.search(pat, text, re.IGNORECASE) for pat in WATERMARK_PATTERNS):
                 continue
 
-            # Bỏ qua ảo giác lặp lại prompt ở các đoạn nhạc không lời (đặc biệt đoạn mở đầu)
-            if initial_prompt:
-                clean_p = re.sub(r'[，。？！,?! ]', '', initial_prompt)
-                clean_t = re.sub(r'[，。？！,?! ]', '', text)
-                if (clean_t in clean_p or clean_p in clean_t) and s.start < 28.0:
+            # Bỏ qua ảo giác lặp lại prompt ở các đoạn nhạc không lời (chỉ lọc khi đoạn văn bản dài và trùng khớp prompt)
+            if initial_prompt and len(text) >= 10:
+                clean_p = re.sub(r'[，。？！,?! \s]', '', initial_prompt)
+                clean_t = re.sub(r'[，。？！,?! \s]', '', text)
+                if clean_t in clean_p and len(clean_t) >= 10:
                     continue
 
             # Bỏ qua từ bị lặp lại liên tiếp do nhạc nền (ví dụ: "有你", "有你" lặp lại 10 lần)
-            if text == prev_clean_text:
+            if text == prev_clean_text and len(text) < 6:
                 continue
             prev_clean_text = text
 
@@ -222,12 +222,14 @@ class Transcriber:
             gap = item["start"] - last_item["end"]
             combined_dur = item["end"] - last_item["start"]
 
-            # Nếu khoảng cách nghỉ giữa 2 câu thoại <= 0.65s và tổng độ dài câu <= 7.0s: Hợp nhất
-            if 0.0 <= gap <= 0.65 and combined_dur <= 7.0:
-                last_item["end"] = item["end"]
+            # Nếu 2 câu nối tiếp nhau (hoặc hơi chạm nhau -0.2s đến 0.65s) và tổng độ dài câu <= 7.0s: Hợp nhất
+            if -0.20 <= gap <= 0.65 and combined_dur <= 7.0:
+                last_item["end"] = max(last_item["end"], item["end"])
                 sep = "，" if last_item["text"][-1] not in "，。？！,?! " else " "
                 last_item["text"] = last_item["text"] + sep + item["text"]
             else:
+                if item["start"] < last_item["end"]:
+                    item["start"] = last_item["end"]
                 merged_list.append(item)
 
         segments: List[Segment] = []

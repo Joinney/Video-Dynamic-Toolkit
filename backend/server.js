@@ -237,11 +237,12 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/status') {
     const reqApp = url.searchParams.get('app') || '';
     const dramaQuery = url.searchParams.get('drama') || '';
+    const forceRefresh = url.searchParams.get('refresh') === '1' || url.searchParams.get('force') === '1';
     const cacheKey = `${reqApp}_${dramaQuery}`;
     const now = Date.now();
 
     // Cache trong 3500ms để giải phóng 100% tài nguyên CPU / ADB, không bị nghẽn Event Loop
-    if (globalStatusCache.data && (now - globalStatusCache.time < 3500) && globalStatusCache.key === cacheKey) {
+    if (!forceRefresh && globalStatusCache.data && (now - globalStatusCache.time < 3500) && globalStatusCache.key === cacheKey) {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(globalStatusCache.data);
       return;

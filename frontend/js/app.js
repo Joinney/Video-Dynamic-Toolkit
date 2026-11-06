@@ -25559,6 +25559,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     const [downloadProgressDirect, setDownloadProgressDirect] = (0, import_react8.useState)({ current: 0, total: 0 });
     const [queueItems, setQueueItems] = (0, import_react8.useState)([]);
     const [localDramas, setLocalDramas] = (0, import_react8.useState)(backendData?.localDramas || []);
+    const [isRefreshingLocal, setIsRefreshingLocal] = (0, import_react8.useState)(false);
     const showToast = (text) => {
       setToastMsg(text);
       setTimeout(() => setToastMsg(""), 3500);
@@ -25574,7 +25575,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         });
         const data = await res.json();
         showToast(data.message || (data.connected ? "K\u1EBFt n\u1ED1i ADB th\xE0nh c\xF4ng!" : "Kh\xF4ng t\xECm th\u1EA5y thi\u1EBFt b\u1ECB"));
-        fetchStatusData();
+        fetchStatusData(true);
         if (onRefreshStatus) onRefreshStatus();
       } catch (e) {
         showToast("L\u1ED7i k\u1EBFt n\u1ED1i ADB: " + e.message);
@@ -25582,9 +25583,10 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         setIsConnectingAdb(false);
       }
     };
-    const fetchStatusData = async () => {
+    const fetchStatusData = async (force = false) => {
       try {
-        const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}`);
+        const refreshParam = force ? "&refresh=1" : "";
+        const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}${refreshParam}`);
         const data = await res.json();
         setConnected(data.connected);
         setDeviceName(data.deviceName || "Ch\u01B0a t\xECm th\u1EA5y gi\u1EA3 l\u1EADp");
@@ -26139,7 +26141,37 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           /* @__PURE__ */ import_react8.default.createElement(Play, { size: 11 }),
           " Xem"
         )
-      ))))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3" }, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "text-sm font-black text-gray-900 uppercase flex items-center gap-2" }, "\u{1F4DA} C\xE1c B\u1ED9 Phim \u0110\xE3 T\u1EA3i Tr\xEAn M\xE1y T\xEDnh (", localDramas.length, ")"), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-semibold text-slate-500" }, "Th\u01B0 m\u1EE5c: Soda_Reels_Videos/")), localDramas.length === 0 ? /* @__PURE__ */ import_react8.default.createElement("div", { className: "p-6 text-center text-xs text-gray-500 bg-slate-50 rounded-xl border border-dashed border-gray-300" }, "Ch\u01B0a c\xF3 b\u1ED9 phim n\xE0o \u0111\u01B0\u1EE3c l\u01B0u v\u1EC1 m\xE1y. H\xE3y t\xEDch ch\u1ECDn c\xE1c t\u1EADp trong h\xE0ng \u0111\u1EE3i ho\u1EB7c d\xF9ng t\u1EA3i CDN tr\u1EF1c ti\u1EBFp!") : /* @__PURE__ */ import_react8.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" }, localDramas.map((d, i) => /* @__PURE__ */ import_react8.default.createElement("div", { key: i, className: "p-3 bg-slate-50 border border-gray-200 rounded-xl flex flex-col justify-between gap-2.5" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "w-12 h-16 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300" }, /* @__PURE__ */ import_react8.default.createElement(
+      ))))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3 flex-wrap gap-2" }, /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "text-sm font-black text-gray-900 uppercase flex items-center gap-2" }, "\u{1F4DA} C\xE1c B\u1ED9 Phim \u0110\xE3 T\u1EA3i Tr\xEAn M\xE1y T\xEDnh (", localDramas.length, ")"), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-semibold text-slate-500" }, "Th\u01B0 m\u1EE5c l\u01B0u tr\u1EEF: Soda_Reels_Videos/")), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: async () => {
+            await fetch("/api/open-folder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ folder: "" }) });
+            showToast("\u0110ang m\u1EDF th\u01B0 m\u1EE5c g\u1ED1c Soda_Reels_Videos/");
+          },
+          className: "bg-slate-100 hover:bg-slate-200 text-gray-700 border border-gray-300 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
+        },
+        /* @__PURE__ */ import_react8.default.createElement(FolderOpen, { size: 13 }),
+        " Th\u01B0 M\u1EE5c Phim"
+      ), /* @__PURE__ */ import_react8.default.createElement(
+        "button",
+        {
+          type: "button",
+          disabled: isRefreshingLocal,
+          onClick: async () => {
+            setIsRefreshingLocal(true);
+            showToast("\u0110ang qu\xE9t v\xE0 c\u1EADp nh\u1EADt l\u1EA1i danh s\xE1ch phim...");
+            await fetchStatusData(true);
+            setTimeout(() => {
+              setIsRefreshingLocal(false);
+              showToast("\u0110\xE3 c\u1EADp nh\u1EADt danh s\xE1ch phim m\u1EDBi nh\u1EA5t!");
+            }, 400);
+          },
+          className: "bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+        },
+        /* @__PURE__ */ import_react8.default.createElement("span", { className: isRefreshingLocal ? "animate-spin inline-block" : "" }, "\u{1F504}"),
+        " C\u1EADp Nh\u1EADt Phim"
+      ))), localDramas.length === 0 ? /* @__PURE__ */ import_react8.default.createElement("div", { className: "p-6 text-center text-xs text-gray-500 bg-slate-50 rounded-xl border border-dashed border-gray-300" }, "Ch\u01B0a c\xF3 b\u1ED9 phim n\xE0o \u0111\u01B0\u1EE3c l\u01B0u v\u1EC1 m\xE1y. H\xE3y t\xEDch ch\u1ECDn c\xE1c t\u1EADp trong h\xE0ng \u0111\u1EE3i ho\u1EB7c d\xF9ng t\u1EA3i CDN tr\u1EF1c ti\u1EBFp!") : /* @__PURE__ */ import_react8.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" }, localDramas.map((d, i) => /* @__PURE__ */ import_react8.default.createElement("div", { key: i, className: "p-3 bg-slate-50 border border-gray-200 rounded-xl flex flex-col justify-between gap-2.5" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "w-12 h-16 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300" }, /* @__PURE__ */ import_react8.default.createElement(
         "img",
         {
           src: `/poster/${encodeURIComponent(d.name || d.title)}`,
@@ -26182,6 +26214,19 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         },
         /* @__PURE__ */ import_react8.default.createElement(FolderOpen, { size: 13 }),
         " M\u1EDF Th\u01B0 M\u1EE5c"
+      ), /* @__PURE__ */ import_react8.default.createElement(
+        "button",
+        {
+          type: "button",
+          title: "Ch\u1ECDn b\u1ED9 phim n\xE0y \u0111\u1EC3 ti\u1EBFp t\u1EE5c t\u1EA3i c\xE1c t\u1EADp ti\u1EBFp theo",
+          onClick: () => {
+            setDramaTitle(d.name || d.title);
+            showToast(`\u0110\xE3 ch\u1ECDn b\u1ED9 phim: ${d.name || d.title}`);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          },
+          className: "py-1 px-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+        },
+        "\u26A1 T\u1EA3i Ti\u1EBFp"
       ), d.videos && d.videos[0] && onSelectForDubbing && /* @__PURE__ */ import_react8.default.createElement(
         "button",
         {

@@ -42,6 +42,7 @@ export default function TaiPhimDramaSeries({
   // Queue danh sách tập video trong RAM cache
   const [queueItems, setQueueItems] = useState([]);
   const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
+  const [isRefreshingLocal, setIsRefreshingLocal] = useState(false);
 
   const showToast = (text) => {
     setToastMsg(text);
@@ -59,7 +60,7 @@ export default function TaiPhimDramaSeries({
       });
       const data = await res.json();
       showToast(data.message || (data.connected ? 'Kết nối ADB thành công!' : 'Không tìm thấy thiết bị'));
-      fetchStatusData();
+      fetchStatusData(true);
       if (onRefreshStatus) onRefreshStatus();
     } catch (e) {
       showToast('Lỗi kết nối ADB: ' + e.message);
@@ -68,9 +69,10 @@ export default function TaiPhimDramaSeries({
     }
   };
 
-  const fetchStatusData = async () => {
+  const fetchStatusData = async (force = false) => {
     try {
-      const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}`);
+      const refreshParam = force ? '&refresh=1' : '';
+      const res = await fetch(`/api/status?app=${activeApp}&drama=${encodeURIComponent(dramaTitle)}${refreshParam}`);
       const data = await res.json();
       setConnected(data.connected);
       setDeviceName(data.deviceName || 'Chưa tìm thấy giả lập');
@@ -769,11 +771,41 @@ export default function TaiPhimDramaSeries({
 
         {/* Danh sách các bộ phim đã tải */}
         <div className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-xs">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-black text-gray-900 uppercase flex items-center gap-2">
-              📚 Các Bộ Phim Đã Tải Trên Máy Tính ({localDramas.length})
-            </h3>
-            <span className="text-xs font-semibold text-slate-500">Thư mục: Soda_Reels_Videos/</span>
+          <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase flex items-center gap-2">
+                📚 Các Bộ Phim Đã Tải Trên Máy Tính ({localDramas.length})
+              </h3>
+              <span className="text-xs font-semibold text-slate-500">Thư mục lưu trữ: Soda_Reels_Videos/</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: '' }) });
+                  showToast('Đang mở thư mục gốc Soda_Reels_Videos/');
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-gray-700 border border-gray-300 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <FolderOpen size={13} /> Thư Mục Phim
+              </button>
+              <button
+                type="button"
+                disabled={isRefreshingLocal}
+                onClick={async () => {
+                  setIsRefreshingLocal(true);
+                  showToast('Đang quét và cập nhật lại danh sách phim...');
+                  await fetchStatusData(true);
+                  setTimeout(() => {
+                    setIsRefreshingLocal(false);
+                    showToast('Đã cập nhật danh sách phim mới nhất!');
+                  }, 400);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+              >
+                <span className={isRefreshingLocal ? 'animate-spin inline-block' : ''}>🔄</span> Cập Nhật Phim
+              </button>
+            </div>
           </div>
           {localDramas.length === 0 ? (
             <div className="p-6 text-center text-xs text-gray-500 bg-slate-50 rounded-xl border border-dashed border-gray-300">
@@ -845,6 +877,18 @@ export default function TaiPhimDramaSeries({
                       className="flex-1 py-1 px-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
                     >
                       <FolderOpen size={13} /> Mở Thư Mục
+                    </button>
+                    <button
+                      type="button"
+                      title="Chọn bộ phim này để tiếp tục tải các tập tiếp theo"
+                      onClick={() => {
+                        setDramaTitle(d.name || d.title);
+                        showToast(`Đã chọn bộ phim: ${d.name || d.title}`);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="py-1 px-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+                    >
+                      ⚡ Tải Tiếp
                     </button>
                     {d.videos && d.videos[0] && onSelectForDubbing && (
                       <button

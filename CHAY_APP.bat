@@ -19,7 +19,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING 2^
     )
 )
 
-echo [2/3] Kiem tra moi truong Docker...
+echo [2/3] Kiem tra Docker AI Engine...
 docker info >nul 2>&1
 if errorlevel 1 (
     echo   - Docker Desktop chua hoat dong! Dang bat Docker Desktop...
@@ -36,23 +36,22 @@ if errorlevel 1 (
     echo   - Docker engine dang hoat dong binh thuong.
 )
 
-echo [3/3] Khoi dong he thong Studio qua Docker Compose...
-docker compose up -d
+echo   - Dang khoi dong Container AI Dubbing (reelssoda_studio)...
+docker compose up -d >nul 2>&1
 
+echo [3/3] Khoi dong Server Studio...
 echo.
 echo ======================================================================
 echo   ✅ HE THONG DA KHOI CHAY THANH CONG!
 echo   🌐 Dia chi Studio Web: http://localhost:3000
+echo   📱 ADB Engine: San sang ket noi voi gia lap Android
 echo ======================================================================
 echo.
 echo Dang mo trinh duyet...
-timeout /t 2 /nobreak >nul
 start http://localhost:3000
 echo.
-echo ======================================================================
-echo   Nhat ky hoat dong (Logs) truc tiep cua he thong:
-echo   (Nhan Ctrl + C de thoat man hinh logs, dong cua so de ket thuc)
-echo ======================================================================
+echo Server dang hoat dong... (Vui long khong dong cua so nay khi su dung)
 echo.
-docker compose logs -f --tail=20
+
+node server.js
 pause

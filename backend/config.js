@@ -1,7 +1,8 @@
 const path = require('path');
+const fs = require('fs');
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const ADB_PATH = 'C:\\src\\platform-tools\\adb.exe';
+const ADB_PATH = process.env.ADB_PATH || (fs.existsSync('C:\\src\\platform-tools\\adb.exe') ? 'C:\\src\\platform-tools\\adb.exe' : 'adb');
 const ROOT_DIR = path.join(__dirname, '..');
 const TARGET_DIR = path.join(ROOT_DIR, 'Soda_Reels_Videos');
 const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');

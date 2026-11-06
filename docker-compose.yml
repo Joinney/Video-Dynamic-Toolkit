@@ -4,12 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: reelssoda_studio
-    ports:
-      - "3000:3000"
     volumes:
       - .:/app
       - ./Soda_Reels_Videos:/app/Soda_Reels_Videos
     environment:
-      - PORT=3000
       - PYTHONUNBUFFERED=1
+    command: tail -f /dev/null
     restart: unless-stopped

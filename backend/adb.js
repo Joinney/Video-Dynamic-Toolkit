@@ -89,7 +89,7 @@ function detectActiveApp(device) {
     let best = 'sodareels';
     let maxT = 0;
     try {
-      const minT = parseInt(adbQuerySqlite(device, '/data/data/com.minute.minishort.drama/databases/file_manager.db', 'SELECT update_time FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;'), 10) || 0;
+      const minT = parseInt(adbQuerySqlite(device, '/data/data/com.minute.minishort.drama/databases/file_manager.db', 'SELECT update_time FROM playEpisodeHistory ORDER BY update_time DESC, id DESC LIMIT 1;'), 10) || 0;
       if (minT > maxT) { maxT = minT; best = 'minutedrama'; }
     } catch (e) {}
     try {

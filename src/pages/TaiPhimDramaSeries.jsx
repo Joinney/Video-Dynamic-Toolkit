@@ -4,7 +4,11 @@ import {
   Play,
   FolderOpen,
   ImageIcon,
-  X
+  X,
+  Edit3,
+  Trash2,
+  RefreshCw,
+  Upload
 } from 'lucide-react';
 import Header from '../components/Header';
 
@@ -43,6 +47,17 @@ export default function TaiPhimDramaSeries({
   const [queueItems, setQueueItems] = useState([]);
   const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
   const [isRefreshingLocal, setIsRefreshingLocal] = useState(false);
+
+  // Quản lý Chỉnh sửa & Cập nhật Thông tin Phim
+  const [editingDrama, setEditingDrama] = useState(null);
+  const [showEditDramaModal, setShowEditDramaModal] = useState(false);
+  const [editDramaName, setEditDramaName] = useState('');
+  const [editPosterUrl, setEditPosterUrl] = useState('');
+  const [editPosterBase64, setEditPosterBase64] = useState('');
+  const [editPosterPreview, setEditPosterPreview] = useState('');
+  const [isUpdatingDrama, setIsUpdatingDrama] = useState(false);
+  const [isDeletingDrama, setIsDeletingDrama] = useState(false);
+  const [isAutoFetchingPoster, setIsAutoFetchingPoster] = useState(false);
 
   const showToast = (text) => {
     setToastMsg(text);
@@ -182,6 +197,135 @@ export default function TaiPhimDramaSeries({
       }
     } catch (e) {
       showToast('Lỗi kết nối khi tải poster');
+    }
+  };
+
+  const handleOpenEditDrama = (d) => {
+    const dramaName = d.name || d.title || '';
+    setEditingDrama(d);
+    setEditDramaName(dramaName);
+    setEditPosterUrl('');
+    setEditPosterBase64('');
+    setEditPosterPreview(`/poster/${encodeURIComponent(dramaName)}?t=${Date.now()}`);
+    setShowEditDramaModal(true);
+  };
+
+  const handleAutoFetchPoster = async () => {
+    setIsAutoFetchingPoster(true);
+    showToast('Đang quét và lấy poster từ ứng dụng giả lập...');
+    try {
+      const res = await fetch('/api/download-poster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dramaName: editDramaName || editingDrama?.name || dramaTitle
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Đã lấy poster từ ứng dụng thành công!');
+        setEditPosterBase64('');
+        setEditPosterUrl('');
+        setEditPosterPreview(`/poster/${encodeURIComponent(editDramaName || editingDrama?.name)}?t=${Date.now()}`);
+        fetchStatusData(true);
+      } else {
+        showToast(`⚠️ ${data.message || 'Không tìm thấy poster trên ứng dụng'}`);
+      }
+    } catch (e) {
+      showToast('Lỗi khi lấy poster từ app: ' + e.message);
+    } finally {
+      setIsAutoFetchingPoster(false);
+    }
+  };
+
+  const handleFileChangePoster = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditPosterBase64(reader.result);
+      setEditPosterPreview(reader.result);
+      showToast('Đã chọn ảnh poster từ máy!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyPosterUrl = () => {
+    if (!editPosterUrl.trim()) return;
+    setEditPosterPreview(editPosterUrl.trim());
+    setEditPosterBase64('');
+    showToast('Đã xem thử link ảnh poster mới!');
+  };
+
+  const handleSaveDramaEdit = async () => {
+    if (!editingDrama) return;
+    if (!editDramaName.trim()) {
+      showToast('Tên bộ phim không được để trống!');
+      return;
+    }
+    setIsUpdatingDrama(true);
+    showToast('Đang lưu thông tin bộ phim...');
+    try {
+      const res = await fetch('/api/update-drama-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldDramaName: editingDrama.name || editingDrama.title,
+          newDramaName: editDramaName.trim(),
+          posterUrl: editPosterUrl.trim(),
+          posterBase64: editPosterBase64
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ ' + (data.message || 'Cập nhật thành công!'));
+        if (dramaTitle === (editingDrama.name || editingDrama.title)) {
+          setDramaTitle(data.folderName || editDramaName.trim());
+        }
+        setShowEditDramaModal(false);
+        await fetchStatusData(true);
+      } else {
+        showToast(`❌ Lỗi: ${data.message || 'Không thể cập nhật'}`);
+      }
+    } catch (e) {
+      showToast('Lỗi cập nhật phim: ' + e.message);
+    } finally {
+      setIsUpdatingDrama(false);
+    }
+  };
+
+  const handleDeleteDrama = async () => {
+    if (!editingDrama) return;
+    const name = editingDrama.name || editingDrama.title;
+    const epCount = editingDrama.videos ? editingDrama.videos.length : (editingDrama.count || 0);
+    const confirmed = window.confirm(
+      `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn bộ phim "${name}" cùng toàn bộ ${epCount} tập video trên máy tính không?\n\nHành động này sẽ xóa thư mục "Soda_Reels_Videos/${name}" và không thể khôi phục!`
+    );
+    if (!confirmed) return;
+
+    setIsDeletingDrama(true);
+    showToast(`Đang xóa bộ phim "${name}"...`);
+    try {
+      const res = await fetch('/api/delete-drama', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dramaName: name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🗑️ ' + (data.message || 'Đã xóa bộ phim!'));
+        if (dramaTitle === name) {
+          clearDramaConfig();
+        }
+        setShowEditDramaModal(false);
+        await fetchStatusData(true);
+      } else {
+        showToast(`❌ Lỗi xóa phim: ${data.message}`);
+      }
+    } catch (e) {
+      showToast('Lỗi khi xóa phim: ' + e.message);
+    } finally {
+      setIsDeletingDrama(false);
     }
   };
 
@@ -839,16 +983,33 @@ export default function TaiPhimDramaSeries({
               {localDramas.map((d, i) => (
                 <div key={i} className="p-3 bg-slate-50 border border-gray-200 rounded-xl flex flex-col justify-between gap-2.5">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-16 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300">
+                    <div
+                      onClick={() => handleOpenEditDrama(d)}
+                      title="Bấm để chỉnh sửa thông tin hoặc đổi poster"
+                      className="w-12 h-16 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 cursor-pointer relative group hover:border-blue-400 transition shadow-2xs"
+                    >
                       <img
                         src={`/poster/${encodeURIComponent(d.name || d.title)}`}
                         alt={d.name || d.title}
                         onError={(e) => { e.target.style.display = 'none'; }}
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                        <Edit3 size={14} className="text-white" />
+                      </div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-gray-900 truncate" title={d.name || d.title}>{d.name || d.title}</h4>
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="text-xs font-bold text-gray-900 truncate" title={d.name || d.title}>{d.name || d.title}</h4>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditDrama(d)}
+                          title="Chỉnh sửa tên hoặc poster"
+                          className="text-slate-400 hover:text-amber-600 cursor-pointer p-0.5"
+                        >
+                          <Edit3 size={12} />
+                        </button>
+                      </div>
                       <span className="text-[11px] text-emerald-600 font-bold block mt-0.5">
                         {d.videos ? `${d.videos.length} Tập Video` : (d.episodes || '0 Tập')} • {d.totalSizeMb ? `${d.totalSizeMb} MB` : ''}
                       </span>
@@ -890,14 +1051,14 @@ export default function TaiPhimDramaSeries({
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-gray-200/60">
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-gray-200/60 flex-wrap">
                     <button
                       type="button"
                       onClick={async () => {
                         await fetch('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: d.name || d.title }) });
                         showToast(`Mở thư mục: Soda_Reels_Videos/${d.name || d.title}`);
                       }}
-                      className="flex-1 py-1 px-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+                      className="flex-1 py-1 px-2 bg-white hover:bg-slate-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer min-w-[85px]"
                     >
                       <FolderOpen size={13} /> Mở Thư Mục
                     </button>
@@ -912,6 +1073,14 @@ export default function TaiPhimDramaSeries({
                       className="py-1 px-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
                     >
                       ⚡ Tải Tiếp
+                    </button>
+                    <button
+                      type="button"
+                      title="Chỉnh sửa thông tin phim, đổi tên, cập nhật poster hoặc xóa phim"
+                      onClick={() => handleOpenEditDrama(d)}
+                      className="py-1 px-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
+                    >
+                      <Edit3 size={13} /> Sửa Phim
                     </button>
                     {d.videos && d.videos[0] && onSelectForDubbing && (
                       <button
@@ -1129,6 +1298,176 @@ export default function TaiPhimDramaSeries({
                 >
                   Đóng
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal 3: Chỉnh sửa / Cập nhật Thông tin Phim & Đổi Poster */}
+        {showEditDramaModal && editingDrama && (
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+            onClick={() => !isUpdatingDrama && !isDeletingDrama && setShowEditDramaModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl max-w-lg w-full p-5 border border-slate-200 text-slate-800 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header modal */}
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                    <Edit3 size={18} />
+                  </span>
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-900">Cập Nhật Thông Tin Bộ Phim</h3>
+                    <p className="text-[11px] text-slate-500">Đổi tên thư mục, cập nhật/khôi phục ảnh poster hoặc xóa bộ phim</p>
+                  </div>
+                </div>
+                <button
+                  disabled={isUpdatingDrama || isDeletingDrama}
+                  onClick={() => setShowEditDramaModal(false)}
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body: Poster preview + Form */}
+              <div className="flex gap-4">
+                {/* Cột hiển thị ảnh poster */}
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div className="w-28 h-36 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden relative shadow-xs flex items-center justify-center">
+                    {editPosterPreview ? (
+                      <img
+                        key={editPosterPreview}
+                        src={editPosterPreview}
+                        alt="Poster"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                        onLoad={(e) => {
+                          e.target.style.display = 'block';
+                        }}
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 -z-10 flex flex-col items-center justify-center text-slate-400 p-2 text-center">
+                      <ImageIcon size={26} className="opacity-40" />
+                      <span className="text-[10px] mt-1 font-semibold">Chưa có poster</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">poster.png</span>
+                </div>
+
+                {/* Cột nhập thông tin & đổi poster */}
+                <div className="flex-1 space-y-3 min-w-0">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Tên Bộ Phim (Thư mục lưu trữ):
+                    </label>
+                    <input
+                      type="text"
+                      value={editDramaName}
+                      onChange={(e) => setEditDramaName(e.target.value)}
+                      placeholder="Nhập tên bộ phim..."
+                      className="w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 transition"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1 truncate">
+                      Thư mục: Soda_Reels_Videos/{editDramaName || '...'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Khôi Phục / Đổi Ảnh Poster:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        disabled={isAutoFetchingPoster || isUpdatingDrama}
+                        onClick={handleAutoFetchPoster}
+                        className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                      >
+                        <RefreshCw size={12} className={isAutoFetchingPoster ? 'animate-spin' : ''} />
+                        {isAutoFetchingPoster ? 'Đang tìm...' : '⚡ Lấy từ App'}
+                      </button>
+
+                      <label className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs">
+                        <Upload size={12} />
+                        Tải ảnh từ máy
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChangePoster}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      Hoặc dán Link URL ảnh poster mới:
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={editPosterUrl}
+                        onChange={(e) => setEditPosterUrl(e.target.value)}
+                        placeholder="https://... URL ảnh"
+                        className="flex-1 bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-normal"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPosterUrl}
+                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold cursor-pointer"
+                      >
+                        Xem thử
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Thông tin số tập hiện tại */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+                <span className="text-slate-600">Số tập đã lưu:</span>
+                <span className="font-bold text-emerald-600">
+                  {editingDrama.videos ? `${editingDrama.videos.length} tập video MP4` : (editingDrama.count ? `${editingDrama.count} tập` : '0 tập')}
+                </span>
+              </div>
+
+              {/* Footer modal: Xóa + Lưu */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isDeletingDrama || isUpdatingDrama}
+                  onClick={handleDeleteDrama}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-95"
+                >
+                  <Trash2 size={13} />
+                  {isDeletingDrama ? 'Đang xóa...' : 'Xóa Bộ Phim'}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isUpdatingDrama || isDeletingDrama}
+                    onClick={() => setShowEditDramaModal(false)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isUpdatingDrama || isDeletingDrama}
+                    onClick={handleSaveDramaEdit}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm cursor-pointer transition active:scale-95"
+                  >
+                    {isUpdatingDrama ? 'Đang lưu...' : '💾 Lưu Thay Đổi'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

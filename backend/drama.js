@@ -605,7 +605,7 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
     // Tìm bộ phim đang mở gần nhất từ lịch sử phát
     let activeTitle = (requestedTitle || '').trim();
     if (!activeTitle) {
-      const lastPlay = adbQuerySqlite(device, dbPath, 'SELECT title FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;');
+      const lastPlay = adbQuerySqlite(device, dbPath, 'SELECT title FROM playEpisodeHistory ORDER BY update_time DESC, id DESC LIMIT 1;');
       if (lastPlay) activeTitle = lastPlay.trim();
     }
 
@@ -659,21 +659,66 @@ async function downloadDramaPoster(device, rawDramaName, customUrl = '') {
   // 2. Nếu chưa có URL, tự truy xuất từ thiết bị
   if (!url && device) {
     try {
-      // Thử MinuteDrama trước
-      const minInfo = getDramaInfoFromDevice(device, 'minutedrama');
-      const minMatch = (minInfo.allDramas || []).concat(minInfo.currentDrama ? [minInfo.currentDrama] : [])
-        .find(d => d && (d.title === rawDramaName || d.title === folderName || (d.title && folderName.includes(d.title)) || (d.title && rawDramaName.includes(d.title))));
-      if (minMatch && (minMatch.image || minMatch.cover)) {
-        url = minMatch.image || minMatch.cover;
+      const cleanT = (rawDramaName || folderName).replace(/['"\\]/g, '');
+
+      // 2.1 Thử tìm trong MinuteDrama database
+      const minDbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';
+      let dbCover = '';
+      if (cleanT) {
+        dbCover = adbQuerySqlite(device, minDbPath, `SELECT cover_url FROM playEpisodeHistory WHERE title LIKE '%${cleanT}%' ORDER BY update_time DESC LIMIT 1;`);
+      }
+      if (!dbCover) {
+        dbCover = adbQuerySqlite(device, minDbPath, `SELECT cover_url FROM playEpisodeHistory ORDER BY update_time DESC LIMIT 1;`);
+      }
+      if (!dbCover && cleanT) {
+        const rawJson = adbQuerySqlite(device, minDbPath, `SELECT json FROM videoDetail WHERE json LIKE '%${cleanT}%' ORDER BY id DESC LIMIT 1;`);
+        if (rawJson) {
+          try {
+            const parsed = JSON.parse(rawJson.trim());
+            dbCover = parsed.coverUrl || parsed.shareCoverUrl || '';
+          } catch (e) {}
+        }
+      }
+      if (dbCover && dbCover.trim()) {
+        url = dbCover.trim();
       }
 
-      // Nếu chưa có, thử Soda Reels
+      // 2.2 Thử tìm trong MinuteDrama qua getDramaInfoFromDevice
       if (!url) {
-        const sodaInfo = getDramaInfoFromDevice(device, 'sodareels');
+        const minInfo = getDramaInfoFromDevice(device, 'minutedrama', rawDramaName);
+        const minMatch = (minInfo.allDramas || []).concat(minInfo.currentDrama ? [minInfo.currentDrama] : [])
+          .find(d => d && (d.title === rawDramaName || d.title === folderName || (d.title && folderName.includes(d.title)) || (d.title && rawDramaName.includes(d.title))));
+        if (minMatch && (minMatch.image || minMatch.cover)) {
+          url = minMatch.image || minMatch.cover;
+        } else if (minInfo.coverUrl) {
+          url = minInfo.coverUrl;
+        }
+      }
+
+      // 2.3 Thử tìm trong Soda Reels database
+      if (!url) {
+        const sodaDbPath = '/data/data/com.sodareels.drama.short/databases/PLAY_LET_BD_NAME_DRAMA';
+        let sodaCover = '';
+        if (cleanT) {
+          sodaCover = adbQuerySqlite(device, sodaDbPath, `SELECT cover FROM database_table_play_history WHERE title LIKE '%${cleanT}%' ORDER BY time DESC LIMIT 1;`);
+        }
+        if (!sodaCover) {
+          sodaCover = adbQuerySqlite(device, sodaDbPath, `SELECT cover FROM database_table_play_history ORDER BY time DESC LIMIT 1;`);
+        }
+        if (sodaCover && sodaCover.trim()) {
+          url = sodaCover.trim();
+        }
+      }
+
+      // 2.4 Thử tìm trong Soda Reels qua getDramaInfoFromDevice
+      if (!url) {
+        const sodaInfo = getDramaInfoFromDevice(device, 'sodareels', rawDramaName);
         const sodaMatch = (sodaInfo.allDramas || []).concat(sodaInfo.currentDrama ? [sodaInfo.currentDrama] : [])
           .find(d => d && (d.title === rawDramaName || d.title === folderName || (d.title && folderName.includes(d.title)) || (d.title && rawDramaName.includes(d.title))));
         if (sodaMatch && (sodaMatch.image || sodaMatch.cover)) {
           url = sodaMatch.image || sodaMatch.cover;
+        } else if (sodaInfo.coverUrl) {
+          url = sodaInfo.coverUrl;
         }
       }
     } catch (e) {}

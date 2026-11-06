@@ -21,6 +21,7 @@ const { startDubbingJob, getDubbingJob, generateTTSAudio, transcribeAndTranslate
 const {
   sanitizeFolderName,
   resolveExistingDramaFolder,
+  downloadFile,
   downloadDramaPoster,
   getDramaInfoFromDevice,
   getLocalDramas,
@@ -554,8 +555,129 @@ const server = http.createServer(async (req, res) => {
       const customUrl = (payload.url || payload.posterUrl || payload.coverUrl || payload.image || '').trim();
       const device = checkAdbDevice();
       const result = await downloadDramaPoster(device, dramaName, customUrl);
+      globalStatusCache.data = null;
+      globalStatusCache.time = 0;
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  // 8.2 API Cập Nhật Thông Tin Phim (Đổi tên bộ phim, cập nhật/thay poster)
+  if (url.pathname === '/api/update-drama-info' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const oldDramaName = (payload.oldDramaName || payload.dramaName || '').trim();
+      const newDramaName = (payload.newDramaName || payload.dramaTitle || oldDramaName).trim();
+      if (!oldDramaName) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Thiếu tên bộ phim cần cập nhật!' }));
+        return;
+      }
+
+      const oldFolder = resolveExistingDramaFolder(oldDramaName);
+      const oldPath = path.join(TARGET_DIR, oldFolder);
+
+      if (!fs.existsSync(oldPath)) {
+        fs.mkdirSync(oldPath, { recursive: true });
+      }
+
+      let currentFolder = oldFolder;
+      let currentPath = oldPath;
+
+      // 1. Đổi tên thư mục nếu có tên mới hợp lệ
+      if (newDramaName && newDramaName !== oldDramaName && newDramaName !== oldFolder) {
+        const newFolder = sanitizeFolderName(newDramaName);
+        const newPath = path.join(TARGET_DIR, newFolder);
+        if (newFolder !== oldFolder) {
+          if (fs.existsSync(newPath)) {
+            const oldFiles = fs.readdirSync(oldPath);
+            for (const f of oldFiles) {
+              const srcF = path.join(oldPath, f);
+              const destF = path.join(newPath, f);
+              if (!fs.existsSync(destF)) {
+                fs.copyFileSync(srcF, destF);
+              }
+            }
+            try { fs.rmSync(oldPath, { recursive: true, force: true }); } catch (e) {}
+          } else {
+            fs.renameSync(oldPath, newPath);
+          }
+          currentFolder = newFolder;
+          currentPath = newPath;
+        }
+      }
+
+      // 2. Cập nhật ảnh Poster nếu có
+      let posterUpdated = false;
+      const targetPosterPath = path.join(currentPath, 'poster.png');
+
+      if (payload.posterBase64 && typeof payload.posterBase64 === 'string') {
+        const base64Data = payload.posterBase64.replace(/^data:image\/\w+;base64,/, '');
+        fs.writeFileSync(targetPosterPath, Buffer.from(base64Data, 'base64'));
+        posterUpdated = true;
+      } else if (payload.posterUrl && payload.posterUrl.trim().startsWith('http')) {
+        const ok = await downloadFile(payload.posterUrl.trim(), targetPosterPath);
+        if (ok) posterUpdated = true;
+      } else if (payload.autoPoster) {
+        const device = checkAdbDevice();
+        if (device) {
+          const resPoster = await downloadDramaPoster(device, currentFolder);
+          if (resPoster && resPoster.success) posterUpdated = true;
+        }
+      }
+
+      globalStatusCache.data = null;
+      globalStatusCache.time = 0;
+
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Đã cập nhật thông tin bộ phim thành công!',
+        folderName: currentFolder,
+        posterUpdated
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  // 8.3 API Xóa Bộ Phim (Xóa thư mục phim đã lưu trên máy)
+  if (url.pathname === '/api/delete-drama' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const dramaName = (payload.dramaName || payload.folder || '').trim();
+      if (!dramaName) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Thiếu tên bộ phim cần xóa!' }));
+        return;
+      }
+
+      const folderName = resolveExistingDramaFolder(dramaName);
+      const targetPath = path.join(TARGET_DIR, folderName);
+      const resolvedTarget = path.resolve(targetPath);
+      const resolvedBase = path.resolve(TARGET_DIR);
+
+      if (!resolvedTarget.startsWith(resolvedBase) || resolvedTarget === resolvedBase) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: false, message: 'Đường dẫn thư mục không hợp lệ!' }));
+        return;
+      }
+
+      if (fs.existsSync(targetPath)) {
+        fs.rmSync(targetPath, { recursive: true, force: true });
+      }
+
+      globalStatusCache.data = null;
+      globalStatusCache.time = 0;
+
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, message: `Đã xóa bộ phim "${folderName}" thành công!` }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, message: e.message }));

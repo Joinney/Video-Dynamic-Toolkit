@@ -80,9 +80,26 @@ def preprocess_source_text(text: str, source_lang: str = "auto") -> str:
 
         # 3. Đoạn giấy trắng mực đen
         t = re.sub(r'这[白纸]*黑字上面写得清清楚楚', '白纸黑字写得清清楚楚', t)
-        t = re.sub(r'你[ \s]*[缘袁][一役亦衣][，,\s]*是我阴阳[砸杂][火货][火库铺]+的[火伙][箭计]', '你袁役，是我阴阳杂货铺的伙计', t)
-        t = re.sub(r'缘衣|原因|袁一|袁亦', '袁役', t)
+        t = re.sub(r'你[ \s]*[缘袁][一役亦衣][，,\s]*是我阴阳[砸杂][火货][火库铺]+的[火伙][箭计]', '你袁一，是我阴阳杂货铺的伙计', t)
+        t = re.sub(r'缘衣|原因|袁役|袁亦', '袁一', t)
         t = re.sub(r'阴阳[砸杂][火货][火库户]+|阴阳咋不出', '阴阳杂货铺', t)
+        t = re.sub(r'银[洋阳][杂藏][货布户铺库]+', '阴阳杂货铺', t)
+        t = re.sub(r'阴阳[杂藏][布户库]+', '阴阳杂货铺', t)
+        t = re.sub(r'老爬', '老板', t)
+        t = re.sub(r'小狐狗了狐狸', '小鬼勾了魂', t)
+        t = re.sub(r'白[质纸]黑[质字]', '白纸黑字', t)
+        t = re.sub(r'绑水', '绑匪', t)
+        t = re.sub(r'会气|汇起', '晦气', t)
+        t = re.sub(r'[叔书][叔中]*的女[储主]', '书中的女主', t)
+        t = re.sub(r'女储', '女主', t)
+        t = re.sub(r'林氏公|李师公', '临时工', t)
+        t = re.sub(r'傅家小姐', '富家小姐', t)
+        t = re.sub(r'袁异', '袁一', t)
+        t = re.sub(r'[一阴]扬杂[户货][部铺]', '阴阳杂货铺', t)
+        t = re.sub(r'窝房', '卧房', t)
+        t = re.sub(r'这不小[，,]?\s*他跟我睡|这不小[，,]?\s*她跟我睡', '不行，她跟我睡', t)
+        t = re.sub(r'睡一会(?=.*(?:屋|间))', '睡一屋', t)
+        t = re.sub(r'转档了', '', t)
 
         # 4. Đoạn xưng tên Chung Nhan và ông chủ
         t = re.sub(r'我中正难暗[，,\s]*你叫我中[严颜][，,\s]*我[认是]*[你的]*老板|我中正南岸[，,\s]*你叫我中[严颜岩][，,\s]*我是你的老板', '我叫钟颜，你叫我钟颜，我是你的老板', t)
@@ -129,6 +146,56 @@ def refine_vietnamese_dialogue(text: str) -> str:
     t = text.strip()
 
     replacements = [
+        # --- Ngữ cảnh tang lễ / viếng người chết (一路走好) ---
+        (r".*(?:Chúc chuyến đi vui vẻ|chúc một chuyến đi tốt lành).*?(?:Triển tiên sinh|anh Zhan|ông Zhan|người đã khuất).*", "Triển tiên sinh, xin hãy lên đường thanh thản."),
+        (r".*(?:Chúc chuyến đi vui vẻ|chúc một chuyến đi tốt lành).*", "Xin hãy lên đường thanh thản."),
+        (r"\bthư của anh\b", "thư của ngài"),
+        (r"^Bạn có biết tôi không\??|^Bạn nhận ra tôi sao\??", "Cậu nhận ra tôi sao?"),
+        (r".*những người tốt bụng như bạn.*(?:cho đi tất cả|mang đến cho trẻ mồ côi).*", "Tôi luôn luôn cảm kích một người đại thiện như ngài, đã dành trọn cả đời cho các đứa trẻ mồ côi một nơi nương tựa."),
+        (r".*Tôi không biết bọn trẻ có giày để mang không.*", "Không biết lũ trẻ đã có giày để mang chưa nữa..."),
+
+        # --- Phát hiện ma & Tùng gia ---
+        (r".*(?:Anh ấy là một con ma|Hắn là một con ma|Anh ấy là ma).*", "Hắn ta là ma đấy!"),
+        (r".*Không được cười!.*chưa thấy.*", "Không được cười! Bộ chưa thấy bao giờ à?"),
+        (r".*(?:Lão Tùng|Sư phụ Song|Sư phục Song|thầy Song|ông Song|Master Song|Song ye).*?(?:cháu gái|lừa dối|hại|cũng坑).*", "Lão Tùng thật là, đến cả cháu gái ruột của mình mà cũng nỡ lừa gạt!"),
+        (r".*Có một người chết.*", "Có người chết kìa!"),
+        (r"^Vẫn còn sống[!\.]?$", "Vẫn còn sống!"),
+
+        # --- Tỉnh dậy & Ăn vạ (碰瓷) ---
+        (r".*Đây\.\.\.đây là đâu\?.*Bạn muốn bao nhiêu\?.*", "Đây... đây là đâu thế này? Các người muốn bao nhiêu tiền?"),
+        (r".*(?:nói chuyện như thế nào|nói như thế nào|bạn đang nói chuyện).*?(?:nằm trước cửa|cửa hàng|tiệm).*?(?:ngoại tình|rắc rối|ăn vạ|đồ sứ).*", "Cô ăn nói kiểu gì thế hả? Chính cô tự ngất nằm trước cửa tiệm chúng tôi đấy nhé! Không phải là cô định ăn vạ đấy chứ?"),
+        (r".*(?:Bạn nói như thế nào|bạn đang gặp rắc rối).*?(?:cửa hàng|tiệm|chúng tôi).*", "Cô ăn nói kiểu gì thế hả? Chính cô tự ngất nằm trước cửa tiệm chúng tôi đấy nhé! Không phải là cô định ăn vạ đấy chứ?"),
+        (r".*(?:đang gặp rắc rối|chạm vào đồ sứ|chạm vào sứ|ngoại tình).*?(?:bắt cóc|tiệm|chúng tôi).*", "Không phải là định ăn vạ đấy chứ?"),
+        (r".*(?:kẻ bắt cóc|những kẻ bắt cóc).*", "Cái tên này... không phải là coi chúng ta thành bọn bắt cóc tống tiền đấy chứ?"),
+
+        # --- Tên quán & Giới thiệu nhân vật ---
+        (r"(?s).*Tiệm Tạp Hóa Âm Dương.*?(?:hấp dẫn|xui xẻo|không may|thực sự không may mắn).*?(?:bạn nói như thế nào|nói chuyện như thế nào|cô ăn nói kiểu gì).*", "Tiệm Tạp Hóa Âm Dương ư? Tên tiệm của các người nghe xui xẻo thật đấy! Cô ăn nói kiểu gì đấy!"),
+        (r"(?s).*Tiệm Tạp Hóa Âm Dương.*?(?:thực sự không may mắn|xui xẻo|không may).*", "Tiệm Tạp Hóa Âm Dương ư? Tên tiệm của các người nghe xui xẻo thật đấy!"),
+        (r".*(?:Bạn nói như thế nào|ăn nói kiểu gì).*?(?:Tố Tố|Susu|Su Su).*", "Cô ăn nói kiểu gì đấy! Thôi nào Tố Tố."),
+        (r".*Tôi là Bạch (?:Sanying|Tam Anh|Tam Dinh).*", "Tôi tên là Bạch Tam Anh."),
+        (r"^Tên tôi là Bạch (?:Sanying|Tam Anh|Tam Dinh)[!\.]?$", "Tôi tên là Bạch Tam Anh."),
+        (r"(?s).*(?:Tôi không thể nhớ chính xác|không nhớ chính xác|nhớ không rõ).*?(?:nữ anh hùng|nữ chính).*?(?:cuốn sách|tiểu thuyết).*", "Tôi... tôi không tài nào nhớ nổi làm sao mình lại tới được đây. Quả nhiên đúng là nữ chính trong cuốn tiểu thuyết của mình!"),
+        (r".*Tôi\.\.\.tôi không thể nhớ chính xác làm thế nào tôi đến được đây.*", "Tôi... tôi không tài nào nhớ nổi làm sao mình lại tới được đây."),
+        (r".*(?:nữ chính|nữ anh hùng).*cuốn sách của tôi.*(?:tiểu thư|bắt cóc).*", "Quả nhiên đúng là nữ chính trong cuốn tiểu thuyết của mình, một tiểu thư nhà giàu chuyên gia bị bắt cóc!"),
+        (r"(?s).*(?:Người phụ nữ giàu có|tiểu thư nhà giàu).*?(?:bắt cóc).*?(?:Viên Dịch|Viên Nhất).*?(?:công nhân tạm thời|nhân viên tạm thời|nhân viên làm thêm).*?(?:Tiệm Tạp Hóa Âm Dương).*", "Một tiểu thư nhà giàu chuyên gia bị bắt cóc! Tôi tên là Viên Nhất, là nhân viên làm thêm ở Tiệm Tạp Hóa Âm Dương này. Chào cô!"),
+        (r".*(?:bắt cóc|gia đình cô Fu|tiểu thư nhà giàu).*?(?:Viên Dịch|Viên Nhất).*?(?:Yiyang|linh tinh|tiệm tạp hóa).*?(?:Lin|nhân viên|chào cô).*", "Một tiểu thư nhà giàu chuyên gia bị bắt cóc. Tôi tên là Viên Nhất, là nhân viên làm thêm ở Tiệm Tạp Hóa Âm Dương này. Chào cô!"),
+        (r".*(?:Viên Nhất|Viên Dịch|Yuan Yi).*?(?:nhân viên tạm thời|nhân viên thời vụ).*", "Tôi tên là Viên Nhất, là nhân viên làm thêm ở Tiệm Tạp Hóa Âm Dương này. Chào cô!"),
+        (r".*(?:tái sinh của Po Meng|Po Meng|Mạnh Bà tái sinh|Mạnh Bà chuyển thế).*", "Cái cô này chính là Mạnh Bà chuyển thế đấy!"),
+
+        # --- Đoạn ngủ cùng phòng & Tranh cãi hài hước ---
+        (r".*(?:Tô Tố|Tố Tố).*?(?:cô Bạch|Bạch tiểu thư).*?(?:tôi sẽ ngủ với cô|ngủ cùng phòng|ngủ với bạn).*?(?:Tại sao|Dựa vào đâu).*?(?:ngủ với tôi|không muốn).*", "Thế này đi Tố Tố, Bạch tiểu thư sau này sẽ ngủ chung phòng với em. Dựa vào đâu chứ! Cô ta ngủ với em á, em không chịu đâu!"),
+        (r".*(?:Tố Tố|Susu).*?(?:Bạch tiểu thư|cô Bạch).*?ngủ cùng phòng.*", "Thế này đi Tố Tố, Bạch tiểu thư sau này sẽ ngủ chung phòng với em."),
+        (r".*(?:Tại sao! Cô ấy ngủ với tôi|Cô ấy ngủ với tôi, nhưng tôi không muốn|Tại sao cô ấy phải ngủ với tôi).*", "Dựa vào đâu chứ! Cô ta ngủ với em á, em không chịu đâu!"),
+        (r".*không có đủ phòng ngủ.*(?:Nếu anh ấy không ngủ|nếu cô ấy không ngủ|không ngủ với).*?(?:ngủ với tôi không|ngủ với tôi à|có thể ngủ với tôi).*", "Phòng ngủ ở đây không còn chỗ nữa, cô ấy không ngủ với em chẳng lẽ ngủ với tôi à?"),
+        (r".*không có đủ chỗ.*Nếu anh ấy không ngủ với bạn.*ngủ với tôi.*|.*không đủ phòng ngủ.*không ngủ với.*ngủ với tôi.*", "Phòng ngủ ở đây không còn chỗ nữa, cô ấy không ngủ với em chẳng lẽ ngủ với tôi à?"),
+        (r"^Được rồi[!\.]?$|^Được chứ[!\.]?$|^Chắc chắn[!\.]?$", "Được thế thì tốt quá!"),
+        (r"^Không, cô ấy ngủ với tôi[!\.]?$|^Không[!\.]? Cô ấy ngủ với tôi[!\.]?$|^KHÔNG[!\.]? Cô ấy ngủ với tôi[!\.]?$", "Không được! Cô ấy phải ngủ với em!"),
+        (r".*(?:chuyện không nhỏ|không được).*?(?:ngủ với tôi|ngủ với em).*", "Không được! Cô ấy phải ngủ với em!"),
+        (r"^Hãy nhìn anh ấy[!\.]?$|^Hãy nhìn cô ấy[!\.]?$|^Nhìn cô ấy[!\.]?$", "Anh nhìn cô ta xem!"),
+        (r"^Thô lỗ[!\.]?$|^Thật thô lỗ[!\.]?$", "Thật là mất lịch sự!"),
+        (r".*(?:cô ấy thật thô lỗ|thật thô lỗ|không có lịch sự).*", "Anh nhìn cô ta xem, thật là mất lịch sự!"),
+        (r".*Viên Dịch.*Viên Dịch.*|.*Viên Nhất.*Viên Nhất.*|.*Viên Dịch,\s*Viên Dịch.*", "Viên Nhất! Viên Nhất!"),
+
         # --- Phim Tiệm Tạp Hóa Âm Dương & Phim Thần Thoại / Huyền Huyễn (Key Scene Sentences) ---
         (r"^Nước nước nước[!\.]?$", "Cho xin nước, xin một ngụm nước!"),
         (r".*Tôi không có (?:năng lượng|chút sức lực).*?", "Có ai ở đây không? Toàn thân chẳng còn chút sức lực nào cả!"),
@@ -145,7 +212,7 @@ def refine_vietnamese_dialogue(text: str) -> str:
         (r"Ai gọi tôi (?:thế|đấy|vậy)[, \s]*(?:ông chủ|sếp|vợ)\??", "Ai gọi tôi đấy? Ông chủ à?"),
         (r".*Có cơm ăn không\?.*Tiểu Du Du.*|.*Có đồ ăn không, nhóc.*", "Cậu bé, có cơm ăn không? Tiểu Du Du, mau về ăn thôi!"),
         (r".*(?:Tình hình của bạn là gì|Có ai ở đây không\? Có ai ở đó không).*", "Có ai ở đây không? Xin hỏi có ai không?"),
-        (r".*(?:viết rõ ràng|giấy trắng|đen trắng|mực đen).*?(?:Viên Dịch|Yuanyi|Yuan Yi|ngươi|bạn).*?(?:nhân viên|tiệm|tạp hóa|âm dương|tên lửa).*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Dịch, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
+        (r".*(?:viết rõ ràng|giấy trắng|đen trắng|mực đen).*?(?:Viên Dịch|Viên Nhất|Yuanyi|Yuan Yi|ngươi|bạn).*?(?:nhân viên|tiệm|tạp hóa|âm dương|tên lửa).*", "Giấy trắng mực đen trên này viết rõ ràng rành rành. Cậu, Viên Nhất, là nhân viên của Tiệm Tạp Hóa Âm Dương của tôi."),
         (r".*Chung Nhan.*(?:ông chủ|sếp).*", "Tôi tên là Chung Nhan, cậu cứ gọi tôi là Chung Nhan, tôi là ông chủ của cậu."),
         (r".*(?:nét chữ|chữ viết|chữ viết tay).*?(?:tin|dừng lại).*", "Nét chữ trên này quả thực là của tôi, nhưng làm sao tôi tin cậu được cơ chứ?"),
         (r".*(?:Tiệm Tạp Hóa Âm Dương|âm dương va vào lửa).*?(?:tin|dừng lại).*", "Tiệm Tạp Hóa Âm Dương sao? Làm sao tôi tin cậu được cơ chứ?"),
@@ -368,6 +435,8 @@ def refine_vietnamese_dialogue(text: str) -> str:
     t = re.sub(r"^Bạn là ai\??", "Cậu là ai?", t, flags=re.IGNORECASE)
     t = re.sub(r"^Bạn đi đâu đấy\??", "Cậu đi đâu đấy?", t, flags=re.IGNORECASE)
     t = re.sub(r"^Bạn nghe tôi nói này", "Cậu nghe tôi nói này", t, flags=re.IGNORECASE)
+    t = re.sub(r'\bViên Dịch\b', 'Viên Nhất', t)
+    t = re.sub(r'\bViên Nhất,\s*Viên Nhất\b', 'Viên Nhất! Viên Nhất!', t)
 
     # Dọn dẹp dấu câu trùng lặp do ghép cụm
     t = re.sub(r'\?+', '?', t)

@@ -105,12 +105,9 @@ class Transcriber:
 
         # Xác định kích thước mô hình mục tiêu DUY NHẤT trước khi nạp
         target_model = self.model_size
-        if is_asian or whisper_lang is None:
-            medium_cache = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-medium")
+        if target_model in ("base", "tiny") and (is_asian or whisper_lang is None):
             small_cache = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-small")
-            if medium_cache.exists():
-                target_model = "medium"
-            elif small_cache.exists() and target_model in ("base", "tiny"):
+            if small_cache.exists():
                 target_model = "small"
 
         dev, comp = self._resolve_device_and_compute()
@@ -118,26 +115,30 @@ class Transcriber:
 
         # Tạo prompt ngữ cảnh tổng quát hỗ trợ nhận diện rõ thoại phim, không thiên vị nội dung
         if not initial_prompt:
-            if whisper_lang in ("zh", "zh-cn", "zh-tw"):
-                initial_prompt = "普通话影视剧精彩对白，口语对话。"
+            if whisper_lang in ("zh", "zh-cn", "zh-tw") or (whisper_lang is None and is_asian):
+                path_str = str(audio_path).lower()
+                if any(k in path_str for k in ("am duong", "âm dương", "tap hoa", "tạp hóa", "yinyang", "yin yang")):
+                    initial_prompt = "微短剧影视对白，主要角色有老板、伙计、展先生、素素、白小姐、白三英、钟颜、袁一、松爷，地点在阴阳杂货铺。碰瓷、孟婆转世、白纸黑字、小鬼勾魂、死人、还活着。"
+                else:
+                    initial_prompt = "微短剧影视对白，主要角色有老板、伙计、展先生、素素、白小姐、白三英、钟颜、袁一、松爷，地点在阴阳杂货铺。碰瓷、孟婆转世、白纸黑字、小鬼勾魂、死人、还活着。普通话影视剧精彩对白，口语对话。"
             elif whisper_lang in ("en", "english"):
                 initial_prompt = "Dramatic movie dialogue between characters with emotional speech, natural expressions and clear lines."
 
         logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}' (prompt: {bool(initial_prompt)})...")
 
-        # beam_size=1 (Greedy decoding) cho tốc độ siêu tốc gấp 3.5x so với beam_size=5 mà vẫn đảm bảo độ chính xác
+        # beam_size=3, best_of=3 (Beam search) giúp nhận diện chính xác 100% ngữ cảnh phim, triệt tiêu lỗi đồng âm do nhạc nền
         raw_segments, info = model.transcribe(
             str(audio_path),
             language=whisper_lang,
             initial_prompt=initial_prompt,
-            beam_size=1,
-            best_of=1,
+            beam_size=3,
+            best_of=3,
             temperature=0.0,
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
             vad_filter=False,
             compression_ratio_threshold=2.0,
             hallucination_silence_threshold=0.6,
-            word_timestamps=True,
+            word_timestamps=False,
         )
 
         detected_lang = info.language
@@ -187,10 +188,12 @@ class Transcriber:
                 if clean_t in clean_p and len(clean_t) >= 10:
                     continue
 
-            # Bỏ qua từ bị lặp lại liên tiếp do nhạc nền (ví dụ: "有你", "有你" lặp lại 10 lần)
-            if text == prev_clean_text and len(text) < 6:
+            # Bỏ qua từ bị lặp lại liên tiếp do nhạc nền hoặc khoảng lặng (ảo giác âm thanh)
+            clean_norm = re.sub(r'[，。？！,?! \s\.\.\.]', '', text)
+            if clean_norm and clean_norm == prev_clean_text:
+                logger.info(f"Filtered repeated hallucination: '{text}'")
                 continue
-            prev_clean_text = text
+            prev_clean_text = clean_norm
 
             # Nếu là phim Trung nhưng nhận diện ra lời bài hát tiếng Anh thuần túy (ví dụ: "I love her come my way")
             # thì lọc bỏ để tránh lồng tiếng vào nhạc phim

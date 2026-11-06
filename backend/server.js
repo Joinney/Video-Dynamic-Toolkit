@@ -20,6 +20,8 @@ const { startAutoSwipe, stopAutoSwipe, getAutoSwipeStatus } = require('./auto_sw
 const { startDubbingJob, getDubbingJob, generateTTSAudio, transcribeAndTranslateVideo } = require('./dubber');
 const {
   sanitizeFolderName,
+  resolveExistingDramaFolder,
+  downloadDramaPoster,
   getDramaInfoFromDevice,
   getLocalDramas,
   exportVideos,
@@ -473,6 +475,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 8.1 API Tải Poster Phim (MinuteDrama & Soda Reels)
+  if (url.pathname === '/api/download-poster' && req.method === 'POST') {
+    try {
+      const payload = await parseJsonBody(req);
+      const dramaName = (payload.dramaName || payload.dramaTitle || payload.folder || '').trim();
+      const customUrl = (payload.url || payload.posterUrl || payload.coverUrl || payload.image || '').trim();
+      const device = checkAdbDevice();
+      const result = await downloadDramaPoster(device, dramaName, customUrl);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
   if (url.pathname === '/api/auto-swipe/status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(getAutoSwipeStatus()));
@@ -795,18 +814,41 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 11. Serve Poster Image
+  // 11. Serve Poster Image (Tự động tải & phục vụ ảnh poster thực tế của cả 2 app)
   if (url.pathname.startsWith('/poster/')) {
-    const dramaName = decodeURIComponent(url.pathname.replace('/poster/', ''));
-    const dirPath = path.join(TARGET_DIR, sanitizeFolderName(dramaName));
+    const rawDramaName = decodeURIComponent(url.pathname.replace('/poster/', '')).split('?')[0];
+    const folderName = resolveExistingDramaFolder(rawDramaName);
+    const dirPath = path.join(TARGET_DIR, folderName);
     let posterPath = path.join(dirPath, 'poster.png');
+
+    if (!fs.existsSync(posterPath)) {
+      for (const ext of ['poster.jpg', 'poster.jpeg', 'poster.webp', 'cover.png', 'cover.jpg']) {
+        const candidate = path.join(dirPath, ext);
+        if (fs.existsSync(candidate)) {
+          posterPath = candidate;
+          break;
+        }
+      }
+    }
+
+    // Nếu trên máy chưa có file poster, tự động gọi downloadDramaPoster từ thiết bị ADB để lưu và phục vụ ngay
+    if (!fs.existsSync(posterPath)) {
+      try {
+        const device = checkAdbDevice();
+        if (device) {
+          await downloadDramaPoster(device, folderName);
+        }
+      } catch (e) {}
+    }
 
     if (!fs.existsSync(posterPath)) {
       posterPath = path.join(__dirname, '..', 'poster.png');
     }
 
     if (fs.existsSync(posterPath)) {
-      res.writeHead(200, { 'Content-Type': 'image/png' });
+      const ext = path.extname(posterPath).toLowerCase();
+      const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'public, max-age=86400' });
       fs.createReadStream(posterPath).pipe(res);
     } else {
       res.writeHead(404);

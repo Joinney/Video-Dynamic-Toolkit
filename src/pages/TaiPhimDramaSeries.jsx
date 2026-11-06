@@ -76,8 +76,9 @@ export default function TaiPhimDramaSeries({
         if (!dramaTitle || dramaTitle === 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh') {
           setDramaTitle(data.currentDrama.title);
         }
-        if (data.currentDrama.cover) {
-          setCurrentDramaCover(data.currentDrama.cover);
+        const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
+        if (cover) {
+          setCurrentDramaCover(cover);
         }
         if (data.currentDrama.currentEpisode) {
           setStartEp(data.currentDrama.currentEpisode);
@@ -131,7 +132,8 @@ export default function TaiPhimDramaSeries({
       const data = await res.json();
       if (data.currentDrama && data.currentDrama.title) {
         setDramaTitle(data.currentDrama.title);
-        if (data.currentDrama.cover) setCurrentDramaCover(data.currentDrama.cover);
+        const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
+        if (cover) setCurrentDramaCover(cover);
         if (data.currentDrama.currentEpisode) setStartEp(data.currentDrama.currentEpisode);
         showToast(`Đã nhận diện: ${data.currentDrama.title} (Tập ${data.currentDrama.currentEpisode || 1})`);
       } else {
@@ -139,6 +141,29 @@ export default function TaiPhimDramaSeries({
       }
     } catch (e) {
       showToast('Lỗi khi lấy thông tin phim');
+    }
+  };
+
+  const handleDownloadPoster = async () => {
+    showToast('Đang tải và đồng bộ ảnh poster phim...');
+    try {
+      const res = await fetch('/api/download-poster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dramaName: dramaTitle,
+          url: currentDramaCover
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✅ Đã tải và lưu poster vào bộ phim thành công!');
+        fetchStatusData();
+      } else {
+        showToast(`⚠️ Không tìm thấy poster: ${data.message || ''}`);
+      }
+    } catch (e) {
+      showToast('Lỗi kết nối khi tải poster');
     }
   };
 
@@ -358,12 +383,21 @@ export default function TaiPhimDramaSeries({
 
             {/* Poster & Thông tin phim */}
             <div className="flex gap-3 bg-slate-50 border border-gray-200 rounded-xl p-3">
-              <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative">
+              <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative shadow-xs">
                 <img
+                  key={currentDramaCover || dramaTitle}
                   src={currentDramaCover ? `/api/proxy-img?url=${encodeURIComponent(currentDramaCover)}` : `/poster/${encodeURIComponent(dramaTitle)}`}
                   alt={dramaTitle}
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover block"
+                  onLoad={(e) => { e.target.style.display = 'block'; }}
+                  onError={(e) => {
+                    if (dramaTitle && !e.target.dataset.tried) {
+                      e.target.dataset.tried = 'true';
+                      e.target.src = `/poster/${encodeURIComponent(dramaTitle)}?t=${Date.now()}`;
+                    } else {
+                      e.target.style.display = 'none';
+                    }
+                  }}
                 />
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none -z-10">
                   <span className="text-xl">🎬</span>
@@ -421,8 +455,8 @@ export default function TaiPhimDramaSeries({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => showToast('Đang tải poster bộ phim...')}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-gray-800 border border-gray-300 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                    onClick={handleDownloadPoster}
+                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
                   >
                     <ImageIcon size={13} /> Tải Poster
                   </button>

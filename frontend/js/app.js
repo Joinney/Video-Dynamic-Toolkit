@@ -23919,15 +23919,18 @@
         className: "text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl transition cursor-pointer"
       },
       "\uFF0B T\u1EA3i Th\xEAm Phim M\u1EDBi"
-    )), localDramas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300" }, "Ch\u01B0a ph\xE1t hi\u1EC7n b\u1ED9 phim n\xE0o trong th\u01B0 m\u1EE5c ", /* @__PURE__ */ import_react4.default.createElement("code", null, "Soda_Reels_Videos/"), '. H\xE3y b\u1EA5m "T\u1EA3i Th\xEAm Phim M\u1EDBi" \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u!') : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" }, localDramas.map((drama, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: idx, className: "bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col justify-between gap-3 hover:border-blue-400 transition" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-14 h-20 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 shadow-2xs" }, /* @__PURE__ */ import_react4.default.createElement(
+    )), localDramas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300" }, "Ch\u01B0a ph\xE1t hi\u1EC7n b\u1ED9 phim n\xE0o trong th\u01B0 m\u1EE5c ", /* @__PURE__ */ import_react4.default.createElement("code", null, "Soda_Reels_Videos/"), '. H\xE3y b\u1EA5m "T\u1EA3i Th\xEAm Phim M\u1EDBi" \u0111\u1EC3 b\u1EAFt \u0111\u1EA7u!') : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" }, localDramas.map((drama, idx) => /* @__PURE__ */ import_react4.default.createElement("div", { key: idx, className: "bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col justify-between gap-3 hover:border-blue-400 transition" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-14 h-20 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 shadow-2xs relative flex items-center justify-center text-center" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-xl absolute pointer-events-none" }, "\u{1F3AC}"), /* @__PURE__ */ import_react4.default.createElement(
       "img",
       {
         src: `/poster/${encodeURIComponent(drama.name)}`,
         alt: drama.name,
+        onLoad: (e) => {
+          e.target.style.display = "block";
+        },
         onError: (e) => {
           e.target.style.display = "none";
         },
-        className: "w-full h-full object-cover"
+        className: "w-full h-full object-cover relative z-10"
       }
     )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0 flex-1" }, /* @__PURE__ */ import_react4.default.createElement("h4", { className: "font-bold text-sm text-slate-900 truncate", title: drama.name }, drama.name), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xs font-bold text-emerald-600 mt-1" }, drama.videos ? `${drama.videos.length} T\u1EADp Video` : `${drama.count || 0} T\u1EADp`, " \u2022 ", drama.totalSizeMb, " MB"), /* @__PURE__ */ import_react4.default.createElement("p", { className: "text-[11px] text-slate-400 font-mono mt-0.5 truncate" }, "Soda_Reels_Videos/", drama.name))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-200/80" }, /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -25587,8 +25590,9 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           if (!dramaTitle || dramaTitle === "Ti\u1EC7m T\u1EA1p H\xF3a \xC2m D\u01B0\u01A1ng - \xC1m \u1EA2nh") {
             setDramaTitle(data.currentDrama.title);
           }
-          if (data.currentDrama.cover) {
-            setCurrentDramaCover(data.currentDrama.cover);
+          const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
+          if (cover) {
+            setCurrentDramaCover(cover);
           }
           if (data.currentDrama.currentEpisode) {
             setStartEp(data.currentDrama.currentEpisode);
@@ -25640,7 +25644,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         const data = await res.json();
         if (data.currentDrama && data.currentDrama.title) {
           setDramaTitle(data.currentDrama.title);
-          if (data.currentDrama.cover) setCurrentDramaCover(data.currentDrama.cover);
+          const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
+          if (cover) setCurrentDramaCover(cover);
           if (data.currentDrama.currentEpisode) setStartEp(data.currentDrama.currentEpisode);
           showToast(`\u0110\xE3 nh\u1EADn di\u1EC7n: ${data.currentDrama.title} (T\u1EADp ${data.currentDrama.currentEpisode || 1})`);
         } else {
@@ -25648,6 +25653,28 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         }
       } catch (e) {
         showToast("L\u1ED7i khi l\u1EA5y th\xF4ng tin phim");
+      }
+    };
+    const handleDownloadPoster = async () => {
+      showToast("\u0110ang t\u1EA3i v\xE0 \u0111\u1ED3ng b\u1ED9 \u1EA3nh poster phim...");
+      try {
+        const res = await fetch("/api/download-poster", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dramaName: dramaTitle,
+            url: currentDramaCover
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast("\u2705 \u0110\xE3 t\u1EA3i v\xE0 l\u01B0u poster v\xE0o b\u1ED9 phim th\xE0nh c\xF4ng!");
+          fetchStatusData();
+        } else {
+          showToast(`\u26A0\uFE0F Kh\xF4ng t\xECm th\u1EA5y poster: ${data.message || ""}`);
+        }
+      } catch (e) {
+        showToast("L\u1ED7i k\u1EBFt n\u1ED1i khi t\u1EA3i poster");
       }
     };
     const toggleSelectAll = (selectState) => {
@@ -25821,15 +25848,24 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           className: "bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-2.5 py-1 text-xs rounded-lg transition cursor-pointer"
         },
         "\u{1F9F9} L\xE0m S\u1EA1ch / Nh\u1EADp L\u1EA1i"
-      )), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[11px] text-gray-500 leading-snug" }, 'T\u1EF1 \u0111\u1ED9ng ph\xE1t hi\u1EC7n phim \u0111ang m\u1EDF t\u1EEB app \u0111\u01B0\u1EE3c ch\u1ECDn. B\u1EA5m "L\xE0m S\u1EA1ch" n\u1EBFu mu\u1ED1n x\xF3a tr\u1EAFng \u0111\u1EC3 nh\u1EADn di\u1EC7n l\u1EA1i.'), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex gap-3 bg-slate-50 border border-gray-200 rounded-xl p-3" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative" }, /* @__PURE__ */ import_react8.default.createElement(
+      )), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[11px] text-gray-500 leading-snug" }, 'T\u1EF1 \u0111\u1ED9ng ph\xE1t hi\u1EC7n phim \u0111ang m\u1EDF t\u1EEB app \u0111\u01B0\u1EE3c ch\u1ECDn. B\u1EA5m "L\xE0m S\u1EA1ch" n\u1EBFu mu\u1ED1n x\xF3a tr\u1EAFng \u0111\u1EC3 nh\u1EADn di\u1EC7n l\u1EA1i.'), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex gap-3 bg-slate-50 border border-gray-200 rounded-xl p-3" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative shadow-xs" }, /* @__PURE__ */ import_react8.default.createElement(
         "img",
         {
+          key: currentDramaCover || dramaTitle,
           src: currentDramaCover ? `/api/proxy-img?url=${encodeURIComponent(currentDramaCover)}` : `/poster/${encodeURIComponent(dramaTitle)}`,
           alt: dramaTitle,
-          onError: (e) => {
-            e.target.style.display = "none";
+          className: "w-full h-full object-cover block",
+          onLoad: (e) => {
+            e.target.style.display = "block";
           },
-          className: "w-full h-full object-cover"
+          onError: (e) => {
+            if (dramaTitle && !e.target.dataset.tried) {
+              e.target.dataset.tried = "true";
+              e.target.src = `/poster/${encodeURIComponent(dramaTitle)}?t=${Date.now()}`;
+            } else {
+              e.target.style.display = "none";
+            }
+          }
         }
       ), /* @__PURE__ */ import_react8.default.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none -z-10" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xl" }, "\u{1F3AC}"), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] mt-1 font-medium" }, dramaTitle || "Poster Phim"))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex-1 flex flex-col justify-between min-w-0" }, /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-1 gap-1" }, /* @__PURE__ */ import_react8.default.createElement("label", { className: "text-xs font-bold text-gray-700" }, "T\xEAn B\u1ED9 Phim (Th\u01B0 m\u1EE5c s\u1EBD l\u01B0u):"), /* @__PURE__ */ import_react8.default.createElement(
         "button",
@@ -25861,8 +25897,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         "button",
         {
           type: "button",
-          onClick: () => showToast("\u0110ang t\u1EA3i poster b\u1ED9 phim..."),
-          className: "flex-1 bg-slate-100 hover:bg-slate-200 text-gray-800 border border-gray-300 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+          onClick: handleDownloadPoster,
+          className: "flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg py-1.5 text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
         },
         /* @__PURE__ */ import_react8.default.createElement(Image, { size: 13 }),
         " T\u1EA3i Poster"

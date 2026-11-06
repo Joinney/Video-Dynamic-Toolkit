@@ -130,6 +130,8 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
             id: `minute_${title}`,
             title,
             image: cover,
+            cover: cover,
+            coverUrl: cover,
             desc: `Phim MinuteDrama • Đang xem tập ${ep}/${total}`,
             currentEpisode: ep,
             totalEpisodes: total
@@ -186,12 +188,17 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
           const decoded = match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
           const parsed = JSON.parse(decoded);
           if (parsed && parsed.list) {
-            allDramas = parsed.list.map(d => ({
-              id: d.dramaId,
-              title: d.title,
-              image: d.image,
-              desc: d.desc
-            }));
+            allDramas = parsed.list.map(d => {
+              const img = d.image || d.coverUrl || '';
+              return {
+                id: d.dramaId,
+                title: d.title,
+                image: img,
+                cover: img,
+                coverUrl: img,
+                desc: d.desc
+              };
+            });
           }
         } catch (e) {}
       }
@@ -204,10 +211,13 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
           if (Array.isArray(parsedFeed)) {
             parsedFeed.forEach(item => {
               if (item && item.dramaId && !allDramas.some(d => String(d.id) === String(item.dramaId))) {
+                const img = item.coverUrl || item.image || '';
                 allDramas.push({
                   id: item.dramaId,
                   title: item.name || item.title || `Drama_${item.dramaId}`,
-                  image: item.coverUrl || item.image || '',
+                  image: img,
+                  cover: img,
+                  coverUrl: img,
                   desc: item.des || item.desc || ''
                 });
               }
@@ -408,13 +418,10 @@ function exportVideos(device, payload) {
     } catch (e) {}
   });
 
-  // Tải ảnh poster
+  // Tự động tải và đồng bộ ảnh poster phim
   (async () => {
-    if (payload.posterUrl) {
-      try { await downloadFile(payload.posterUrl, path.join(dramaDir, 'poster.png')); } catch (e) {}
-    }
     try {
-      execSync(`"${ADB_PATH}" -s ${device} pull "/sdcard/Android/data/com.sodareels.drama.short/files/test_990811793717840482drama_tv_image.png" "${path.join(dramaDir, 'poster.png')}"`);
+      await downloadDramaPoster(device, folderName, payload.posterUrl || payload.coverUrl || payload.image);
     } catch (e) {}
   })();
 
@@ -567,10 +574,70 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
   }
 }
 
+async function downloadDramaPoster(device, rawDramaName, customUrl = '') {
+  const folderName = resolveExistingDramaFolder(rawDramaName);
+  const dramaDir = path.join(TARGET_DIR, folderName);
+  if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
+  const posterPath = path.join(dramaDir, 'poster.png');
+
+  // 1. Nếu có URL truyền trực tiếp
+  let url = (customUrl || '').trim();
+
+  // 2. Nếu chưa có URL, tự truy xuất từ thiết bị
+  if (!url && device) {
+    try {
+      // Thử MinuteDrama trước
+      const minInfo = getDramaInfoFromDevice(device, 'minutedrama');
+      const minMatch = (minInfo.allDramas || []).concat(minInfo.currentDrama ? [minInfo.currentDrama] : [])
+        .find(d => d && (d.title === rawDramaName || d.title === folderName || (d.title && folderName.includes(d.title)) || (d.title && rawDramaName.includes(d.title))));
+      if (minMatch && (minMatch.image || minMatch.cover)) {
+        url = minMatch.image || minMatch.cover;
+      }
+
+      // Nếu chưa có, thử Soda Reels
+      if (!url) {
+        const sodaInfo = getDramaInfoFromDevice(device, 'sodareels');
+        const sodaMatch = (sodaInfo.allDramas || []).concat(sodaInfo.currentDrama ? [sodaInfo.currentDrama] : [])
+          .find(d => d && (d.title === rawDramaName || d.title === folderName || (d.title && folderName.includes(d.title)) || (d.title && rawDramaName.includes(d.title))));
+        if (sodaMatch && (sodaMatch.image || sodaMatch.cover)) {
+          url = sodaMatch.image || sodaMatch.cover;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Nếu tìm thấy URL ảnh mạng -> Tải về lưu thành poster.png
+  if (url && url.startsWith('http')) {
+    const ok = await downloadFile(url, posterPath);
+    if (ok && fs.existsSync(posterPath)) {
+      return { success: true, folder: folderName, path: posterPath, sizeBytes: fs.statSync(posterPath).size, url };
+    }
+  }
+
+  // 4. Nếu là Soda Reels và có ảnh trên SDCard
+  if (device) {
+    try {
+      const out = execSync(
+        `"${ADB_PATH}" -s ${device} shell "ls -1t /sdcard/Android/data/com.sodareels.drama.short/files/test_*drama_tv_image.png 2>/dev/null | head -n 1"`,
+        { encoding: 'utf8' }
+      ).trim();
+      if (out && out.includes('.png')) {
+        pullRemoteFile(device, out, posterPath);
+        if (fs.existsSync(posterPath)) {
+          return { success: true, folder: folderName, path: posterPath, sizeBytes: fs.statSync(posterPath).size, source: 'sdcard' };
+        }
+      }
+    } catch (e) {}
+  }
+
+  return { success: false, message: 'Không tìm thấy poster phù hợp trên thiết bị hoặc CDN' };
+}
+
 module.exports = {
   sanitizeFolderName,
   resolveExistingDramaFolder,
   downloadFile,
+  downloadDramaPoster,
   getDramaInfoFromDevice,
   getLocalDramas,
   exportVideos,

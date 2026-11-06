@@ -114,12 +114,14 @@ export default function Home({
               {localDramas.map((drama, idx) => (
                 <div key={idx} className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col justify-between gap-3 hover:border-blue-400 transition">
                   <div className="flex items-start gap-3">
-                    <div className="w-14 h-20 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 shadow-2xs">
+                    <div className="w-14 h-20 bg-slate-200 rounded-lg overflow-hidden shrink-0 border border-slate-300 shadow-2xs relative flex items-center justify-center text-center">
+                      <span className="text-xl absolute pointer-events-none">🎬</span>
                       <img
                         src={`/poster/${encodeURIComponent(drama.name)}`}
                         alt={drama.name}
+                        onLoad={(e) => { e.target.style.display = 'block'; }}
                         onError={(e) => { e.target.style.display = 'none'; }}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover relative z-10"
                       />
                     </div>
                     <div className="min-w-0 flex-1">

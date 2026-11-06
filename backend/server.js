@@ -462,7 +462,8 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, message: 'Thiếu đường dẫn URL video!' }));
         return;
       }
-      const result = await downloadDirectVideo(payload.url, payload.dramaTitle, payload.epNumber || 1);
+      const dramaName = (payload.dramaName || payload.dramaTitle || payload.folder || '').trim();
+      const result = await downloadDirectVideo(payload.url, dramaName, payload.epNumber || 1);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: result.success, ...result }));
     } catch (e) {

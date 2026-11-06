@@ -10,6 +10,63 @@ function sanitizeFolderName(name) {
   return name.replace(/[<>:"/\\|?*]/g, ' - ').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Tự động tìm chính xác thư mục bộ phim đã có trên máy để lưu tiếp,
+ * tuyệt đối không tự ý tạo ra bộ phim mới trùng lặp khi tên chỉ khác dấu câu (ví dụ ':' vs '-').
+ */
+function resolveExistingDramaFolder(rawName) {
+  if (!fs.existsSync(TARGET_DIR)) {
+    fs.mkdirSync(TARGET_DIR, { recursive: true });
+    return sanitizeFolderName(rawName || 'Phim_Drama');
+  }
+
+  const existingFolders = fs.readdirSync(TARGET_DIR, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name !== 'hinh_anh')
+    .map(e => e.name);
+
+  if (existingFolders.length === 0) {
+    return sanitizeFolderName(rawName || 'Phim_Drama');
+  }
+
+  const clean = (s) => (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const targetClean = clean(rawName);
+
+  // 1. Khớp chính xác 100% với tên thư mục đã có trên đĩa
+  for (const f of existingFolders) {
+    if (f === rawName) return f;
+  }
+
+  // 2. Khớp sau khi chuẩn hóa (bỏ dấu tiếng Việt, bỏ ký tự đặc biệt như ':' và '-', chữ hoa thường)
+  if (targetClean) {
+    for (const f of existingFolders) {
+      if (clean(f) === targetClean) return f;
+    }
+
+    // 3. Khớp chuỗi tương đương (ví dụ "tiem tap hoa am duong: am anh" vs "tiem tap hoa am duong - am anh")
+    for (const f of existingFolders) {
+      const fClean = clean(f);
+      if (fClean && (fClean.includes(targetClean) || targetClean.includes(fClean))) {
+        return f;
+      }
+    }
+  }
+
+  // 4. Nếu tên truyền vào rỗng hoặc chung chung mà máy đã có bộ phim, giữ nguyên bộ phim đó
+  if (!targetClean || targetClean === 'phim drama' || targetClean === 'bo phim moi') {
+    return existingFolders[0];
+  }
+
+  return sanitizeFolderName(rawName);
+}
+
 function downloadFile(url, destPath) {
   return new Promise((resolve) => {
     if (!url) return resolve(false);
@@ -253,8 +310,8 @@ function getLocalDramas() {
 }
 
 function exportVideos(device, payload) {
-  const rawDramaName = payload.dramaTitle || 'Bo_Phim_Moi';
-  const folderName = sanitizeFolderName(rawDramaName);
+  const rawDramaName = payload.dramaTitle || payload.dramaName || payload.folder || 'Bo_Phim_Moi';
+  const folderName = resolveExistingDramaFolder(rawDramaName);
   const dramaDir = path.join(TARGET_DIR, folderName);
   if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
 
@@ -371,7 +428,7 @@ function exportVideos(device, payload) {
 }
 
 function exportSingleCacheItem(device, remoteItem, rawDramaName, preferredEp) {
-  const folderName = sanitizeFolderName(rawDramaName || 'Bo_Phim_Moi');
+  const folderName = resolveExistingDramaFolder(rawDramaName);
   const dramaDir = path.join(TARGET_DIR, folderName);
   if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
 
@@ -423,12 +480,20 @@ function deleteRemoteCache(device, paths) {
 }
 
 async function downloadDirectVideo(url, rawDramaName, epNum) {
-  const folderName = sanitizeFolderName(rawDramaName || 'Bo_Phim_Moi');
+  const folderName = resolveExistingDramaFolder(rawDramaName);
   const dramaDir = path.join(TARGET_DIR, folderName);
   if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
 
   const fileName = `Tap_${String(epNum).padStart(2, '0')}.mp4`;
   const destPath = path.join(dramaDir, fileName);
+
+  // Nếu file tập này đã tải rồi và dung lượng > 500KB thì bỏ qua không tải lại để tiết kiệm thời gian
+  if (fs.existsSync(destPath)) {
+    const currentSize = fs.statSync(destPath).size;
+    if (currentSize > 500 * 1024) {
+      return { success: true, filename: fileName, folder: folderName, path: destPath, sizeBytes: currentSize, alreadyExists: true };
+    }
+  }
 
   const ok = await downloadFile(url, destPath);
   let sizeBytes = 0;
@@ -504,6 +569,7 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
 
 module.exports = {
   sanitizeFolderName,
+  resolveExistingDramaFolder,
   downloadFile,
   getDramaInfoFromDevice,
   getLocalDramas,

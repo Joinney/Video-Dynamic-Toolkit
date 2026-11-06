@@ -25708,20 +25708,22 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
       }
     };
     const handleDownloadSingleDirect = async (ep) => {
-      showToast(`\u0110ang t\u1EA3i tr\u1EF1c ti\u1EBFp T\u1EADp ${ep.epNumber} (${selectedCodec.toUpperCase()})...`);
+      const targetFolder = dramaTitle || (localDramas.length > 0 ? localDramas[0].name || localDramas[0].title : "Phim_Drama");
+      showToast(`\u0110ang t\u1EA3i tr\u1EF1c ti\u1EBFp T\u1EADp ${ep.epNumber} v\xE0o: ${targetFolder}...`);
       try {
         const res = await fetch("/api/download-direct", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             url: selectedCodec === "h264" && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl,
-            dramaName: dramaTitle || "Phim_Drama",
+            dramaName: targetFolder,
+            dramaTitle: targetFolder,
             epNumber: ep.epNumber
           })
         });
         const data = await res.json();
         if (data.success) {
-          showToast(`T\u1EADp ${ep.epNumber} t\u1EA3i xong v\xE0o m\xE1y!`);
+          showToast(data.alreadyExists ? `T\u1EADp ${ep.epNumber} \u0111\xE3 c\xF3 s\u1EB5n trong b\u1ED9: ${targetFolder}` : `T\u1EADp ${ep.epNumber} t\u1EA3i xong v\xE0o: ${targetFolder}!`);
           fetchStatusData();
         } else {
           showToast(`L\u1ED7i t\u1EA3i t\u1EADp: ${data.message}`);
@@ -25733,7 +25735,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     const handleDownloadAllDirect = async () => {
       if (!directDramaData?.episodes) return;
       const eps = directDramaData.episodes;
-      showToast(`B\u1EAFt \u0111\u1EA7u t\u1EA3i to\xE0n b\u1ED9 ${eps.length} t\u1EADp v\u1EC1 m\xE1y...`);
+      const targetFolder = dramaTitle || (localDramas.length > 0 ? localDramas[0].name || localDramas[0].title : "Phim_Drama");
+      showToast(`B\u1EAFt \u0111\u1EA7u t\u1EA3i to\xE0n b\u1ED9 ${eps.length} t\u1EADp v\xE0o b\u1ED9 phim: ${targetFolder}...`);
       for (const ep of eps) {
         try {
           await fetch("/api/download-direct", {
@@ -25741,14 +25744,15 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               url: selectedCodec === "h264" && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl,
-              dramaName: dramaTitle || "Phim_Drama",
+              dramaName: targetFolder,
+              dramaTitle: targetFolder,
               epNumber: ep.epNumber
             })
           });
         } catch (e) {
         }
       }
-      showToast("\u0110\xE3 t\u1EA3i ho\xE0n t\u1EA5t to\xE0n b\u1ED9 c\xE1c t\u1EADp!");
+      showToast(`\u0110\xE3 t\u1EA3i ho\xE0n t\u1EA5t to\xE0n b\u1ED9 c\xE1c t\u1EADp v\xE0o: ${targetFolder}!`);
       fetchStatusData();
     };
     return /* @__PURE__ */ import_react8.default.createElement(
@@ -26059,7 +26063,16 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           className: "py-1 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-2xs transition cursor-pointer"
         },
         "\u{1F399}\uFE0F L\u1ED3ng Ti\u1EBFng"
-      )))))), showPlayerModal && /* @__PURE__ */ import_react8.default.createElement("div", { className: "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4", onClick: () => setShowPlayerModal(false) }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl max-w-2xl w-full p-4 border border-blue-100 text-slate-800 shadow-2xl", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3 pb-2 border-b border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "font-bold text-sm text-blue-700" }, "Xem video"), /* @__PURE__ */ import_react8.default.createElement("button", { onClick: () => setShowPlayerModal(false), className: "text-slate-400 hover:text-slate-700 cursor-pointer" }, /* @__PURE__ */ import_react8.default.createElement(X, { size: 18 }))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-black aspect-video rounded-xl flex flex-col items-center justify-center border border-slate-200 text-slate-500 text-xs p-4 text-center overflow-hidden" }, previewVideoUrl ? /* @__PURE__ */ import_react8.default.createElement("video", { src: previewVideoUrl, controls: true, autoPlay: true, className: "w-full h-full object-contain" }) : /* @__PURE__ */ import_react8.default.createElement("div", null, "Kh\xF4ng t\xECm th\u1EA5y video")))), showDirectLinksModal && /* @__PURE__ */ import_react8.default.createElement("div", { className: "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4", onClick: () => setShowDirectLinksModal(false) }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3 pb-2 border-b border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "font-bold text-base text-blue-700" }, "\u26A1 Danh S\xE1ch Link Tr\u1EF1c Ti\u1EBFp (CDN)"), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold" }, "MinuteDrama")), /* @__PURE__ */ import_react8.default.createElement("button", { onClick: () => setShowDirectLinksModal(false), className: "text-slate-400 hover:text-slate-700 cursor-pointer" }, /* @__PURE__ */ import_react8.default.createElement(X, { size: 18 }))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("span", null, "Chu\u1EA9n Video: ", /* @__PURE__ */ import_react8.default.createElement("strong", { className: "text-blue-800 font-bold" }, "H.264 (Chu\u1EA9n Windows - Xem kh\xF4ng l\u1ED7i 0xC00D36C4)")), /* @__PURE__ */ import_react8.default.createElement(
+      )))))), showPlayerModal && /* @__PURE__ */ import_react8.default.createElement("div", { className: "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4", onClick: () => setShowPlayerModal(false) }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl max-w-2xl w-full p-4 border border-blue-100 text-slate-800 shadow-2xl", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3 pb-2 border-b border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "font-bold text-sm text-blue-700" }, "Xem video"), /* @__PURE__ */ import_react8.default.createElement("button", { onClick: () => setShowPlayerModal(false), className: "text-slate-400 hover:text-slate-700 cursor-pointer" }, /* @__PURE__ */ import_react8.default.createElement(X, { size: 18 }))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-black aspect-video rounded-xl flex flex-col items-center justify-center border border-slate-200 text-slate-500 text-xs p-4 text-center overflow-hidden" }, previewVideoUrl ? /* @__PURE__ */ import_react8.default.createElement("video", { src: previewVideoUrl, controls: true, autoPlay: true, className: "w-full h-full object-contain" }) : /* @__PURE__ */ import_react8.default.createElement("div", null, "Kh\xF4ng t\xECm th\u1EA5y video")))), showDirectLinksModal && /* @__PURE__ */ import_react8.default.createElement("div", { className: "fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4", onClick: () => setShowDirectLinksModal(false) }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex justify-between items-center mb-3 pb-2 border-b border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("h3", { className: "font-bold text-base text-blue-700" }, "\u26A1 Danh S\xE1ch Link Tr\u1EF1c Ti\u1EBFp (CDN)"), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold" }, "MinuteDrama")), /* @__PURE__ */ import_react8.default.createElement("button", { onClick: () => setShowDirectLinksModal(false), className: "text-slate-400 hover:text-slate-700 cursor-pointer" }, /* @__PURE__ */ import_react8.default.createElement(X, { size: 18 }))), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 text-xs bg-blue-50/70 p-2.5 rounded-xl border border-blue-200" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2 flex-wrap" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "font-bold text-blue-900" }, "\u{1F4C1} L\u01B0u v\xE0o b\u1ED9 phim:"), /* @__PURE__ */ import_react8.default.createElement(
+        "select",
+        {
+          value: dramaTitle,
+          onChange: (e) => setDramaTitle(e.target.value),
+          className: "bg-white border border-blue-300 text-blue-900 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+        },
+        localDramas.map((d, idx) => /* @__PURE__ */ import_react8.default.createElement("option", { key: idx, value: d.name || d.title }, d.name || d.title, " (", d.count || 0, " t\u1EADp \u0111\xE3 c\xF3)")),
+        !localDramas.some((d) => (d.name || d.title) === dramaTitle) && dramaTitle && /* @__PURE__ */ import_react8.default.createElement("option", { value: dramaTitle }, dramaTitle)
+      )), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[11px] text-blue-700 font-semibold" }, localDramas.some((d) => (d.name || d.title) === dramaTitle) ? "\u2705 \u0110\xFAng b\u1ED9 phim \u0111\xE3 c\xF3 tr\xEAn m\xE1y" : "\u{1F4C1} T\u1EF1 \u0111\u1ED9ng kh\u1EDBp v\xE0o th\u01B0 m\u1EE5c phim t\u01B0\u01A1ng \u1EE9ng")), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement("span", null, "Chu\u1EA9n Video: ", /* @__PURE__ */ import_react8.default.createElement("strong", { className: "text-blue-800 font-bold" }, "H.264 (Chu\u1EA9n Windows - Xem kh\xF4ng l\u1ED7i 0xC00D36C4)")), /* @__PURE__ */ import_react8.default.createElement(
         "button",
         {
           type: "button",

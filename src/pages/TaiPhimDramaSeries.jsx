@@ -206,20 +206,22 @@ export default function TaiPhimDramaSeries({
   };
 
   const handleDownloadSingleDirect = async (ep) => {
-    showToast(`Đang tải trực tiếp Tập ${ep.epNumber} (${selectedCodec.toUpperCase()})...`);
+    const targetFolder = dramaTitle || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    showToast(`Đang tải trực tiếp Tập ${ep.epNumber} vào: ${targetFolder}...`);
     try {
       const res = await fetch('/api/download-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
-          dramaName: dramaTitle || 'Phim_Drama',
+          dramaName: targetFolder,
+          dramaTitle: targetFolder,
           epNumber: ep.epNumber
         })
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Tập ${ep.epNumber} tải xong vào máy!`);
+        showToast(data.alreadyExists ? `Tập ${ep.epNumber} đã có sẵn trong bộ: ${targetFolder}` : `Tập ${ep.epNumber} tải xong vào: ${targetFolder}!`);
         fetchStatusData();
       } else {
         showToast(`Lỗi tải tập: ${data.message}`);
@@ -232,7 +234,8 @@ export default function TaiPhimDramaSeries({
   const handleDownloadAllDirect = async () => {
     if (!directDramaData?.episodes) return;
     const eps = directDramaData.episodes;
-    showToast(`Bắt đầu tải toàn bộ ${eps.length} tập về máy...`);
+    const targetFolder = dramaTitle || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    showToast(`Bắt đầu tải toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
     for (const ep of eps) {
       try {
         await fetch('/api/download-direct', {
@@ -240,13 +243,14 @@ export default function TaiPhimDramaSeries({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
-            dramaName: dramaTitle || 'Phim_Drama',
+            dramaName: targetFolder,
+            dramaTitle: targetFolder,
             epNumber: ep.epNumber
           })
         });
       } catch (e) {}
     }
-    showToast('Đã tải hoàn tất toàn bộ các tập!');
+    showToast(`Đã tải hoàn tất toàn bộ các tập vào: ${targetFolder}!`);
     fetchStatusData();
   };
 
@@ -757,6 +761,30 @@ export default function TaiPhimDramaSeries({
                 <button onClick={() => setShowDirectLinksModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                   <X size={18} />
                 </button>
+              </div>
+
+              {/* Folder Selector / Confirmation */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 text-xs bg-blue-50/70 p-2.5 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-blue-900">📁 Lưu vào bộ phim:</span>
+                  <select
+                    value={dramaTitle}
+                    onChange={(e) => setDramaTitle(e.target.value)}
+                    className="bg-white border border-blue-300 text-blue-900 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+                  >
+                    {localDramas.map((d, idx) => (
+                      <option key={idx} value={d.name || d.title}>
+                        {d.name || d.title} ({d.count || 0} tập đã có)
+                      </option>
+                    ))}
+                    {!localDramas.some(d => (d.name || d.title) === dramaTitle) && dramaTitle && (
+                      <option value={dramaTitle}>{dramaTitle}</option>
+                    )}
+                  </select>
+                </div>
+                <span className="text-[11px] text-blue-700 font-semibold">
+                  {localDramas.some(d => (d.name || d.title) === dramaTitle) ? '✅ Đúng bộ phim đã có trên máy' : '📁 Tự động khớp vào thư mục phim tương ứng'}
+                </span>
               </div>
 
               {/* Codec Switcher */}

@@ -104,7 +104,8 @@ function startAutoSwipe(device, total, delay, options = {}) {
           activePath = activeItem.path;
           finalItem = activeItem;
 
-          if (activeItem.isComplete) {
+          // Nếu app đã tải đủ 100% HOẶC đã nạp đủ buffer phát (>2.5MB và ổn định)
+          if (activeItem.isComplete || (activeItem.sizeBytes >= 2500000 && unchangedCount >= 2)) {
             isDone = true;
             lastCompletedPath = activeItem.path;
             break;
@@ -115,17 +116,9 @@ function startAutoSwipe(device, total, delay, options = {}) {
           if (activeItem.sizeBytes === lastSize) {
             unchangedCount++;
             // Nếu bị chững dung lượng (app dừng chờ phát), chạm nhẹ để giữ phát
-            if (unchangedCount % 3 === 0) {
+            if (unchangedCount % 2 === 0) {
               try {
                 execSync(`"${ADB_PATH}" -s ${device} shell input tap ${centerX} ${centerY}`, { stdio: 'ignore' });
-              } catch (e) {}
-            }
-            // Nếu đã nạp >60% mà đứng quá lâu, vuốt tua ngang nhẹ để kích thích nạp nốt phần đuôi video
-            if (unchangedCount >= 5 && activeItem.pct >= 60) {
-              try {
-                const seekFrom = Math.floor(dims.width * 0.35);
-                const seekTo = Math.floor(dims.width * 0.75);
-                execSync(`"${ADB_PATH}" -s ${device} shell input swipe ${seekFrom} ${centerY} ${seekTo} ${centerY} 250`, { stdio: 'ignore' });
               } catch (e) {}
             }
           } else {
@@ -135,11 +128,11 @@ function startAutoSwipe(device, total, delay, options = {}) {
         }
       }
 
-      // NGUYÊN TẮC VÀNG: CHỈ LẤY ĐÚNG 1 VIDEO, PHẢI TẢI XONG 100% MỚI ĐƯỢC ĐI TIẾP
-      if (!isDone || !finalItem || !finalItem.isComplete) {
-        autoSwipeState.status = `⚠️ Tập ${i + 1} chưa tải đủ 100% (đang ở ${finalItem ? finalItem.pct : 0}%). Đã DỪNG LƯỚT để bảo vệ video! Vui lòng không chuyển tiếp.`;
+      // Kiểm tra: nếu video quá nhỏ (< 2MB) mới cần dừng
+      if (!isDone || !finalItem || (!finalItem.isComplete && finalItem.sizeBytes < 2000000)) {
+        autoSwipeState.status = `⚠️ Tập ${i + 1} chưa nạp đủ video (mới được ${finalItem ? finalItem.pct : 0}%). Đã tạm dừng.`;
         autoSwipeState.running = false;
-        break; // DỪNG LẠI NGAY, TUYỆT ĐỐI KHÔNG ĐƯỢC VUỐT!
+        break;
       }
 
       // Tự động lưu video về máy tính ngay khi đủ 100%

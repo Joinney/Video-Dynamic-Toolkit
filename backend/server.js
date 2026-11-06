@@ -375,7 +375,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, message: 'Giả lập chưa kết nối ADB!' }));
         return;
       }
-      const result = exportVideos(device, payload);
+      const result = await exportVideos(device, payload);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, ...result }));
     } catch (err) {

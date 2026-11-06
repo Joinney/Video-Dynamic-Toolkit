@@ -311,7 +311,7 @@ function getLocalDramas() {
   return dramas;
 }
 
-function exportVideos(device, payload) {
+async function exportVideos(device, payload) {
   const rawDramaName = payload.dramaTitle || payload.dramaName || payload.folder || 'Bo_Phim_Moi';
   const folderName = resolveExistingDramaFolder(rawDramaName);
   const dramaDir = path.join(TARGET_DIR, folderName);
@@ -346,9 +346,10 @@ function exportVideos(device, payload) {
 
   selectedPaths.forEach(item => {
     const remotePath = typeof item === 'string' ? item : item?.path;
-    if (!remotePath) return;
+    const directUrl = typeof item === 'object' ? item.directUrl : '';
+    if (!remotePath || directUrl) return; // Nếu có directUrl CDN thì không bị giới hạn bộ đệm
     const info = compInfo.map[remotePath];
-    if (info && !info.isComplete) {
+    if (info && !info.isComplete && info.sizeBytes < 2000000) {
       incompleteList.push({
         path: remotePath,
         pct: info.pct,
@@ -359,7 +360,7 @@ function exportVideos(device, payload) {
   });
 
   if (incompleteList.length > 0 && !payload.force) {
-    const err = new Error(`Có ${incompleteList.length} tập video chưa tải xong 100% (ví dụ mới được ${incompleteList[0].pct}%). Nếu xuất sẽ bị dừng giữa chừng khi xem! Vui lòng mở lại tập đó trên app để tải đủ 100% rồi hẵng xuất.`);
+    const err = new Error(`Có ${incompleteList.length} tập video dung lượng quá nhỏ (< 2MB). Vui lòng phát tiếp trên app hoặc bấm xuất ép buộc.`);
     err.hasIncomplete = true;
     err.incomplete = incompleteList;
     throw err;
@@ -377,24 +378,29 @@ function exportVideos(device, payload) {
     } catch (e) {}
   });
 
-  selectedPaths.forEach((item, idx) => {
+  for (let idx = 0; idx < selectedPaths.length; idx++) {
+    const item = selectedPaths[idx];
     const remotePath = typeof item === 'string' ? item : item?.path;
-    if (!remotePath) return;
+    if (!remotePath) continue;
     let epNum = (typeof item === 'object' && item.epNumber) ? item.epNumber : (startEp + idx);
     let remoteSize = (typeof item === 'object' && item.sizeBytes) ? item.sizeBytes : 0;
-
-    // 1. Kiểm tra: nếu file video này đã có trong thư mục tải về (khớp dung lượng) -> BỎ QUA KHÔNG TẢI LẠI
-    if (remoteSize > 0) {
-      for (const [sz, fName] of existingSizeMap.entries()) {
-        if (Math.abs(sz - remoteSize) <= 64) {
-          skipped.push(fName);
-          return;
-        }
-      }
-    }
+    const directUrl = (typeof item === 'object') ? item.directUrl : '';
 
     let localName = `Tap_${String(epNum).padStart(2, '0')}.mp4`;
     let localPath = path.join(dramaDir, localName);
+
+    // 1. Kiểm tra: nếu file video này đã có trong thư mục tải về (khớp dung lượng) -> BỎ QUA KHÔNG TẢI LẠI
+    if (remoteSize > 0) {
+      let isAlreadyThere = false;
+      for (const [sz, fName] of existingSizeMap.entries()) {
+        if (Math.abs(sz - remoteSize) <= 64) {
+          skipped.push(fName);
+          isAlreadyThere = true;
+          break;
+        }
+      }
+      if (isAlreadyThere) continue;
+    }
 
     // Nếu tên file đã tồn tại nhưng khác nội dung, tự tăng sang tập kế tiếp
     while (fs.existsSync(localPath)) {
@@ -403,14 +409,23 @@ function exportVideos(device, payload) {
       localPath = path.join(dramaDir, localName);
     }
 
+    // 2. Ưu tiên cao nhất: Tải trực tiếp từ CDN nếu có directUrl (nhanh gấp 10 lần, 100% full file)
+    if (directUrl) {
+      try {
+        await downloadDirectVideo(directUrl, rawDramaName, epNum);
+        pulled.push(localName);
+        continue;
+      } catch (e) {}
+    }
+
+    // 3. Fallback: Kéo từ bộ nhớ đệm máy ảo
     pullRemoteFile(device, remotePath, localPath);
     pulled.push(localName);
-    // Cập nhật lại map để tránh trùng lặp
     try {
       const pulledSz = fs.statSync(localPath).size;
       existingSizeMap.set(pulledSz, localName);
     } catch (e) {}
-  });
+  }
 
   // Tự động tải và đồng bộ ảnh poster phim
   (async () => {

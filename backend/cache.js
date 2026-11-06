@@ -162,9 +162,9 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
 
     // Dùng ls -lt để lấy file mới nhất trước, hoặc đảo chiều để đúng trình tự Tập 1 -> Tập N
     if (appKey === 'minutedrama') {
-      raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null"`, { encoding: 'utf8' });
+      raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null || true"`, { encoding: 'utf8' });
     } else {
-      raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null"`, { encoding: 'utf8' });
+      raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null || true"`, { encoding: 'utf8' });
     }
 
     let lines = raw.trim().split(/\r?\n/).filter(l => {

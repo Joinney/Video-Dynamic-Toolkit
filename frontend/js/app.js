@@ -25611,6 +25611,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
               ep: epNum,
               title: epTitle,
               size: sz,
+              sizeBytes: item.sizeBytes || 0,
+              directUrl: item.directUrl || "",
               isNew,
               checked: isNew,
               path: item.path,
@@ -25761,14 +25763,29 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
       }
       showToast(`\u0110ang sao l\u01B0u ${selected.length} video v\u1EC1 m\xE1y t\xEDnh...`);
       try {
+        const selectedPaths = selected.map((i) => ({
+          path: i.path,
+          epNumber: i.ep,
+          sizeBytes: i.sizeBytes,
+          directUrl: i.directUrl
+        }));
         const res = await fetch("/api/export", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dramaName: dramaTitle })
+          body: JSON.stringify({
+            dramaName: dramaTitle,
+            dramaTitle,
+            selectedPaths,
+            force: true
+          })
         });
         const data = await res.json();
-        showToast(data.message || `\u0110\xE3 xu\u1EA5t ${selected.length} t\u1EADp th\xE0nh c\xF4ng!`);
-        fetchStatusData();
+        if (data.success) {
+          showToast(data.message || `\u0110\xE3 xu\u1EA5t ${selected.length} t\u1EADp th\xE0nh c\xF4ng!`);
+          fetchStatusData(true);
+        } else {
+          showToast(`L\u1ED7i: ${data.message || "Kh\xF4ng th\u1EC3 xu\u1EA5t video"}`);
+        }
       } catch (e) {
         showToast("L\u1ED7i xu\u1EA5t video: " + e.message);
       }
@@ -26127,7 +26144,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             },
             className: "accent-blue-600 w-4 h-4 cursor-pointer"
           }
-        ), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-bold text-gray-900" }, item.title), item.isNew && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, "M\u1EDAI"), item.pct !== void 0 && item.pct < 100 && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded animate-pulse" }, item.pct, "%")), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-gray-500" }, item.size ? `${item.size} \u2022 ` : "", item.pct !== void 0 && item.pct < 100 ? `\u0110ang t\u1EA3i \u0111\u1EC7m ${item.pct}%` : "\u0110\xE3 l\u01B0u trong b\u1ED9 \u0111\u1EC7m RAM"))),
+        ), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-xs font-bold text-gray-900" }, item.title), item.isNew && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, "M\u1EDAI"), item.directUrl ? /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, "CDN 100%") : item.pct !== void 0 && item.pct < 100 && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded" }, item.pct, "%")), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-gray-500" }, item.size ? `${item.size} \u2022 ` : "", item.directUrl ? "\u26A1 S\u1EB5n s\xE0ng xu\u1EA5t Full 100% t\u1EEB CDN" : item.pct !== void 0 && item.pct < 100 ? `\u0110\xE3 \u0111\u1EC7m ${item.pct}% (\u0110\xE3 c\xF3 th\u1EC3 xu\u1EA5t)` : "\u0110\xE3 l\u01B0u trong b\u1ED9 \u0111\u1EC7m RAM"))),
         /* @__PURE__ */ import_react8.default.createElement(
           "button",
           {

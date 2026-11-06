@@ -97,6 +97,8 @@ export default function TaiPhimDramaSeries({
             ep: epNum,
             title: epTitle,
             size: sz,
+            sizeBytes: item.sizeBytes || 0,
+            directUrl: item.directUrl || '',
             isNew: isNew,
             checked: isNew,
             path: item.path,
@@ -257,14 +259,29 @@ export default function TaiPhimDramaSeries({
     }
     showToast(`Đang sao lưu ${selected.length} video về máy tính...`);
     try {
+      const selectedPaths = selected.map(i => ({
+        path: i.path,
+        epNumber: i.ep,
+        sizeBytes: i.sizeBytes,
+        directUrl: i.directUrl
+      }));
       const res = await fetch('/api/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dramaName: dramaTitle })
+        body: JSON.stringify({
+          dramaName: dramaTitle,
+          dramaTitle: dramaTitle,
+          selectedPaths,
+          force: true
+        })
       });
       const data = await res.json();
-      showToast(data.message || `Đã xuất ${selected.length} tập thành công!`);
-      fetchStatusData();
+      if (data.success) {
+        showToast(data.message || `Đã xuất ${selected.length} tập thành công!`);
+        fetchStatusData(true);
+      } else {
+        showToast(`Lỗi: ${data.message || 'Không thể xuất video'}`);
+      }
     } catch (e) {
       showToast('Lỗi xuất video: ' + e.message);
     }
@@ -739,15 +756,19 @@ export default function TaiPhimDramaSeries({
                               MỚI
                             </span>
                           )}
-                          {item.pct !== undefined && item.pct < 100 && (
-                            <span className="bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded animate-pulse">
+                          {item.directUrl ? (
+                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded">
+                              CDN 100%
+                            </span>
+                          ) : (item.pct !== undefined && item.pct < 100 && (
+                            <span className="bg-sky-100 text-sky-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded">
                               {item.pct}%
                             </span>
-                          )}
+                          ))}
                         </div>
                         <span className="text-[10px] text-gray-500">
                           {item.size ? `${item.size} • ` : ''}
-                          {item.pct !== undefined && item.pct < 100 ? `Đang tải đệm ${item.pct}%` : 'Đã lưu trong bộ đệm RAM'}
+                          {item.directUrl ? '⚡ Sẵn sàng xuất Full 100% từ CDN' : (item.pct !== undefined && item.pct < 100 ? `Đã đệm ${item.pct}% (Đã có thể xuất)` : 'Đã lưu trong bộ đệm RAM')}
                         </span>
                       </div>
                     </div>

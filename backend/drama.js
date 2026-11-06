@@ -111,7 +111,7 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
       const rawRows = adbQuerySqlite(
         device,
         '/data/data/com.minute.minishort.drama/databases/file_manager.db',
-        'SELECT title, episode_num, total_episode, cover_url FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;'
+        'SELECT title, episode_num, total_episode, cover_url FROM playEpisodeHistory ORDER BY update_time DESC, id DESC LIMIT 1;'
       );
       if (rawRows) {
         const parts = rawRows.trim().split('|');

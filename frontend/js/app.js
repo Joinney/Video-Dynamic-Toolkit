@@ -25656,7 +25656,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     };
     const syncWithAppDrama = async () => {
       try {
-        const res = await fetch(`/api/status?app=${activeApp}`);
+        showToast("\u0110ang nh\u1EADn di\u1EC7n phim \u0111ang xem t\u1EEB m\xE1y \u1EA3o...");
+        const res = await fetch(`/api/status?app=${activeApp}&refresh=1`);
         const data = await res.json();
         if (data.currentDrama && data.currentDrama.title) {
           setDramaTitle(data.currentDrama.title);
@@ -25664,6 +25665,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           if (cover) setCurrentDramaCover(cover);
           if (data.currentDrama.currentEpisode) setStartEp(data.currentDrama.currentEpisode);
           showToast(`\u0110\xE3 nh\u1EADn di\u1EC7n: ${data.currentDrama.title} (T\u1EADp ${data.currentDrama.currentEpisode || 1})`);
+          fetchStatusData(true);
         } else {
           showToast("Ch\u01B0a ph\xE1t hi\u1EC7n phim \u0111ang ph\xE1t tr\xEAn m\xE1y \u1EA3o.");
         }

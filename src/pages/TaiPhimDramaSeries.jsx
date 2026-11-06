@@ -144,7 +144,8 @@ export default function TaiPhimDramaSeries({
 
   const syncWithAppDrama = async () => {
     try {
-      const res = await fetch(`/api/status?app=${activeApp}`);
+      showToast('Đang nhận diện phim đang xem từ máy ảo...');
+      const res = await fetch(`/api/status?app=${activeApp}&refresh=1`);
       const data = await res.json();
       if (data.currentDrama && data.currentDrama.title) {
         setDramaTitle(data.currentDrama.title);
@@ -152,6 +153,7 @@ export default function TaiPhimDramaSeries({
         if (cover) setCurrentDramaCover(cover);
         if (data.currentDrama.currentEpisode) setStartEp(data.currentDrama.currentEpisode);
         showToast(`Đã nhận diện: ${data.currentDrama.title} (Tập ${data.currentDrama.currentEpisode || 1})`);
+        fetchStatusData(true);
       } else {
         showToast('Chưa phát hiện phim đang phát trên máy ảo.');
       }

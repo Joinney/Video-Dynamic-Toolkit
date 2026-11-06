@@ -42,17 +42,18 @@ function checkAdbDevice() {
 
 function adbQuerySqlite(device, dbPath, sql) {
   if (!device) return '';
+  const options = { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 };
   try {
     const raw = execSync(
       `"${ADB_PATH}" -s ${device} shell "sqlite3 ${dbPath} \\"${sql}\\" 2>/dev/null"`,
-      { encoding: 'utf8' }
+      options
     ).trim();
     if (raw && !raw.includes('Error: unable to open database')) return raw;
   } catch (e) {}
   try {
     const rawSu = execSync(
       `"${ADB_PATH}" -s ${device} shell "su 0 sqlite3 ${dbPath} \\"${sql}\\" 2>/dev/null"`,
-      { encoding: 'utf8' }
+      options
     ).trim();
     return rawSu;
   } catch (e) {

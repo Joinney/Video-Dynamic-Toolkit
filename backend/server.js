@@ -445,8 +445,9 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/direct-episodes' && req.method === 'GET') {
     try {
       const device = checkAdbDevice();
-      const appKey = resolveActiveApp(device);
-      const data = getDirectDramaEpisodes(device, appKey, url.searchParams.get('title') || '');
+      const appKey = url.searchParams.get('app') || resolveActiveApp(device);
+      const requestedTitle = url.searchParams.get('title') || '';
+      const data = getDirectDramaEpisodes(device, appKey, requestedTitle);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, ...data }));
     } catch (e) {

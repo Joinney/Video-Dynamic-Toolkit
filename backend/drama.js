@@ -511,47 +511,71 @@ async function downloadDirectVideo(url, rawDramaName, epNum) {
 }
 
 function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle = '') {
-  if (!device || appKey !== 'minutedrama') return { title: '', totalEpisodes: 0, episodes: [] };
+  if (!device) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
   try {
-    const rawDetail = adbQuerySqlite(
-      device,
-      '/data/data/com.minute.minishort.drama/databases/file_manager.db',
-      'SELECT json FROM videoDetail;'
-    );
-    if (!rawDetail) return { title: '', totalEpisodes: 0, episodes: [] };
-    const jsonLines = rawDetail.split(/\r?\n/).filter(Boolean);
+    const dbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';
+    const rawIds = adbQuerySqlite(device, dbPath, 'SELECT id FROM videoDetail ORDER BY id DESC;');
+    if (!rawIds) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+
+    const ids = rawIds.trim().split(/\s+/).filter(Boolean);
+    if (ids.length === 0) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
 
     let activeTitle = (requestedTitle || '').trim().toLowerCase();
-    if (!activeTitle) {
-      try {
-        const lastPlay = adbQuerySqlite(
-          device,
-          '/data/data/com.minute.minishort.drama/databases/file_manager.db',
-          'SELECT title FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;'
-        );
-        if (lastPlay) activeTitle = lastPlay.trim().toLowerCase();
-      } catch (e) {}
-    }
-
     let bestDrama = null;
-    jsonLines.forEach(jl => {
+    const availableDramas = [];
+
+    for (const id of ids) {
       try {
-        const d = JSON.parse(jl.trim());
-        if (d && d.episodesInfos && d.episodesInfos.length > 0) {
-          const dTitle = (d.title || '').toLowerCase();
-          if (activeTitle && (dTitle.includes(activeTitle) || activeTitle.includes(dTitle))) {
-            bestDrama = d;
-          } else if (!bestDrama) {
-            bestDrama = d;
+        const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${id};`);
+        if (!rawJson) continue;
+        const d = JSON.parse(rawJson.trim());
+        if (!d || !d.episodesInfos || d.episodesInfos.length === 0) continue;
+
+        const dTitle = (d.title || '').trim();
+        availableDramas.push({
+          id,
+          title: dTitle,
+          coverUrl: d.coverUrl || '',
+          totalEpisodes: d.episodesCount || d.episodesInfos.length
+        });
+
+        if (!bestDrama) {
+          if (activeTitle) {
+            const dTitleLower = dTitle.toLowerCase();
+            if (dTitleLower.includes(activeTitle) || activeTitle.includes(dTitleLower) ||
+                cleanDramaFolderName(dTitleLower) === cleanDramaFolderName(activeTitle)) {
+              bestDrama = d;
+            }
           }
         }
       } catch (e) {}
-    });
+    }
 
-    if (!bestDrama) return { title: '', totalEpisodes: 0, episodes: [] };
+    // Nếu có activeTitle nhưng chưa tìm thấy phim khớp hoàn toàn, hoặc không có activeTitle
+    if (!bestDrama && availableDramas.length > 0) {
+      try {
+        // Nếu có activeTitle, thử tìm phim có tên gần giống nhất
+        if (activeTitle) {
+          const matched = availableDramas.find(a => {
+            const words = activeTitle.split(/\s+/).filter(w => w.length > 1);
+            return words.some(w => a.title.toLowerCase().includes(w));
+          });
+          if (matched) {
+            const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${matched.id};`);
+            bestDrama = JSON.parse(rawJson.trim());
+          }
+        }
+        if (!bestDrama) {
+          const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${availableDramas[0].id};`);
+          bestDrama = JSON.parse(rawJson.trim());
+        }
+      } catch (e) {}
+    }
+
+    if (!bestDrama) return { title: '', totalEpisodes: 0, episodes: [], availableDramas };
 
     const episodes = (bestDrama.episodesInfos || []).map(ep => {
-      // Ưu tiên signPlayUrlH264 (H.264) để xem mượt mà trên mọi thiết bị và Windows Media Player mà không bị lỗi 0xC00D36C4 (thiếu HEVC)
+      // Ưu tiên signPlayUrlH264 (H.264) để xem mượt mà trên mọi thiết bị và Windows Media Player
       const directUrl = ep.signPlayUrlH264 || ep.signPlayUrl || ep.bkSignPlayUrl || '';
       return {
         epNumber: ep.episodeNum,
@@ -567,10 +591,11 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
       title: bestDrama.title || '',
       coverUrl: bestDrama.coverUrl || '',
       totalEpisodes: bestDrama.episodesCount || episodes.length,
-      episodes
+      episodes,
+      availableDramas
     };
   } catch (e) {
-    return { title: '', totalEpisodes: 0, episodes: [] };
+    return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
   }
 }
 

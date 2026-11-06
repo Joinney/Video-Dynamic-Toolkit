@@ -36,6 +36,8 @@ export default function TaiPhimDramaSeries({
   const [showDirectLinksModal, setShowDirectLinksModal] = useState(false);
   const [directDramaData, setDirectDramaData] = useState(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState('');
+  const [isDownloadingDirectAll, setIsDownloadingDirectAll] = useState(false);
+  const [downloadProgressDirect, setDownloadProgressDirect] = useState({ current: 0, total: 0 });
 
   // Queue danh sách tập video trong RAM cache
   const [queueItems, setQueueItems] = useState([]);
@@ -110,12 +112,16 @@ export default function TaiPhimDramaSeries({
     return () => clearInterval(interval);
   }, [activeApp, dramaTitle]);
 
-  const fetchDirectEpisodes = async () => {
+  const fetchDirectEpisodes = async (overrideTitle) => {
     try {
-      const res = await fetch(`/api/direct-episodes?title=${encodeURIComponent(dramaTitle)}`);
+      const qTitle = (overrideTitle !== undefined ? overrideTitle : dramaTitle) || '';
+      const res = await fetch(`/api/direct-episodes?title=${encodeURIComponent(qTitle)}&app=${activeApp}`);
       const data = await res.json();
       if (data.success && data.episodes) {
         setDirectDramaData(data);
+        if (data.title && !dramaTitle) {
+          setDramaTitle(data.title);
+        }
       }
     } catch (e) {}
   };
@@ -257,13 +263,18 @@ export default function TaiPhimDramaSeries({
   };
 
   const handleDownloadAllDirect = async () => {
-    if (!directDramaData?.episodes) return;
+    if (!directDramaData?.episodes || directDramaData.episodes.length === 0) return;
     const eps = directDramaData.episodes;
     const targetFolder = dramaTitle || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    setIsDownloadingDirectAll(true);
+    setDownloadProgressDirect({ current: 0, total: eps.length });
     showToast(`Bắt đầu tải toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
-    for (const ep of eps) {
+    let countSuccess = 0;
+    for (let i = 0; i < eps.length; i++) {
+      const ep = eps[i];
+      setDownloadProgressDirect({ current: i + 1, total: eps.length });
       try {
-        await fetch('/api/download-direct', {
+        const res = await fetch('/api/download-direct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -273,9 +284,12 @@ export default function TaiPhimDramaSeries({
             epNumber: ep.epNumber
           })
         });
+        const resJson = await res.json();
+        if (resJson.success) countSuccess++;
       } catch (e) {}
     }
-    showToast(`Đã tải hoàn tất toàn bộ các tập vào: ${targetFolder}!`);
+    setIsDownloadingDirectAll(false);
+    showToast(`Đã tải hoàn tất ${countSuccess}/${eps.length} tập vào: ${targetFolder}!`);
     fetchStatusData();
   };
 
@@ -784,31 +798,63 @@ export default function TaiPhimDramaSeries({
         {/* Modal 2: Direct CDN Links */}
         {showDirectLinksModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowDirectLinksModal(false)}>
-            <div className="bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-100">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Link Trực Tiếp (CDN)</h3>
+                  <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Link Trực Tiếp Cả Bộ Phim</h3>
                   <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold">
-                    MinuteDrama
+                    MinuteDrama CDN
                   </span>
+                  {directDramaData && directDramaData.episodes && (
+                    <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                      Đã tìm thấy {directDramaData.episodes.length} tập
+                    </span>
+                  )}
                 </div>
                 <button onClick={() => setShowDirectLinksModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
 
+              {/* Drama Switcher from Database */}
+              {directDramaData?.availableDramas && directDramaData.availableDramas.length > 0 && (
+                <div className="mb-2.5 bg-blue-50/50 p-2.5 rounded-xl border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-blue-900">🎬 Chọn bộ phim từ Database:</span>
+                    <select
+                      value={directDramaData.title || ''}
+                      onChange={(e) => {
+                        const selectedT = e.target.value;
+                        setDramaTitle(selectedT);
+                        fetchDirectEpisodes(selectedT);
+                      }}
+                      className="bg-white border border-blue-300 text-blue-900 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer max-w-xs truncate"
+                    >
+                      {directDramaData.availableDramas.map((d, idx) => (
+                        <option key={idx} value={d.title}>
+                          {d.title} ({d.totalEpisodes} tập)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-[11px] text-blue-700 font-medium">
+                    Có {directDramaData.availableDramas.length} bộ phim được lưu trong bộ nhớ
+                  </span>
+                </div>
+              )}
+
               {/* Folder Selector / Confirmation */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 text-xs bg-blue-50/70 p-2.5 rounded-xl border border-blue-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-blue-900">📁 Lưu vào bộ phim:</span>
+                  <span className="font-bold text-slate-800">📁 Lưu vào thư mục máy tính:</span>
                   <select
                     value={dramaTitle}
                     onChange={(e) => setDramaTitle(e.target.value)}
-                    className="bg-white border border-blue-300 text-blue-900 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+                    className="bg-white border border-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer max-w-xs truncate"
                   >
                     {localDramas.map((d, idx) => (
                       <option key={idx} value={d.name || d.title}>
-                        {d.name || d.title} ({d.count || 0} tập đã có)
+                        {d.name || d.title} ({d.videos ? d.videos.length : (d.count || 0)} tập đã có)
                       </option>
                     ))}
                     {!localDramas.some(d => (d.name || d.title) === dramaTitle) && dramaTitle && (
@@ -816,32 +862,56 @@ export default function TaiPhimDramaSeries({
                     )}
                   </select>
                 </div>
-                <span className="text-[11px] text-blue-700 font-semibold">
-                  {localDramas.some(d => (d.name || d.title) === dramaTitle) ? '✅ Đúng bộ phim đã có trên máy' : '📁 Tự động khớp vào thư mục phim tương ứng'}
+                <span className="text-[11px] text-emerald-700 font-semibold">
+                  {localDramas.some(d => (d.name || d.title) === dramaTitle) ? '✅ Khớp đúng bộ phim đã có - Không tạo thư mục mới' : '📁 Tự động lưu đúng bộ phim'}
                 </span>
               </div>
 
               {/* Codec Switcher */}
-              <div className="flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
-                <span>Chuẩn Video: <strong className="text-blue-800 font-bold">H.264 (Chuẩn Windows - Xem không lỗi 0xC00D36C4)</strong></span>
+              <div className="flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2 rounded-xl border border-blue-100">
+                <span>
+                  Chuẩn Video: <strong className="text-blue-800 font-bold">{selectedCodec === 'h264' ? 'H.264 (Chuẩn Windows - Xem ngay không lỗi)' : 'H.265 (HEVC - Dung lượng nhẹ)'}</strong>
+                </span>
                 <button
                   type="button"
                   onClick={() => setSelectedCodec(selectedCodec === 'h264' ? 'h265' : 'h264')}
                   className="text-[11px] bg-white hover:bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200 font-bold cursor-pointer shadow-2xs"
                 >
-                  Đổi chuẩn: {selectedCodec.toUpperCase()}
+                  Đổi chuẩn: {selectedCodec === 'h264' ? 'Sang H.265 (Gốc)' : 'Sang H.264 (Windows)'}
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+              {/* Episode list */}
+              <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
                 {directDramaData && directDramaData.episodes && directDramaData.episodes.length > 0 ? (
                   directDramaData.episodes.map((ep) => {
                     const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
+                    const durationMins = ep.duration ? `${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, '0')}` : '';
                     return (
-                      <div key={ep.epNumber} className="bg-slate-50 hover:bg-blue-50/40 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition">
-                        <div className="truncate text-xs">
-                          <span className="font-bold text-blue-700 mr-2">Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:</span>
-                          <span className="text-slate-500 text-[11px] font-mono truncate">{url}</span>
+                      <div key={ep.epNumber} className="bg-slate-50 hover:bg-blue-50/40 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition">
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          <span className="font-bold text-blue-700 text-xs shrink-0 w-14">
+                            Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:
+                          </span>
+                          {ep.isVip && (
+                            <span className="bg-amber-100 text-amber-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-300 shrink-0">
+                              VIP
+                            </span>
+                          )}
+                          {durationMins && (
+                            <span className="text-[10px] text-slate-400 shrink-0">
+                              ({durationMins})
+                            </span>
+                          )}
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-600 hover:text-blue-600 text-[11px] font-mono truncate hover:underline"
+                            title={url}
+                          >
+                            {url}
+                          </a>
                         </div>
                         <div className="flex gap-1.5 shrink-0">
                           <button
@@ -852,7 +922,7 @@ export default function TaiPhimDramaSeries({
                             }}
                             className="bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
                           >
-                            Copy
+                            Copy Link
                           </button>
                           <button
                             type="button"
@@ -866,7 +936,7 @@ export default function TaiPhimDramaSeries({
                     );
                   })
                 ) : (
-                  <div className="p-6 text-center text-xs text-slate-400">
+                  <div className="p-8 text-center text-xs text-slate-400">
                     Đang quét danh sách link tập trực tiếp từ máy chủ CDN...
                   </div>
                 )}
@@ -875,10 +945,17 @@ export default function TaiPhimDramaSeries({
               <div className="mt-4 flex justify-between items-center pt-3 border-t border-blue-100">
                 <button
                   type="button"
+                  disabled={isDownloadingDirectAll || !directDramaData?.episodes?.length}
                   onClick={handleDownloadAllDirect}
-                  className="bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs hover:shadow-md transition cursor-pointer"
+                  className={`font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-2 ${
+                    isDownloadingDirectAll
+                      ? 'bg-amber-500 text-white animate-pulse'
+                      : 'bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white shadow-md'
+                  }`}
                 >
-                  🚀 Tải Tự Động Tất Cả Các Tập
+                  {isDownloadingDirectAll
+                    ? `⏳ Đang Tải Tập ${downloadProgressDirect.current}/${downloadProgressDirect.total}...`
+                    : `🚀 Tải Tự Động Tất Cả Các Tập (${directDramaData?.episodes?.length || 0} Tập)`}
                 </button>
                 <button
                   type="button"

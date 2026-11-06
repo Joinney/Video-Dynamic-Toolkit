@@ -4,6 +4,62 @@ const fs = require('fs');
 
 const dubJobs = new Map();
 
+function resolvePythonExecution(args) {
+  // If running inside Docker / Linux:
+  if (process.platform !== 'win32') {
+    return { cmd: 'python3', args };
+  }
+
+  // If running on Windows host:
+  // 1. Check if Docker container reelssoda_studio is running
+  try {
+    const { execSync } = require('child_process');
+    const running = execSync('docker ps --filter "name=reelssoda_studio" --filter "status=running" -q', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (running) {
+      const projRoot = path.resolve(__dirname, '..').replace(/\\/g, '/');
+      const toContainerPath = (p) => {
+        if (typeof p !== 'string') return p;
+        const normalized = p.replace(/\\/g, '/');
+        if (normalized.toLowerCase().startsWith(projRoot.toLowerCase())) {
+          return '/app' + normalized.substring(projRoot.length);
+        }
+        return normalized;
+      };
+
+      const containerArgs = args.map(arg => {
+        if (typeof arg === 'string' && (arg.includes(':\\') || arg.includes(':/'))) {
+          return toContainerPath(arg);
+        }
+        return arg;
+      });
+
+      return {
+        cmd: 'docker',
+        args: ['exec', '-i', 'reelssoda_studio', 'python', ...containerArgs]
+      };
+    }
+  } catch (e) {}
+
+  // 2. If Docker is not running or check failed, try Windows python candidates (skipping WindowsApps 0-byte alias)
+  const candidates = [
+    path.join(process.env.LOCALAPPDATA || '', 'Python', 'bin', 'python.exe'),
+    'py',
+    'python3',
+    'python'
+  ];
+  for (const c of candidates) {
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync(`"${c}" --version`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      if (out && out.includes('Python')) {
+        return { cmd: c, args };
+      }
+    } catch (e) {}
+  }
+
+  return { cmd: 'python', args };
+}
+
 function startDubbingJob(inputVideoPath, options = {}) {
   const jobId = 'dub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const voice = options.voice || 'vi-VN-HoaiMyNeural';
@@ -112,7 +168,8 @@ function startDubbingJob(inputVideoPath, options = {}) {
   }
 
   try {
-    const proc = spawn(pythonCmd, args);
+    const runner = resolvePythonExecution(args);
+    const proc = spawn(runner.cmd, runner.args);
 
     proc.stdout.on('data', (data) => {
       const text = data.toString();
@@ -222,7 +279,8 @@ function generateTTSAudio(text, options = {}) {
     ];
 
     try {
-      const proc = spawn(pythonCmd, args);
+      const runner = resolvePythonExecution(args);
+      const proc = spawn(runner.cmd, runner.args);
       let stderr = '';
       proc.stderr.on('data', d => { stderr += d.toString(); });
       proc.on('close', code => {
@@ -264,7 +322,8 @@ function transcribeAndTranslateVideo(inputVideoPath, options = {}) {
     ];
 
     try {
-      const proc = spawn(pythonCmd, args);
+      const runner = resolvePythonExecution(args);
+      const proc = spawn(runner.cmd, runner.args);
       let stdout = '';
       let stderr = '';
       proc.stdout.on('data', d => { stdout += d.toString(); });

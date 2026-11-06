@@ -590,41 +590,42 @@ class VideoMerger:
             pass
 
         vol_fraction = self.original_audio_volume if self.original_audio_volume <= 1.0 else self.original_audio_volume / 100.0
-        vol_fraction = max(0.0, min(0.60, vol_fraction))
+        vol_fraction = max(0.0, min(0.80, vol_fraction))
 
         if vol_fraction <= 0.005:
-            # Tắt hoàn toàn tiếng phim gốc, chỉ giữ giọng lồng tiếng phòng thu
+            # Tắt hoàn toàn tiếng phim gốc nếu người dùng chọn 0%
             dubbed_sound.export(str(output_mixed_audio_path), format="wav")
             return output_mixed_audio_path
 
         try:
             original_sound = AudioSegment.from_file(original_audio_path)
             import math
-            # Duy trì âm lượng nhạc nền/phim gốc ở mức êm dịu
+            # Duy trì âm lượng video gốc làm nền (nhỏ hơn tiếng lồng tiếng)
             gain_reduction_db = 20 * math.log10(max(0.01, vol_fraction))
             attenuated_orig = original_sound + gain_reduction_db
 
-            # Tự động triệt tiêu giọng thoại gốc trong các khoảng thời gian nhân vật nói thoại
-            # (Auto-Ducking / Zero Bleed: triệt tiêu 100% tình trạng hai thứ tiếng chồng lên nhau)
+            # Tăng âm lượng giọng đọc lồng tiếng thêm một chút (+2.0 dB) để giọng AI luôn nổi bật, rõ ràng
+            boosted_dubbed = dubbed_sound + 2.0
+
+            # Giữ nguyên âm thanh nền liên tục, nếu bật ducking thì chỉ giảm nhẹ 4dB, không bao giờ ngắt câm tiếng
             if mute_original_dialogue and segments:
-                duck_extra_attenuation = -32.0  # Triệt tiêu giọng gốc trong lúc có lời thoại lồng tiếng
+                duck_extra_attenuation = -4.0  # Giảm nhẹ nhàng 4dB trong lúc thoại
                 orig_len = len(attenuated_orig)
                 
-                # Tạo mask ducking cho âm thanh gốc
                 ducked_sound = attenuated_orig
                 for seg in segments:
-                    s_ms = max(0, int(seg.start * 1000) - 40)
+                    s_ms = max(0, int(seg.start * 1000) - 30)
                     e_val = getattr(seg, "sub_end", None) or seg.end
-                    e_ms = min(orig_len, int(e_val * 1000) + 80)
+                    e_ms = min(orig_len, int(e_val * 1000) + 50)
                     if s_ms < e_ms and s_ms < orig_len:
                         silenced_slice = ducked_sound[s_ms:e_ms] + duck_extra_attenuation
                         ducked_sound = ducked_sound[:s_ms] + silenced_slice + ducked_sound[e_ms:]
 
                 attenuated_orig = ducked_sound
 
-            mixed = attenuated_orig.overlay(dubbed_sound)
+            mixed = attenuated_orig.overlay(boosted_dubbed)
             mixed.export(str(output_mixed_audio_path), format="wav")
-            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with dialogue ducking.")
+            logger.info(f"Mixed background audio steadily at {vol_fraction*100:.1f}% ({gain_reduction_db:.1f}dB) with clear dubbed foreground.")
             return output_mixed_audio_path
         except Exception as e:
             logger.warning(f"Audio mixing failed ({e}), using dubbed audio only.")

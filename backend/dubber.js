@@ -98,7 +98,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const jobId = 'dub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const voice = options.voice || 'vi-VN-HoaiMyNeural';
   const speed = options.speed || '+0%';
-  const origVol = options.origVol !== undefined ? options.origVol : 0.15;
+  const origVol = options.origVol !== undefined ? options.origVol : (options.bgmVolume !== undefined ? options.bgmVolume : 0.25);
   const whisperModel = options.whisperModel || 'small';
 
   const { TARGET_DIR } = require('./config');

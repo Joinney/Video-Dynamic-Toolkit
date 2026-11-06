@@ -13,7 +13,8 @@ import {
   Info,
   ShieldCheck,
   Film,
-  FileText
+  FileText,
+  Volume2
 } from 'lucide-react';
 import Header from '../components/Header';
 import { getVoiceAvatarUrl } from '../utils/voiceAvatar';
@@ -29,6 +30,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('vi');
   const [videoAspect, setVideoAspect] = useState('9 / 16');
+  const [bgmVolume, setBgmVolume] = useState(25); // 25% âm lượng video gốc làm nền (êm dịu, không át giọng đọc)
 
   // 4 Tabs Tùy Chỉnh Overlay từ StudioVDT
   const [activeOverlayTab, setActiveOverlayTab] = useState('logo'); // 'logo' | 'sub' | 'wm' | 'outro'
@@ -342,7 +344,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           floatingWatermarkOpacity: floatWmOpacity,
           enableOutro: enableOutro,
           outroPath: serverOutroPath,
-          bgmVolume: 0.15
+          origVol: bgmVolume / 100,
+          bgmVolume: bgmVolume / 100
         })
       });
       const data = await res.json();
@@ -493,6 +496,35 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 <option value="vi">🇻🇳 Tiếng Việt (Vietnamese)</option>
                 <option value="en">🇺🇸 Tiếng Anh (English)</option>
               </select>
+            </div>
+          </div>
+
+          {/* Âm Lượng Video Gốc / Nhạc Nền */}
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+              <span className="flex items-center gap-1.5">
+                <Volume2 size={15} className="text-blue-600" />
+                <span>Âm Lượng Video Gốc (Tiếng Nền / Nhạc Phim):</span>
+              </span>
+              <span className="text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                {bgmVolume}% {bgmVolume === 0 ? '(Tắt hẳn)' : '(Êm dịu làm nền)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 leading-snug">
+              Giữ lại âm thanh, nhạc nền và tiếng động của video gốc nhỏ hơn giọng lồng tiếng, giúp video tự nhiên và sống động.
+            </p>
+            <div className="flex items-center gap-2.5 pt-0.5">
+              <span className="text-[10px] text-gray-400 font-bold">0% (Tắt)</span>
+              <input
+                type="range"
+                min="0"
+                max="60"
+                step="5"
+                value={bgmVolume}
+                onChange={(e) => setBgmVolume(Number(e.target.value))}
+                className="flex-1 accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+              />
+              <span className="text-[10px] text-gray-400 font-bold">60%</span>
             </div>
           </div>
 

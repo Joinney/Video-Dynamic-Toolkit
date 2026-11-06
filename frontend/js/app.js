@@ -23833,6 +23833,13 @@
     ["line", { x1: "12", x2: "12", y1: "3", y2: "15", key: "widbto" }]
   ]);
 
+  // node_modules/lucide-react/dist/esm/icons/volume-2.js
+  var Volume2 = createLucideIcon("Volume2", [
+    ["polygon", { points: "11 5 6 9 2 9 2 15 6 15 11 19 11 5", key: "16drj5" }],
+    ["path", { d: "M15.54 8.46a5 5 0 0 1 0 7.07", key: "ltjumu" }],
+    ["path", { d: "M19.07 4.93a10 10 0 0 1 0 14.14", key: "1kegas" }]
+  ]);
+
   // node_modules/lucide-react/dist/esm/icons/x.js
   var X = createLucideIcon("X", [
     ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
@@ -24175,6 +24182,7 @@
     const [sourceLang, setSourceLang] = (0, import_react6.useState)("auto");
     const [targetLang, setTargetLang] = (0, import_react6.useState)("vi");
     const [videoAspect, setVideoAspect] = (0, import_react6.useState)("9 / 16");
+    const [bgmVolume, setBgmVolume] = (0, import_react6.useState)(25);
     const [activeOverlayTab, setActiveOverlayTab] = (0, import_react6.useState)("logo");
     const [watermarkEnabled, setWatermarkEnabled] = (0, import_react6.useState)(true);
     const [logoSize, setLogoSize] = (0, import_react6.useState)(18);
@@ -24449,7 +24457,8 @@
             floatingWatermarkOpacity: floatWmOpacity,
             enableOutro,
             outroPath: serverOutroPath,
-            bgmVolume: 0.15
+            origVol: bgmVolume / 100,
+            bgmVolume: bgmVolume / 100
           })
         });
         const data = await res.json();
@@ -24545,7 +24554,18 @@
         },
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "vi" }, "\u{1F1FB}\u{1F1F3} Ti\u1EBFng Vi\u1EC7t (Vietnamese)"),
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "en" }, "\u{1F1FA}\u{1F1F8} Ti\u1EBFng Anh (English)")
-      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2" }, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-xs font-bold text-gray-800 flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F3AC}"), " Ch\u1ECDn Video C\u1EA7n L\u1ED3ng Ti\u1EBFng:"), serverVideoPath && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200" }, "\u2713 Kho phim m\xE1y")), localDramas && localDramas.length > 0 && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2 bg-sky-50/70 border border-sky-200 rounded-lg" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] font-bold text-sky-900 mb-1 flex items-center gap-1" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4C2}"), " Kho phim \u0111\xE3 t\u1EA3i tr\xEAn m\xE1y (", localDramas.length, " b\u1ED9):"), /* @__PURE__ */ import_react6.default.createElement(
+      ))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement(Volume2, { size: 15, className: "text-blue-600" }), /* @__PURE__ */ import_react6.default.createElement("span", null, "\xC2m L\u01B0\u1EE3ng Video G\u1ED1c (Ti\u1EBFng N\u1EC1n / Nh\u1EA1c Phim):")), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-blue-700 font-extrabold bg-blue-50 px-2 py-0.5 rounded border border-blue-200" }, bgmVolume, "% ", bgmVolume === 0 ? "(T\u1EAFt h\u1EB3n)" : "(\xCAm d\u1ECBu l\xE0m n\u1EC1n)")), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-500 leading-snug" }, "Gi\u1EEF l\u1EA1i \xE2m thanh, nh\u1EA1c n\u1EC1n v\xE0 ti\u1EBFng \u0111\u1ED9ng c\u1EE7a video g\u1ED1c nh\u1ECF h\u01A1n gi\u1ECDng l\u1ED3ng ti\u1EBFng, gi\xFAp video t\u1EF1 nhi\xEAn v\xE0 s\u1ED1ng \u0111\u1ED9ng."), /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center gap-2.5 pt-0.5" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-gray-400 font-bold" }, "0% (T\u1EAFt)"), /* @__PURE__ */ import_react6.default.createElement(
+        "input",
+        {
+          type: "range",
+          min: "0",
+          max: "60",
+          step: "5",
+          value: bgmVolume,
+          onChange: (e) => setBgmVolume(Number(e.target.value)),
+          className: "flex-1 accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+        }
+      ), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-gray-400 font-bold" }, "60%"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs flex flex-col gap-2" }, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-xs font-bold text-gray-800 flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F3AC}"), " Ch\u1ECDn Video C\u1EA7n L\u1ED3ng Ti\u1EBFng:"), serverVideoPath && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200" }, "\u2713 Kho phim m\xE1y")), localDramas && localDramas.length > 0 && /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2 bg-sky-50/70 border border-sky-200 rounded-lg" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "text-[11px] font-bold text-sky-900 mb-1 flex items-center gap-1" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "\u{1F4C2}"), " Kho phim \u0111\xE3 t\u1EA3i tr\xEAn m\xE1y (", localDramas.length, " b\u1ED9):"), /* @__PURE__ */ import_react6.default.createElement(
         "select",
         {
           value: serverVideoPath,
@@ -26789,6 +26809,7 @@ lucide-react/dist/esm/icons/refresh-cw.js:
 lucide-react/dist/esm/icons/sparkles.js:
 lucide-react/dist/esm/icons/trash-2.js:
 lucide-react/dist/esm/icons/upload.js:
+lucide-react/dist/esm/icons/volume-2.js:
 lucide-react/dist/esm/icons/x.js:
 lucide-react/dist/esm/lucide-react.js:
   (**

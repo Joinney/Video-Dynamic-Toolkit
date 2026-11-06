@@ -218,13 +218,14 @@ class VideoDubberPipeline:
             pass
 
         # Step 6: Audio Mixing & Video Merging
-        notify("Hòa âm nhạc nền và triệt tiêu tạp âm gốc...", 0.85)
+        notify("Hòa âm âm thanh video gốc làm nền cùng giọng lồng tiếng...", 0.85)
         mixed_audio_path = work_dir / "mixed_final.wav"
         self.merger.mix_audios(
             original_audio_path=orig_audio_path,
             dubbed_audio_path=dubbed_voice_path,
             output_mixed_audio_path=mixed_audio_path,
             segments=segments,
+            mute_original_dialogue=False,
         )
 
         burn_subs = getattr(self.config, "burn_subtitles", True)

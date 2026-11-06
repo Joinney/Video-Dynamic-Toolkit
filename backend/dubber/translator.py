@@ -516,13 +516,16 @@ def translate_with_deep_translator(text: str, target_lang: str = "vi", source_la
         return ""
     try:
         from deep_translator import GoogleTranslator
-        sl = source_lang if source_lang != "auto" else "auto"
-        if sl in ("zh", "chinese", "tiếng trung", "tieng trung"):
+        sl = (source_lang or "auto").lower().strip()
+        if sl.startswith("zh") or sl in ("cn", "chinese", "chi", "tiếng trung", "tieng trung"):
             sl = "zh-CN"
-        translator = GoogleTranslator(
-            source=sl,
-            target=target_lang,
-        )
+        tl = (target_lang or "vi").lower().strip()
+        if tl in ("zh", "chinese"):
+            tl = "zh-CN"
+        try:
+            translator = GoogleTranslator(source=sl, target=tl)
+        except Exception:
+            translator = GoogleTranslator(source="auto", target="vi")
         res = translator.translate(clean_text)
         if res and res.strip():
             return res.strip()

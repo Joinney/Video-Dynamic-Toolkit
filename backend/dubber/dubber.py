@@ -20,10 +20,47 @@ import subprocess
 from pathlib import Path
 import tempfile
 
-# Add project root to sys.path to access config and video_dubber
-root_dir = Path(__file__).resolve().parent.parent.parent
+# Add dubber dir and project root to sys.path to access config and pipeline
+dubber_dir = Path(__file__).resolve().parent
+root_dir = dubber_dir.parent.parent
+if str(dubber_dir) not in sys.path:
+    sys.path.insert(0, str(dubber_dir))
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
+
+def whisper_lang_code(lang):
+    if not lang or lang == "auto":
+        return None
+    l = str(lang).lower().strip()
+    if l.startswith("zh") or l in ("cn", "chinese", "chi", "tiếng trung", "tieng trung"):
+        return "zh"
+    if l.startswith("vi") or l in ("vie", "vietnamese", "tiếng việt", "tieng viet"):
+        return "vi"
+    if l.startswith("en") or l in ("eng", "english", "tiếng anh", "tieng anh"):
+        return "en"
+    if l.startswith("ja") or l in ("jpn", "japanese"):
+        return "ja"
+    if l.startswith("ko") or l in ("kor", "korean"):
+        return "ko"
+    return l
+
+def translator_lang_code(lang):
+    if not lang or lang == "auto":
+        return "auto"
+    l = str(lang).lower().strip()
+    if l in ("zh", "zh-cn", "cn", "chinese", "chi", "tiếng trung", "tieng trung"):
+        return "zh-CN"
+    if l in ("zh-tw", "taiwan"):
+        return "zh-TW"
+    if l in ("en", "eng", "english", "tiếng anh", "tieng anh"):
+        return "en"
+    if l in ("vi", "vie", "vietnamese", "tiếng việt", "tieng viet"):
+        return "vi"
+    if l in ("ja", "jpn", "japanese"):
+        return "ja"
+    if l in ("ko", "kor", "korean"):
+        return "ko"
+    return l
 
 def emit_progress(status, pct, message, extra=None):
     payload = {
@@ -142,7 +179,11 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             device = "cuda" if os.environ.get("USE_CUDA") == "1" else "cpu"
             compute_type = "float16" if device == "cuda" else "int8"
             model = WhisperModel(whisper_model_size, device=device, compute_type=compute_type)
-            segments, info = model.transcribe(str(extracted_audio), beam_size=5)
+            transcribe_kwargs = {"beam_size": 5}
+            w_lang = whisper_lang_code(source_lang)
+            if w_lang:
+                transcribe_kwargs["language"] = w_lang
+            segments, info = model.transcribe(str(extracted_audio), **transcribe_kwargs)
             
             raw_segments = []
             for seg in segments:
@@ -159,15 +200,48 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
 
         # Dịch thuật
         emit_progress("translating", 55, f"Đang dịch {len(raw_segments)} câu sang tiếng Việt...")
-        from deep_translator import GoogleTranslator
-        translator = GoogleTranslator(source=source_lang, target=target_lang)
-        
+        src_for_trans = translator_lang_code(source_lang)
+        tgt_for_trans = translator_lang_code(target_lang)
+        if tgt_for_trans == "auto":
+            tgt_for_trans = "vi"
+
+        custom_translator = None
+        try:
+            try:
+                from translator import Translator
+            except ImportError:
+                from .translator import Translator
+            custom_translator = Translator(target_lang=tgt_for_trans, source_lang=src_for_trans)
+        except Exception:
+            pass
+
+        deep_trans = None
+        try:
+            from deep_translator import GoogleTranslator
+            try:
+                deep_trans = GoogleTranslator(source=src_for_trans, target=tgt_for_trans)
+            except Exception:
+                deep_trans = GoogleTranslator(source="auto", target="vi")
+        except Exception:
+            pass
+
         translated_segments = []
         for idx, seg in enumerate(raw_segments):
-            try:
-                vi_text = translator.translate(seg["text"])
-            except Exception:
-                vi_text = seg["text"]
+            text = seg["text"]
+            vi_text = ""
+            if custom_translator:
+                try:
+                    vi_text = custom_translator.translate_single(text)
+                except Exception:
+                    pass
+            if not vi_text and deep_trans:
+                try:
+                    vi_text = deep_trans.translate(text)
+                except Exception:
+                    pass
+            if not vi_text:
+                vi_text = text
+
             translated_segments.append({
                 "start": seg["start"],
                 "end": seg["end"],
@@ -257,7 +331,7 @@ def main():
     parser.add_argument("--input", required=True, help="Đường dẫn file video đầu vào (.mp4)")
     parser.add_argument("--output", required=True, help="Đường dẫn file video xuất ra (.mp4)")
     parser.add_argument("--voice", default="vi-VN-HoaiMyNeural", help="Giọng đọc AI (Hoài My, Nam Minh, Jenny...)")
-    parser.add_argument("--speed", default="+0%", help="Tốc độ đọc (+0%%, +10%%, +20%%)")
+    parser.add_argument("--speed", default="+0%", help="Tốc độ đọc (+0%, +10%, +20%)".replace("%", "%%"))
     parser.add_argument("--orig-vol", type=float, default=0.15, help="Âm lượng video gốc (0.1 đến 0.3)")
     parser.add_argument("--whisper-model", default="base", help="Model Whisper (tiny, base, small, medium)")
     parser.add_argument("--burn-subtitles", action="store_true", default=True, help="Chèn phụ đề cứng vào video")
@@ -272,7 +346,7 @@ def main():
     parser.add_argument("--logo-rotation", type=float, default=0.0, help="Góc xoay logo (độ)")
     parser.add_argument("--sub-style", default="white_outline", help="Kiểu phụ đề (glassmorphism, yellow_outline, black_box, white_outline)")
     parser.add_argument("--sub-font-size", type=int, default=32, help="Cỡ chữ phụ đề")
-    parser.add_argument("--sub-bottom-pct", type=float, default=7.0, help="Khoảng cách đáy Y phụ đề (%)")
+    parser.add_argument("--sub-bottom-pct", type=float, default=7.0, help="Khoảng cách đáy Y phụ đề (phần trăm)")
     parser.add_argument("--enable-float-wm", action="store_true", default=False, help="Chữ mờ bảo vệ bản quyền")
     parser.add_argument("--float-wm-text", default="@gocphimcuon", help="Nội dung chữ mờ")
     parser.add_argument("--float-wm-opacity", type=float, default=0.30, help="Độ mờ chữ mờ")

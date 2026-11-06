@@ -85,6 +85,31 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
     out_path = Path(output_video).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    def resolve_asset_file(p, default_name):
+        candidates = []
+        if p:
+            candidates.append(Path(p))
+            candidates.append(Path("assets") / Path(p).name)
+            candidates.append(Path("frontend/assets") / Path(p).name)
+            candidates.append(Path("/app/assets") / Path(p).name)
+            candidates.append(Path("/app/frontend/assets") / Path(p).name)
+        if default_name:
+            candidates.append(Path("assets") / default_name)
+            candidates.append(Path("frontend/assets") / default_name)
+            candidates.append(Path("/app/assets") / default_name)
+            candidates.append(Path("/app/frontend/assets") / default_name)
+            candidates.append(Path(__file__).resolve().parent.parent.parent / "assets" / default_name)
+            candidates.append(Path(__file__).resolve().parent.parent.parent / "frontend" / "assets" / default_name)
+        for c in candidates:
+            if c and c.exists():
+                return c.resolve()
+        return Path(p) if p else None
+
+    if enable_logo:
+        logo_path = resolve_asset_file(logo_path, "gocphimcuon1.png")
+    if enable_outro:
+        outro_path = resolve_asset_file(outro_path, "endgpc.mp4")
+
     # 1. Thử chạy bằng VideoDubberPipeline từ StudioVDT
     try:
         from config import DubbingConfig
@@ -299,26 +324,53 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
 
         # Trộn nhạc nền & xuất video chuẩn H.264
         emit_progress("merging", 95, "Đang hòa âm & hoàn thiện video chuẩn H.264...")
-        cmd_merge = [
-            "ffmpeg", "-y",
-            "-i", str(input_path),
-            "-i", str(dub_audio_wav),
-            "-filter_complex",
-            f"[0:a]volume={orig_volume}[orig_bg];[1:a]volume=1.25[dub_fg];[orig_bg][dub_fg]amix=inputs=2:duration=first:dropout_transition=2[aout]",
-            "-map", "0:v",
-            "-map", "[aout]",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-crf", "21",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            str(out_path)
-        ]
+        use_fallback_ffmpeg = True
+        try:
+            try:
+                from merger import VideoMerger
+            except ImportError:
+                from .merger import VideoMerger
+            merger = VideoMerger()
+            merger.merge_video(
+                video_path=input_path,
+                audio_path=dub_audio_wav,
+                output_video_path=out_path,
+                logo_path=logo_path if enable_logo else None,
+                logo_x_pct=logo_x,
+                logo_y_pct=logo_y,
+                logo_scale=logo_scale,
+                logo_opacity=logo_opacity,
+                logo_rotation=logo_rotation,
+                floating_watermark_text=float_wm_text if enable_float_wm else None,
+                floating_watermark_opacity=float_wm_opacity,
+                outro_video_path=outro_path if enable_outro else None,
+                total_duration=total_duration_ms / 1000.0
+            )
+            use_fallback_ffmpeg = False
+        except Exception:
+            use_fallback_ffmpeg = True
 
-        ret_merge = subprocess.run(cmd_merge, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if ret_merge.returncode != 0:
-            emit_progress("error", 0, "Lỗi khi ghép âm thanh và video bằng ffmpeg!")
-            return False
+        if use_fallback_ffmpeg:
+            cmd_merge = [
+                "ffmpeg", "-y",
+                "-i", str(input_path),
+                "-i", str(dub_audio_wav),
+                "-filter_complex",
+                f"[0:a]volume={orig_volume}[orig_bg];[1:a]volume=1.25[dub_fg];[orig_bg][dub_fg]amix=inputs=2:duration=first:dropout_transition=2[aout]",
+                "-map", "0:v",
+                "-map", "[aout]",
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-crf", "21",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                str(out_path)
+            ]
+
+            ret_merge = subprocess.run(cmd_merge, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if ret_merge.returncode != 0:
+                emit_progress("error", 0, "Lỗi khi ghép âm thanh và video bằng ffmpeg!")
+                return False
 
         emit_progress("completed", 100, "Lồng tiếng hoàn tất! Đã lưu video thành công.", extra={
             "outputPath": str(out_path),

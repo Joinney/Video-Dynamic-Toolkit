@@ -232,8 +232,19 @@ class VideoDubberPipeline:
         float_wm_text = getattr(self.config, "floating_watermark_text", "@gocphimcuon") if enable_float_wm else None
         enable_outro = getattr(self.config, "enable_outro", True)
         outro_path = getattr(self.config, "outro_video_path", None)
-        if enable_outro and not outro_path and Path("assets/endgpc.mp4").exists():
-            outro_path = Path("assets/endgpc.mp4")
+        if enable_outro and not outro_path:
+            for cand in [Path("assets/endgpc.mp4"), Path("frontend/assets/endgpc.mp4"), Path("/app/assets/endgpc.mp4"), Path("/app/frontend/assets/endgpc.mp4")]:
+                if cand.exists():
+                    outro_path = cand
+                    break
+
+        enable_logo = getattr(self.config, "enable_logo", False)
+        logo_path = getattr(self.config, "logo_path", None)
+        if enable_logo and not logo_path:
+            for cand in [Path("assets/gocphimcuon1.png"), Path("frontend/assets/gocphimcuon1.png"), Path("/app/assets/gocphimcuon1.png"), Path("/app/frontend/assets/gocphimcuon1.png")]:
+                if cand.exists():
+                    logo_path = cand
+                    break
 
         notify("Bắt đầu mã hóa video thành phẩm chuẩn phòng thu...", 0.87)
         final_video = self.merger.merge_video(
@@ -244,7 +255,7 @@ class VideoDubberPipeline:
             subtitle_font_size=getattr(self.config, "subtitle_font_size", 32),
             subtitle_style=getattr(self.config, "subtitle_style", "white_outline"),
             subtitle_margin_v=getattr(self.config, "subtitle_margin_v", 7),
-            logo_path=self.config.logo_path if getattr(self.config, "enable_logo", False) else None,
+            logo_path=logo_path if enable_logo else None,
             logo_x_pct=getattr(self.config, "logo_x_pct", 0.80),
             logo_y_pct=getattr(self.config, "logo_y_pct", 0.05),
             logo_scale=getattr(self.config, "logo_scale", 0.18),

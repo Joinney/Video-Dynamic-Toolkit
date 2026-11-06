@@ -665,8 +665,36 @@ class VideoMerger:
         output_video_path = Path(output_video_path)
         output_video_path.parent.mkdir(parents=True, exist_ok=True)
 
+        def resolve_existing_asset(p):
+            if not p:
+                return None
+            path_obj = Path(p)
+            if path_obj.exists():
+                return path_obj
+            candidates = [
+                Path("assets") / path_obj.name,
+                Path("frontend/assets") / path_obj.name,
+                Path("/app/assets") / path_obj.name,
+                Path("/app/frontend/assets") / path_obj.name,
+                Path(__file__).resolve().parent / "assets" / path_obj.name,
+                Path(__file__).resolve().parent.parent.parent / "assets" / path_obj.name,
+                Path(__file__).resolve().parent.parent.parent / "frontend" / "assets" / path_obj.name,
+            ]
+            for cand in candidates:
+                if cand.exists():
+                    return cand.resolve()
+            return None
+
+        resolved_logo = resolve_existing_asset(logo_path)
+        if resolved_logo:
+            logo_path = resolved_logo
         has_logo = logo_path is not None and Path(logo_path).exists()
+
         has_sub = subtitle_path is not None and Path(subtitle_path).exists()
+
+        resolved_outro = resolve_existing_asset(outro_video_path)
+        if resolved_outro:
+            outro_video_path = resolved_outro
         has_outro = outro_video_path is not None and Path(outro_video_path).exists()
 
         x_pct = max(0.0, min(0.95, float(logo_x_pct)))

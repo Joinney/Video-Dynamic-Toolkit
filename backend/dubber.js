@@ -164,9 +164,26 @@ function startDubbingJob(inputVideoPath, options = {}) {
   if (burnSub) {
     args.push('--burn-subtitles');
   }
+  const resolveAssetPath = (p) => {
+    if (!p) return null;
+    const candidates = [
+      p,
+      path.resolve(__dirname, '..', p),
+      path.resolve(__dirname, '..', 'assets', path.basename(p)),
+      path.resolve(__dirname, '..', 'frontend', p),
+      path.resolve(__dirname, '..', 'frontend', 'assets', path.basename(p)),
+      path.resolve(__dirname, 'dubber', 'assets', path.basename(p))
+    ];
+    for (const cand of candidates) {
+      if (typeof cand === 'string' && fs.existsSync(cand)) return cand;
+    }
+    return p;
+  };
+
   if (options.enableLogo) {
     args.push('--enable-logo');
-    if (options.logoPath) args.push('--logo-path', options.logoPath);
+    const finalLogo = resolveAssetPath(options.logoPath || 'assets/gocphimcuon1.png');
+    if (finalLogo) args.push('--logo-path', finalLogo);
     if (options.logoXPct !== undefined) args.push('--logo-x', String(options.logoXPct / 100));
     if (options.logoYPct !== undefined) args.push('--logo-y', String(options.logoYPct / 100));
     if (options.logoScale !== undefined) args.push('--logo-scale', String(options.logoScale / 100));
@@ -189,7 +206,8 @@ function startDubbingJob(inputVideoPath, options = {}) {
   }
   if (options.enableOutro !== false) {
     args.push('--enable-outro');
-    if (options.outroPath) args.push('--outro-path', options.outroPath);
+    const finalOutro = resolveAssetPath(options.outroPath || 'assets/endgpc.mp4');
+    if (finalOutro) args.push('--outro-path', finalOutro);
   }
   if (options.subtitles && Array.isArray(options.subtitles) && options.subtitles.length > 0) {
     const subJsonFile = path.join(dir, `.temp_sub_${jobId}.json`);

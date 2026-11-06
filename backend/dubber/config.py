@@ -187,5 +187,14 @@ class DubbingConfig:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         if self.outro_video_path is not None:
             self.outro_video_path = Path(self.outro_video_path)
-        elif Path("assets/endgpc.mp4").exists():
-            self.outro_video_path = Path("assets/endgpc.mp4")
+        else:
+            for cand in [Path("assets/endgpc.mp4"), Path("frontend/assets/endgpc.mp4"), Path("/app/assets/endgpc.mp4"), Path("/app/frontend/assets/endgpc.mp4")]:
+                if cand.exists():
+                    self.outro_video_path = cand
+                    break
+
+        if self.enable_logo and not self.logo_path:
+            for cand in [Path("assets/gocphimcuon1.png"), Path("frontend/assets/gocphimcuon1.png"), Path("/app/assets/gocphimcuon1.png"), Path("/app/frontend/assets/gocphimcuon1.png")]:
+                if cand.exists():
+                    self.logo_path = cand
+                    break

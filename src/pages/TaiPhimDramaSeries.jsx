@@ -75,9 +75,7 @@ export default function TaiPhimDramaSeries({
       setConnected(data.connected);
       setDeviceName(data.deviceName || 'Chưa tìm thấy giả lập');
       if (data.currentDrama && data.currentDrama.title) {
-        if (!dramaTitle || dramaTitle === 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh' || (data.activeApp === 'sodareels' && dramaTitle.includes('Tiệm Tạp Hóa'))) {
-          setDramaTitle(data.currentDrama.title);
-        }
+        setDramaTitle(data.currentDrama.title);
         const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
         if (cover) {
           setCurrentDramaCover(cover);
@@ -868,54 +866,27 @@ export default function TaiPhimDramaSeries({
                 </button>
               </div>
 
-              {/* Drama Switcher */}
-              {directDramaData?.availableDramas && directDramaData.availableDramas.length > 0 && (
-                <div className="mb-2.5 bg-blue-50/50 p-2.5 rounded-xl border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-blue-900">🎬 Bộ phim đang chọn:</span>
-                    <select
-                      value={directDramaData.title || ''}
-                      onChange={(e) => {
-                        const selectedT = e.target.value;
-                        setDramaTitle(selectedT);
-                        fetchDirectEpisodes(selectedT);
-                      }}
-                      className="bg-white border border-blue-300 text-blue-900 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer max-w-xs truncate"
-                    >
-                      {directDramaData.availableDramas.map((d, idx) => (
-                        <option key={idx} value={d.title}>
-                          {d.title} ({d.totalEpisodes} tập)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <span className="text-[11px] text-blue-700 font-medium">
-                    {directDramaData.app === 'sodareels' ? 'Ứng dụng: Soda Reels' : 'Ứng dụng: MinuteDrama'}
-                  </span>
+              {/* Chỉ hiển thị duy nhất bộ phim đang mở trên thiết bị */}
+              <div className="mb-2.5 bg-blue-50/70 p-3 rounded-xl border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-blue-900">🎬 Bộ phim đang mở:</span>
+                  <span className="font-black text-blue-800 text-sm">{directDramaData?.title || dramaTitle}</span>
                 </div>
-              )}
+                <span className="text-[11px] bg-white text-blue-700 px-2.5 py-1 rounded-lg font-bold border border-blue-200">
+                  Tổng {directDramaData?.totalEpisodes || 0} tập gốc
+                </span>
+              </div>
 
-              {/* Folder Selector / Confirmation */}
+              {/* Thư mục lưu đúng bộ phim */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-slate-800">📁 Lưu vào thư mục máy tính:</span>
-                  <select
-                    value={dramaTitle || directDramaData?.title || ''}
-                    onChange={(e) => setDramaTitle(e.target.value)}
-                    className="bg-white border border-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer max-w-xs truncate"
-                  >
-                    {localDramas.map((d, idx) => (
-                      <option key={idx} value={d.name || d.title}>
-                        {d.name || d.title} ({d.videos ? d.videos.length : (d.count || 0)} tập đã có)
-                      </option>
-                    ))}
-                    {!localDramas.some(d => (d.name || d.title) === (dramaTitle || directDramaData?.title)) && (dramaTitle || directDramaData?.title) && (
-                      <option value={dramaTitle || directDramaData?.title}>{dramaTitle || directDramaData?.title}</option>
-                    )}
-                  </select>
+                  <span className="font-bold text-slate-800">📁 Thư mục lưu trên máy:</span>
+                  <code className="bg-white border border-slate-300 text-blue-700 font-mono font-bold text-xs px-2.5 py-1 rounded-lg">
+                    Soda_Reels_Videos/{directDramaData?.title || dramaTitle}
+                  </code>
                 </div>
                 <span className="text-[11px] text-emerald-700 font-semibold">
-                  {localDramas.some(d => (d.name || d.title) === (dramaTitle || directDramaData?.title)) ? '✅ Khớp đúng bộ phim đã có trên máy' : '📁 Tự động tạo đúng thư mục phim'}
+                  ✅ Khớp chuẩn bộ phim đang mở (Không lưu ra bộ khác)
                 </span>
               </div>
 

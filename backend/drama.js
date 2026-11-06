@@ -108,25 +108,19 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
   if (appKey === 'minutedrama') {
     try {
       let currentDrama = null;
-      let allDramas = [];
       const rawRows = adbQuerySqlite(
         device,
         '/data/data/com.minute.minishort.drama/databases/file_manager.db',
-        'SELECT title, episode_num, total_episode, cover_url FROM playEpisodeHistory ORDER BY id DESC LIMIT 10;'
+        'SELECT title, episode_num, total_episode, cover_url FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;'
       );
-      const dbRows = rawRows.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-
-      const seen = new Set();
-      dbRows.forEach(row => {
-        const parts = row.split('|');
+      if (rawRows) {
+        const parts = rawRows.trim().split('|');
         const title = (parts[0] || '').trim();
         const ep = parseInt(parts[1], 10) || 1;
         const total = parseInt(parts[2], 10) || 0;
         const cover = (parts[3] || '').trim();
-
-        if (title && !seen.has(title)) {
-          seen.add(title);
-          const dramaObj = {
+        if (title) {
+          currentDrama = {
             id: `minute_${title}`,
             title,
             image: cover,
@@ -136,16 +130,12 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
             currentEpisode: ep,
             totalEpisodes: total
           };
-          if (!currentDrama) currentDrama = dramaObj;
-          allDramas.push(dramaObj);
         }
-      });
-
-      if (!currentDrama && allDramas.length > 0) currentDrama = allDramas[0];
+      }
 
       return {
         currentDrama,
-        allDramas,
+        allDramas: currentDrama ? [currentDrama] : [],
         currentEpisode: currentDrama ? currentDrama.currentEpisode : 1,
         totalEpisodes: currentDrama ? currentDrama.totalEpisodes : 0
       };
@@ -239,7 +229,9 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
       currentDrama.totalEpisodes = totalEpisodes;
     }
 
-    return { currentDrama, allDramas, lastDramaId, currentEpisode, totalEpisodes };
+    // Chỉ trả về duy nhất bộ phim đang mở trên thiết bị
+    const singleDramaList = currentDrama ? [currentDrama] : [];
+    return { currentDrama, allDramas: singleDramaList, lastDramaId, currentEpisode, totalEpisodes };
   } catch (e) {
     return { currentDrama: null, allDramas: [], currentEpisode: 1, totalEpisodes: 0 };
   }
@@ -515,19 +507,11 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
 
   const effectiveApp = (appKey === 'auto') ? detectActiveApp(device) : appKey;
 
-  // 1. NẾU ĐANG CHỌN SODA REELS -> LẤY DỮ LIỆU ĐÚNG CỦA SODA REELS
+  // 1. NẾU ĐANG CHỌN SODA REELS -> CHỈ LẤY ĐÚNG BỘ PHIM ĐANG MỞ TRÊN SODA REELS
   if (effectiveApp === 'sodareels') {
     try {
       const sodaInfo = getDramaInfoFromDevice(device, 'sodareels');
-      let currentDrama = sodaInfo.currentDrama;
-      const allDramas = sodaInfo.allDramas || [];
-
-      // Nếu có requestedTitle, tìm đúng bộ phim đó trong Soda Reels
-      if (requestedTitle) {
-        const reqLower = requestedTitle.trim().toLowerCase();
-        const matched = allDramas.find(d => d.title && (d.title.toLowerCase().includes(reqLower) || reqLower.includes(d.title.toLowerCase())));
-        if (matched) currentDrama = matched;
-      }
+      const currentDrama = sodaInfo.currentDrama;
 
       const dramaTitle = currentDrama ? currentDrama.title : (requestedTitle || 'Dám rút kiếm đối đầu với thần linh');
       const coverUrl = currentDrama ? (currentDrama.image || currentDrama.cover || currentDrama.coverUrl || '') : '';
@@ -560,78 +544,36 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
         totalEpisodes,
         cachedCount: episodes.length,
         episodes,
-        availableDramas: allDramas.map(d => ({
-          id: d.id,
-          title: d.title,
-          coverUrl: d.image || d.cover || d.coverUrl || '',
-          totalEpisodes: d.totalEpisodes || 60
-        }))
+        availableDramas: []
       };
     } catch (e) {
       return { app: 'sodareels', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
     }
   }
 
-  // 2. NẾU ĐANG CHỌN MINUTEDRAMA -> LẤY TỪ FILE_MANAGER.DB CỦA MINUTEDRAMA
+  // 2. NẾU ĐANG CHỌN MINUTEDRAMA -> CHỈ LẤY ĐÚNG BỘ PHIM ĐANG MỞ TRÊN MINUTEDRAMA
   try {
     const dbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';
-    const rawIds = adbQuerySqlite(device, dbPath, 'SELECT id FROM videoDetail ORDER BY id DESC;');
-    if (!rawIds) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
-
-    const ids = rawIds.trim().split(/\s+/).filter(Boolean);
-    if (ids.length === 0) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
-
-    let activeTitle = (requestedTitle || '').trim().toLowerCase();
-    let bestDrama = null;
-    const availableDramas = [];
-
-    for (const id of ids) {
-      try {
-        const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${id};`);
-        if (!rawJson) continue;
-        const d = JSON.parse(rawJson.trim());
-        if (!d || !d.episodesInfos || d.episodesInfos.length === 0) continue;
-
-        const dTitle = (d.title || '').trim();
-        availableDramas.push({
-          id,
-          title: dTitle,
-          coverUrl: d.coverUrl || '',
-          totalEpisodes: d.episodesCount || d.episodesInfos.length
-        });
-
-        if (!bestDrama) {
-          if (activeTitle) {
-            const dTitleLower = dTitle.toLowerCase();
-            if (dTitleLower.includes(activeTitle) || activeTitle.includes(dTitleLower) ||
-                cleanDramaFolderName(dTitleLower) === cleanDramaFolderName(activeTitle)) {
-              bestDrama = d;
-            }
-          }
-        }
-      } catch (e) {}
+    
+    // Tìm bộ phim đang mở gần nhất từ lịch sử phát
+    let activeTitle = (requestedTitle || '').trim();
+    if (!activeTitle) {
+      const lastPlay = adbQuerySqlite(device, dbPath, 'SELECT title FROM playEpisodeHistory ORDER BY id DESC LIMIT 1;');
+      if (lastPlay) activeTitle = lastPlay.trim();
     }
 
-    if (!bestDrama && availableDramas.length > 0) {
-      try {
-        if (activeTitle) {
-          const matched = availableDramas.find(a => {
-            const words = activeTitle.split(/\s+/).filter(w => w.length > 1);
-            return words.some(w => a.title.toLowerCase().includes(w));
-          });
-          if (matched) {
-            const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${matched.id};`);
-            bestDrama = JSON.parse(rawJson.trim());
-          }
-        }
-        if (!bestDrama) {
-          const rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE id = ${availableDramas[0].id};`);
-          bestDrama = JSON.parse(rawJson.trim());
-        }
-      } catch (e) {}
+    let rawJson = '';
+    if (activeTitle) {
+      const cleanT = activeTitle.replace(/['"\\]/g, '');
+      rawJson = adbQuerySqlite(device, dbPath, `SELECT json FROM videoDetail WHERE json LIKE '%${cleanT}%' ORDER BY id DESC LIMIT 1;`);
+    }
+    if (!rawJson) {
+      rawJson = adbQuerySqlite(device, dbPath, 'SELECT json FROM videoDetail ORDER BY id DESC LIMIT 1;');
     }
 
-    if (!bestDrama) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas };
+    if (!rawJson) return { app: 'minutedrama', title: activeTitle, totalEpisodes: 0, episodes: [], availableDramas: [] };
+    const bestDrama = JSON.parse(rawJson.trim());
+    if (!bestDrama) return { app: 'minutedrama', title: activeTitle, totalEpisodes: 0, episodes: [], availableDramas: [] };
 
     const episodes = (bestDrama.episodesInfos || []).map(ep => {
       const directUrl = ep.signPlayUrlH264 || ep.signPlayUrl || ep.bkSignPlayUrl || '';
@@ -647,11 +589,11 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
 
     return {
       app: 'minutedrama',
-      title: bestDrama.title || '',
+      title: bestDrama.title || activeTitle,
       coverUrl: bestDrama.coverUrl || '',
       totalEpisodes: bestDrama.episodesCount || episodes.length,
       episodes,
-      availableDramas
+      availableDramas: []
     };
   } catch (e) {
     return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };

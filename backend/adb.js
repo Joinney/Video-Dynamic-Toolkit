@@ -9,15 +9,15 @@ function checkAdbDevice() {
     return null;
   }
   try {
-    let out = execSync(`"${ADB_PATH}" devices`, { encoding: 'utf8' });
+    let out = execSync(`"${ADB_PATH}" devices`, { encoding: 'utf8', timeout: 3000 });
     let lines = out.trim().split('\n').slice(1)
       .map(l => l.trim())
       .filter(l => l.includes('device') && !l.includes('offline'));
 
     if (lines.length === 0) {
       try {
-        execSync(`"${ADB_PATH}" connect 127.0.0.1:5555`, { stdio: 'ignore' });
-        out = execSync(`"${ADB_PATH}" devices`, { encoding: 'utf8' });
+        execSync(`"${ADB_PATH}" connect 127.0.0.1:5555`, { stdio: 'ignore', timeout: 3000 });
+        out = execSync(`"${ADB_PATH}" devices`, { encoding: 'utf8', timeout: 3000 });
         lines = out.trim().split('\n').slice(1)
           .map(l => l.trim())
           .filter(l => l.includes('device') && !l.includes('offline'));
@@ -28,7 +28,7 @@ function checkAdbDevice() {
       const dev = lines[0].split(/\s+/)[0];
       if (!adbRootChecked) {
         adbRootChecked = true;
-        try { execSync(`"${ADB_PATH}" -s ${dev} root`, { stdio: 'ignore' }); } catch (e) {}
+        try { execSync(`"${ADB_PATH}" -s ${dev} root`, { stdio: 'ignore', timeout: 3000 }); } catch (e) {}
       }
       return dev;
     }
@@ -42,17 +42,17 @@ function checkAdbDevice() {
 
 function adbQuerySqlite(device, dbPath, sql) {
   if (!device) return '';
-  const options = { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 };
+  const options = { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, timeout: 3500, stdio: ['ignore', 'pipe', 'ignore'] };
   try {
     const raw = execSync(
-      `"${ADB_PATH}" -s ${device} shell "sqlite3 ${dbPath} \\"${sql}\\" 2>/dev/null"`,
+      `"${ADB_PATH}" -s ${device} shell "sqlite3 ${dbPath} \\"${sql}\\" < /dev/null 2>/dev/null"`,
       options
     ).trim();
     if (raw && !raw.includes('Error: unable to open database')) return raw;
   } catch (e) {}
   try {
     const rawSu = execSync(
-      `"${ADB_PATH}" -s ${device} shell "su 0 sqlite3 ${dbPath} \\"${sql}\\" 2>/dev/null"`,
+      `"${ADB_PATH}" -s ${device} shell "su 0 sqlite3 ${dbPath} \\"${sql}\\" < /dev/null 2>/dev/null"`,
       options
     ).trim();
     return rawSu;
@@ -96,7 +96,7 @@ function resolveActiveApp(device, requestedApp) {
 
 function pullRemoteFile(device, remotePath, localPath) {
   try {
-    execSync(`"${ADB_PATH}" -s ${device} pull "${remotePath}" "${localPath}"`, { stdio: 'pipe' });
+    execSync(`"${ADB_PATH}" -s ${device} pull "${remotePath}" "${localPath}"`, { stdio: 'pipe', timeout: 8000 });
     if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
       return true;
     }
@@ -105,9 +105,9 @@ function pullRemoteFile(device, remotePath, localPath) {
   // Fallback nếu Permission denied trên /data/data/: Dùng su 0 copy sang /sdcard/ rồi pull
   try {
     const tmpSdcard = `/sdcard/_temp_pull_${Date.now()}.mp4`;
-    execSync(`"${ADB_PATH}" -s ${device} shell "su 0 cp '${remotePath}' '${tmpSdcard}' && su 0 chmod 666 '${tmpSdcard}'"`, { stdio: 'pipe' });
-    execSync(`"${ADB_PATH}" -s ${device} pull "${tmpSdcard}" "${localPath}"`, { stdio: 'pipe' });
-    execSync(`"${ADB_PATH}" -s ${device} shell "rm -f '${tmpSdcard}'"`, { stdio: 'ignore' });
+    execSync(`"${ADB_PATH}" -s ${device} shell "su 0 cp '${remotePath}' '${tmpSdcard}' && su 0 chmod 666 '${tmpSdcard}'"`, { stdio: 'pipe', timeout: 6000 });
+    execSync(`"${ADB_PATH}" -s ${device} pull "${tmpSdcard}" "${localPath}"`, { stdio: 'pipe', timeout: 8000 });
+    execSync(`"${ADB_PATH}" -s ${device} shell "rm -f '${tmpSdcard}'"`, { stdio: 'ignore', timeout: 3000 });
     return fs.existsSync(localPath) && fs.statSync(localPath).size > 0;
   } catch (err) {
     throw new Error(`Không thể kéo file từ thiết bị: ${err.message}`);

@@ -25699,12 +25699,37 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
       setQueueItems([...queueItems].reverse());
     };
     const deleteSelectedCache = async () => {
+      const selected = queueItems.filter((item) => item.checked && item.path);
+      if (selected.length === 0) {
+        if (!window.confirm("B\u1EA1n ch\u01B0a t\xEDch ch\u1ECDn t\u1EADp n\xE0o. B\u1EA1n c\xF3 mu\u1ED1n X\xD3A S\u1EA0CH to\xE0n b\u1ED9 video trong b\u1ED9 nh\u1EDB \u0111\u1EC7m m\xE1y \u1EA3o \u0111\u1EC3 xem l\u1EA1i t\u1EEB \u0111\u1EA7u kh\xF4ng?")) {
+          return;
+        }
+        try {
+          await fetch("/api/delete-remote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ all: true })
+          });
+          setQueueItems([]);
+          showToast("\u0110\xE3 x\xF3a s\u1EA1ch to\xE0n b\u1ED9 video trong b\u1ED9 \u0111\u1EC7m m\xE1y \u1EA3o!");
+          setTimeout(fetchStatusData, 500);
+        } catch (e) {
+          showToast("L\u1ED7i x\xF3a cache: " + e.message);
+        }
+        return;
+      }
       try {
-        await fetch("/api/delete-remote", { method: "POST" });
+        const paths = selected.map((i) => i.path);
+        await fetch("/api/delete-remote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths })
+        });
         setQueueItems(queueItems.filter((item) => !item.checked));
-        showToast("\u0110\xE3 x\xF3a cache c\xE1c t\u1EADp \u0111\xE3 ch\u1ECDn tr\xEAn m\xE1y \u1EA3o!");
+        showToast(`\u0110\xE3 x\xF3a ${paths.length} t\u1EADp \u0111\xE3 ch\u1ECDn kh\u1ECFi m\xE1y \u1EA3o!`);
+        setTimeout(fetchStatusData, 500);
       } catch (e) {
-        showToast("L\u1ED7i x\xF3a cache");
+        showToast("L\u1ED7i x\xF3a cache: " + e.message);
       }
     };
     const startSwipe = async (count) => {

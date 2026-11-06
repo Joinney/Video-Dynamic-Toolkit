@@ -192,12 +192,38 @@ export default function TaiPhimDramaSeries({
   };
 
   const deleteSelectedCache = async () => {
+    const selected = queueItems.filter((item) => item.checked && item.path);
+    if (selected.length === 0) {
+      if (!window.confirm('Bạn chưa tích chọn tập nào. Bạn có muốn XÓA SẠCH toàn bộ video trong bộ nhớ đệm máy ảo để xem lại từ đầu không?')) {
+        return;
+      }
+      try {
+        await fetch('/api/delete-remote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ all: true })
+        });
+        setQueueItems([]);
+        showToast('Đã xóa sạch toàn bộ video trong bộ đệm máy ảo!');
+        setTimeout(fetchStatusData, 500);
+      } catch (e) {
+        showToast('Lỗi xóa cache: ' + e.message);
+      }
+      return;
+    }
+
     try {
-      await fetch('/api/delete-remote', { method: 'POST' });
+      const paths = selected.map(i => i.path);
+      await fetch('/api/delete-remote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths })
+      });
       setQueueItems(queueItems.filter((item) => !item.checked));
-      showToast('Đã xóa cache các tập đã chọn trên máy ảo!');
+      showToast(`Đã xóa ${paths.length} tập đã chọn khỏi máy ảo!`);
+      setTimeout(fetchStatusData, 500);
     } catch (e) {
-      showToast('Lỗi xóa cache');
+      showToast('Lỗi xóa cache: ' + e.message);
     }
   };
 

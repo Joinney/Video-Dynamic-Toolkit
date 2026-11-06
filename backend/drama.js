@@ -469,15 +469,16 @@ function exportSingleCacheItem(device, remoteItem, rawDramaName, preferredEp) {
 
 function deleteRemoteCache(device, paths) {
   if (!device || !paths || paths.length === 0) return;
-  paths.forEach(p => {
-    try {
-      execSync(`"${ADB_PATH}" -s ${device} shell "rm -f '${p}' '${p}nodeconf'"`);
+  try {
+    const filesToDelete = paths.map(p => `"${p}" "${p}nodeconf" "${p}.cfg"`).join(' ');
+    execSync(`"${ADB_PATH}" -s ${device} shell "rm -f ${filesToDelete}"`, { stdio: 'ignore' });
+    paths.forEach(p => {
       if (p.includes('dm_video_cache')) {
         const parentDir = path.posix.dirname(p);
-        execSync(`"${ADB_PATH}" -s ${device} shell "rm -rf '${parentDir}'"`);
+        try { execSync(`"${ADB_PATH}" -s ${device} shell "rm -rf '${parentDir}'"`, { stdio: 'ignore' }); } catch (e) {}
       }
-    } catch (e) {}
-  });
+    });
+  } catch (e) {}
 }
 
 async function downloadDirectVideo(url, rawDramaName, epNum) {

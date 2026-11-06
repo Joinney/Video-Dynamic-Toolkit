@@ -394,8 +394,15 @@ const server = http.createServer(async (req, res) => {
     try {
       const payload = await parseJsonBody(req);
       const device = checkAdbDevice();
-      if (device && payload.paths) {
-        deleteRemoteCache(device, payload.paths);
+      if (device) {
+        if (payload.all) {
+          try {
+            execSync(`"${ADB_PATH}" -s ${device} shell "rm -rf /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/* /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*"`, { stdio: 'ignore' });
+          } catch (e) {}
+        } else if (payload.paths && payload.paths.length > 0) {
+          deleteRemoteCache(device, payload.paths);
+        }
+        globalStatusCache = { time: 0, key: '', data: null };
       }
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true }));

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Upload,
   Headphones,
@@ -47,13 +47,32 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   // Tab 2: Phụ đề
   const [burnSubtitles, setBurnSubtitles] = useState(true);
   const [subStyle, setSubStyle] = useState('white_outline'); // 'white_outline' | 'glassmorphism' | 'yellow_outline' | 'black_box'
-  const [subFontSize, setSubFontSize] = useState(28);
+  const [subFontSize, setSubFontSize] = useState(32);
   const [subBottomPct, setSubBottomPct] = useState(7);
   const [previewSubText, setPreviewSubText] = useState('Studio VDT — Lồng tiếng phim AI đỉnh cao');
   const [previewSegments, setPreviewSegments] = useState([]);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [isTranscribingSubtitles, setIsTranscribingSubtitles] = useState(false);
   const [whisperModel, setWhisperModel] = useState('small');
+  const videoRef = useRef(null);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+
+  // Hiển thị câu phụ đề bám sát theo thời gian thực khi phát video hoặc câu đang chọn sửa
+  const displayedSubText = useMemo(() => {
+    if (previewSegments && previewSegments.length > 0) {
+      const activeSeg = previewSegments.find(
+        (s) => videoCurrentTime >= s.start && videoCurrentTime <= s.end
+      );
+      if (activeSeg && activeSeg.text) {
+        return activeSeg.text;
+      }
+      if (videoRef.current && !videoRef.current.paused && videoCurrentTime > 0) {
+        return '';
+      }
+      return previewSegments[activeSegmentIndex]?.text || previewSubText;
+    }
+    return previewSubText;
+  }, [previewSegments, videoCurrentTime, activeSegmentIndex, previewSubText]);
 
   // Dịch trước từ Video bằng Whisper AI
   const handleQuickTranscribe = async () => {
@@ -310,6 +329,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           burnSubtitles: burnSubtitles,
           subStyle: subStyle,
           subFontSize: subFontSize,
+          subBottomPct: subBottomPct,
           enableLogo: watermarkEnabled,
           logoPath: serverLogoPath,
           logoXPct: logoX,
@@ -723,6 +743,9 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                               if (previewSegments[idx]?.text) {
                                 setPreviewSubText(previewSegments[idx].text);
                               }
+                              if (videoRef.current && previewSegments[idx]?.start !== undefined) {
+                                videoRef.current.currentTime = Math.max(0, previewSegments[idx].start);
+                              }
                             }}
                             className="w-full bg-white border border-sky-300 rounded-lg p-1.5 text-xs font-semibold text-slate-800 cursor-pointer"
                           >
@@ -807,13 +830,55 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                         </select>
                       </div>
 
+                      <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-sky-700">
+                          <span>Vị trí khoảng cách đáy Y:</span>
+                          <span className="text-gray-500 font-semibold">{subBottomPct}%</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          <button type="button" onClick={() => setSubBottomPct(5)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 5 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            ⬇️ Đáy (5%)
+                          </button>
+                          <button type="button" onClick={() => setSubBottomPct(7)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 7 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            ⭐ Chuẩn (7%)
+                          </button>
+                          <button type="button" onClick={() => setSubBottomPct(14)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 14 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            📱 Reels (14%)
+                          </button>
+                          <button type="button" onClick={() => setSubBottomPct(25)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 25 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            🔼 Cao (25%)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-sky-700">
+                          <span>Cỡ chữ phụ đề:</span>
+                          <span className="text-gray-500 font-semibold">{subFontSize}px</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          <button type="button" onClick={() => setSubFontSize(24)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 24 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            Nhỏ (24px)
+                          </button>
+                          <button type="button" onClick={() => setSubFontSize(32)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 32 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            ⭐ Vừa (32px)
+                          </button>
+                          <button type="button" onClick={() => setSubFontSize(42)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 42 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            Lớn (42px)
+                          </button>
+                          <button type="button" onClick={() => setSubFontSize(54)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 54 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            Cực lớn (54px)
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>
-                          <label className="text-gray-600 font-semibold">Cỡ chữ: {subFontSize}px</label>
+                          <label className="text-gray-600 font-semibold">Thanh trượt cỡ chữ: {subFontSize}px</label>
                           <input type="range" min="14" max="90" step="2" value={subFontSize} onChange={(e) => setSubFontSize(Number(e.target.value))} className="w-full accent-blue-600" />
                         </div>
                         <div>
-                          <label className="text-gray-600 font-semibold">Khoảng cách đáy Y: {subBottomPct}%</label>
+                          <label className="text-gray-600 font-semibold">Thanh trượt vị trí đáy: {subBottomPct}%</label>
                           <input type="range" min="1" max="85" value={subBottomPct} onChange={(e) => setSubBottomPct(Number(e.target.value))} className="w-full accent-blue-600" />
                         </div>
                       </div>
@@ -973,8 +1038,12 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
               >
                 {videoUrl ? (
                   <video
+                    ref={videoRef}
                     src={videoUrl}
                     controls
+                    onTimeUpdate={(e) => {
+                      setVideoCurrentTime(e.target.currentTime);
+                    }}
                     onLoadedMetadata={(e) => {
                       const v = e.target;
                       if (v.videoWidth && v.videoHeight) {
@@ -1020,36 +1089,65 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   </div>
                 )}
 
-                {/* Phụ đề mẫu trên mặt video theo Style được chọn */}
-                {burnSubtitles && videoUrl && (
+                {/* Phụ đề mẫu trên mặt video theo Style được chọn - Khớp 1:1 chuẩn xác với video xuất */}
+                {burnSubtitles && videoUrl && displayedSubText && (
                   <div
                     style={{
                       position: 'absolute',
                       bottom: `${subBottomPct}%`,
-                      left: '5%',
-                      right: '5%',
-                      fontSize: `${subFontSize * 0.55}px`
+                      left: '4%',
+                      right: '4%',
+                      fontSize: `${Math.max(12, Math.round(subFontSize * (580 / 720)))}px`,
+                      lineHeight: 1.35
                     }}
-                    className="text-center font-bold pointer-events-none select-none transition-all"
+                    className="text-center font-bold pointer-events-none select-none transition-all flex justify-center items-center"
                   >
                     {subStyle === 'glassmorphism' && (
-                      <span className="bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md">
-                        {previewSubText}
+                      <span
+                        className="bg-[#141418]/65 backdrop-blur-md text-white border border-white/20 shadow-lg inline-block text-center font-bold"
+                        style={{
+                          padding: `${Math.max(4, Math.round(subFontSize * 0.16))}px ${Math.max(8, Math.round(subFontSize * 0.35))}px`,
+                          borderRadius: `${Math.max(6, Math.round(subFontSize * 0.28))}px`,
+                          maxWidth: '92%'
+                        }}
+                      >
+                        {displayedSubText}
                       </span>
                     )}
                     {subStyle === 'yellow_outline' && (
-                      <span className="text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black" style={{ WebkitTextStroke: '1px black' }}>
-                        {previewSubText}
+                      <span
+                        className="text-[#FFE600] font-black inline-block text-center"
+                        style={{
+                          WebkitTextStroke: `${Math.max(1.5, Math.round(subFontSize * 0.06))}px #000000`,
+                          textShadow: '0 2px 4px rgba(0,0,0,0.95)',
+                          maxWidth: '92%'
+                        }}
+                      >
+                        {displayedSubText}
                       </span>
                     )}
                     {subStyle === 'black_box' && (
-                      <span className="bg-black text-white px-3 py-1 rounded">
-                        {previewSubText}
+                      <span
+                        className="bg-[#050505]/85 text-white shadow-xl inline-block text-center font-bold"
+                        style={{
+                          padding: `${Math.max(4, Math.round(subFontSize * 0.16))}px ${Math.max(8, Math.round(subFontSize * 0.35))}px`,
+                          borderRadius: `${Math.max(4, Math.round(subFontSize * 0.22))}px`,
+                          maxWidth: '92%'
+                        }}
+                      >
+                        {displayedSubText}
                       </span>
                     )}
                     {subStyle === 'white_outline' && (
-                      <span className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" style={{ WebkitTextStroke: '1px black' }}>
-                        {previewSubText}
+                      <span
+                        className="text-white font-black inline-block text-center"
+                        style={{
+                          WebkitTextStroke: `${Math.max(1.5, Math.round(subFontSize * 0.06))}px #000000`,
+                          textShadow: '0 2px 4px rgba(0,0,0,0.95)',
+                          maxWidth: '92%'
+                        }}
+                      >
+                        {displayedSubText}
                       </span>
                     )}
                   </div>

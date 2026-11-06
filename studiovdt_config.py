@@ -173,9 +173,9 @@ class DubbingConfig:
     logo_opacity: float = 0.90
     logo_rotation: float = 0.0
     burn_subtitles: bool = True
-    subtitle_font_size: int = 42
+    subtitle_font_size: int = 32
     subtitle_style: str = "white_outline"
-    subtitle_margin_v: int = 35
+    subtitle_margin_v: int = 7
     enable_floating_watermark: bool = False
     floating_watermark_text: str = "@gocphimcuon"
     floating_watermark_font_size: int = 18

@@ -37,7 +37,7 @@ def emit_progress(status, pct, message, extra=None):
 
 def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="small", burn_subtitles=True, source_lang="auto", target_lang="vi",
                 enable_logo=False, logo_path=None, logo_x=0.80, logo_y=0.05, logo_scale=0.18, logo_opacity=0.90, logo_rotation=0.0,
-                subtitle_style="white_outline", subtitle_font_size=42,
+                subtitle_style="white_outline", subtitle_font_size=32, subtitle_bottom_pct=7.0,
                 enable_float_wm=False, float_wm_text="@gocphimcuon", float_wm_opacity=0.30,
                 enable_outro=True, outro_path=None, subtitles_json=None):
     input_path = Path(input_video).resolve()
@@ -69,6 +69,7 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             burn_subtitles=burn_subtitles,
             subtitle_font_size=subtitle_font_size,
             subtitle_style=subtitle_style,
+            subtitle_margin_v=int(subtitle_bottom_pct),
             enable_logo=enable_logo,
             logo_path=logo_path,
             logo_x_pct=logo_x,
@@ -270,7 +271,8 @@ def main():
     parser.add_argument("--logo-opacity", type=float, default=0.90, help="Độ mờ logo (tỷ lệ 0-1)")
     parser.add_argument("--logo-rotation", type=float, default=0.0, help="Góc xoay logo (độ)")
     parser.add_argument("--sub-style", default="white_outline", help="Kiểu phụ đề (glassmorphism, yellow_outline, black_box, white_outline)")
-    parser.add_argument("--sub-font-size", type=int, default=42, help="Cỡ chữ phụ đề")
+    parser.add_argument("--sub-font-size", type=int, default=32, help="Cỡ chữ phụ đề")
+    parser.add_argument("--sub-bottom-pct", type=float, default=7.0, help="Khoảng cách đáy Y phụ đề (%)")
     parser.add_argument("--enable-float-wm", action="store_true", default=False, help="Chữ mờ bảo vệ bản quyền")
     parser.add_argument("--float-wm-text", default="@gocphimcuon", help="Nội dung chữ mờ")
     parser.add_argument("--float-wm-opacity", type=float, default=0.30, help="Độ mờ chữ mờ")
@@ -298,6 +300,7 @@ def main():
         logo_rotation=args.logo_rotation,
         subtitle_style=args.sub_style,
         subtitle_font_size=args.sub_font_size,
+        subtitle_bottom_pct=args.sub_bottom_pct,
         enable_float_wm=args.enable_float_wm,
         float_wm_text=args.float_wm_text,
         float_wm_opacity=args.float_wm_opacity,

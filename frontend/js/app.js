@@ -1116,7 +1116,7 @@
             var dispatcher = resolveDispatcher();
             return dispatcher.useCallback(callback, deps);
           }
-          function useMemo(create, deps) {
+          function useMemo2(create, deps) {
             var dispatcher = resolveDispatcher();
             return dispatcher.useMemo(create, deps);
           }
@@ -1888,7 +1888,7 @@
           exports.useImperativeHandle = useImperativeHandle;
           exports.useInsertionEffect = useInsertionEffect;
           exports.useLayoutEffect = useLayoutEffect;
-          exports.useMemo = useMemo;
+          exports.useMemo = useMemo2;
           exports.useReducer = useReducer;
           exports.useRef = useRef3;
           exports.useState = useState6;
@@ -24163,13 +24163,30 @@
     const [isUploadingLogo, setIsUploadingLogo] = (0, import_react6.useState)(false);
     const [burnSubtitles, setBurnSubtitles] = (0, import_react6.useState)(true);
     const [subStyle, setSubStyle] = (0, import_react6.useState)("white_outline");
-    const [subFontSize, setSubFontSize] = (0, import_react6.useState)(28);
+    const [subFontSize, setSubFontSize] = (0, import_react6.useState)(32);
     const [subBottomPct, setSubBottomPct] = (0, import_react6.useState)(7);
     const [previewSubText, setPreviewSubText] = (0, import_react6.useState)("Studio VDT \u2014 L\u1ED3ng ti\u1EBFng phim AI \u0111\u1EC9nh cao");
     const [previewSegments, setPreviewSegments] = (0, import_react6.useState)([]);
     const [activeSegmentIndex, setActiveSegmentIndex] = (0, import_react6.useState)(0);
     const [isTranscribingSubtitles, setIsTranscribingSubtitles] = (0, import_react6.useState)(false);
     const [whisperModel, setWhisperModel] = (0, import_react6.useState)("small");
+    const videoRef = (0, import_react6.useRef)(null);
+    const [videoCurrentTime, setVideoCurrentTime] = (0, import_react6.useState)(0);
+    const displayedSubText = (0, import_react6.useMemo)(() => {
+      if (previewSegments && previewSegments.length > 0) {
+        const activeSeg = previewSegments.find(
+          (s) => videoCurrentTime >= s.start && videoCurrentTime <= s.end
+        );
+        if (activeSeg && activeSeg.text) {
+          return activeSeg.text;
+        }
+        if (videoRef.current && !videoRef.current.paused && videoCurrentTime > 0) {
+          return "";
+        }
+        return previewSegments[activeSegmentIndex]?.text || previewSubText;
+      }
+      return previewSubText;
+    }, [previewSegments, videoCurrentTime, activeSegmentIndex, previewSubText]);
     const handleQuickTranscribe = async () => {
       const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : "");
       if (!targetVideo) {
@@ -24395,6 +24412,7 @@
             burnSubtitles,
             subStyle,
             subFontSize,
+            subBottomPct,
             enableLogo: watermarkEnabled,
             logoPath: serverLogoPath,
             logoXPct: logoX,
@@ -24627,6 +24645,9 @@
             if (previewSegments[idx]?.text) {
               setPreviewSubText(previewSegments[idx].text);
             }
+            if (videoRef.current && previewSegments[idx]?.start !== void 0) {
+              videoRef.current.currentTime = Math.max(0, previewSegments[idx].start);
+            }
           },
           className: "w-full bg-white border border-sky-300 rounded-lg p-1.5 text-xs font-semibold text-slate-800 cursor-pointer"
         },
@@ -24668,7 +24689,7 @@
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "glassmorphism" }, "N\u1EC1n k\xEDnh m\u1EDD trong su\u1ED1t (Glassmorphism)"),
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "yellow_outline" }, "N\u1ED5i b\u1EADt (Yellow Text Outline)"),
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "black_box" }, "N\u1EC1n h\u1ED9p \u0111en (Cinema Black Box)")
-      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "C\u1EE1 ch\u1EEF: ", subFontSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "14", max: "90", step: "2", value: subFontSize, onChange: (e) => setSubFontSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "Kho\u1EA3ng c\xE1ch \u0111\xE1y Y: ", subBottomPct, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "1", max: "85", value: subBottomPct, onChange: (e) => setSubBottomPct(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "C\xE2u m\u1EABu hi\u1EC3n th\u1ECB tr\xEAn video:"), /* @__PURE__ */ import_react6.default.createElement(
+      )), /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2 pt-1 border-t border-slate-100" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] font-bold text-sky-700" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "V\u1ECB tr\xED kho\u1EA3ng c\xE1ch \u0111\xE1y Y:"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-gray-500 font-semibold" }, subBottomPct, "%")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-4 gap-1" }, /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubBottomPct(5), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 5 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "\u2B07\uFE0F \u0110\xE1y (5%)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubBottomPct(7), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 7 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "\u2B50 Chu\u1EA9n (7%)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubBottomPct(14), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 14 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "\u{1F4F1} Reels (14%)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubBottomPct(25), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 25 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "\u{1F53C} Cao (25%)"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "space-y-2 pt-1 border-t border-slate-100" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-[11px] font-bold text-sky-700" }, /* @__PURE__ */ import_react6.default.createElement("span", null, "C\u1EE1 ch\u1EEF ph\u1EE5 \u0111\u1EC1:"), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-gray-500 font-semibold" }, subFontSize, "px")), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-4 gap-1" }, /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubFontSize(24), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 24 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "Nh\u1ECF (24px)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubFontSize(32), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 32 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "\u2B50 V\u1EEBa (32px)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubFontSize(42), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 42 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "L\u1EDBn (42px)"), /* @__PURE__ */ import_react6.default.createElement("button", { type: "button", onClick: () => setSubFontSize(54), className: `py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subFontSize === 54 ? "bg-sky-600 text-white border-sky-600" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"}` }, "C\u1EF1c l\u1EDBn (54px)"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-2 gap-2 text-[11px]" }, /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "Thanh tr\u01B0\u1EE3t c\u1EE1 ch\u1EEF: ", subFontSize, "px"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "14", max: "90", step: "2", value: subFontSize, onChange: (e) => setSubFontSize(Number(e.target.value)), className: "w-full accent-blue-600" })), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-gray-600 font-semibold" }, "Thanh tr\u01B0\u1EE3t v\u1ECB tr\xED \u0111\xE1y: ", subBottomPct, "%"), /* @__PURE__ */ import_react6.default.createElement("input", { type: "range", min: "1", max: "85", value: subBottomPct, onChange: (e) => setSubBottomPct(Number(e.target.value)), className: "w-full accent-blue-600" }))), /* @__PURE__ */ import_react6.default.createElement("div", null, /* @__PURE__ */ import_react6.default.createElement("label", { className: "text-[11px] text-gray-600 font-semibold block mb-1" }, "C\xE2u m\u1EABu hi\u1EC3n th\u1ECB tr\xEAn video:"), /* @__PURE__ */ import_react6.default.createElement(
         "input",
         {
           type: "text",
@@ -24741,8 +24762,12 @@
         videoUrl ? /* @__PURE__ */ import_react6.default.createElement(
           "video",
           {
+            ref: videoRef,
             src: videoUrl,
             controls: true,
+            onTimeUpdate: (e) => {
+              setVideoCurrentTime(e.target.currentTime);
+            },
             onLoadedMetadata: (e) => {
               const v = e.target;
               if (v.videoWidth && v.videoHeight) {
@@ -24778,22 +24803,67 @@
             }
           )
         ),
-        burnSubtitles && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
+        burnSubtitles && videoUrl && displayedSubText && /* @__PURE__ */ import_react6.default.createElement(
           "div",
           {
             style: {
               position: "absolute",
               bottom: `${subBottomPct}%`,
-              left: "5%",
-              right: "5%",
-              fontSize: `${subFontSize * 0.55}px`
+              left: "4%",
+              right: "4%",
+              fontSize: `${Math.max(12, Math.round(subFontSize * (580 / 720)))}px`,
+              lineHeight: 1.35
             },
-            className: "text-center font-bold pointer-events-none select-none transition-all"
+            className: "text-center font-bold pointer-events-none select-none transition-all flex justify-center items-center"
           },
-          subStyle === "glassmorphism" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-lg border border-white/20 shadow-md" }, previewSubText),
-          subStyle === "yellow_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] stroke-black", style: { WebkitTextStroke: "1px black" } }, previewSubText),
-          subStyle === "black_box" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "bg-black text-white px-3 py-1 rounded" }, previewSubText),
-          subStyle === "white_outline" && /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]", style: { WebkitTextStroke: "1px black" } }, previewSubText)
+          subStyle === "glassmorphism" && /* @__PURE__ */ import_react6.default.createElement(
+            "span",
+            {
+              className: "bg-[#141418]/65 backdrop-blur-md text-white border border-white/20 shadow-lg inline-block text-center font-bold",
+              style: {
+                padding: `${Math.max(4, Math.round(subFontSize * 0.16))}px ${Math.max(8, Math.round(subFontSize * 0.35))}px`,
+                borderRadius: `${Math.max(6, Math.round(subFontSize * 0.28))}px`,
+                maxWidth: "92%"
+              }
+            },
+            displayedSubText
+          ),
+          subStyle === "yellow_outline" && /* @__PURE__ */ import_react6.default.createElement(
+            "span",
+            {
+              className: "text-[#FFE600] font-black inline-block text-center",
+              style: {
+                WebkitTextStroke: `${Math.max(1.5, Math.round(subFontSize * 0.06))}px #000000`,
+                textShadow: "0 2px 4px rgba(0,0,0,0.95)",
+                maxWidth: "92%"
+              }
+            },
+            displayedSubText
+          ),
+          subStyle === "black_box" && /* @__PURE__ */ import_react6.default.createElement(
+            "span",
+            {
+              className: "bg-[#050505]/85 text-white shadow-xl inline-block text-center font-bold",
+              style: {
+                padding: `${Math.max(4, Math.round(subFontSize * 0.16))}px ${Math.max(8, Math.round(subFontSize * 0.35))}px`,
+                borderRadius: `${Math.max(4, Math.round(subFontSize * 0.22))}px`,
+                maxWidth: "92%"
+              }
+            },
+            displayedSubText
+          ),
+          subStyle === "white_outline" && /* @__PURE__ */ import_react6.default.createElement(
+            "span",
+            {
+              className: "text-white font-black inline-block text-center",
+              style: {
+                WebkitTextStroke: `${Math.max(1.5, Math.round(subFontSize * 0.06))}px #000000`,
+                textShadow: "0 2px 4px rgba(0,0,0,0.95)",
+                maxWidth: "92%"
+              }
+            },
+            displayedSubText
+          )
         ),
         enableFloatWm && videoUrl && /* @__PURE__ */ import_react6.default.createElement(
           "div",

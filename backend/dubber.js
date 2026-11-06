@@ -89,6 +89,9 @@ function startDubbingJob(inputVideoPath, options = {}) {
   if (options.subFontSize) {
     args.push('--sub-font-size', String(options.subFontSize));
   }
+  if (options.subBottomPct !== undefined && options.subBottomPct !== null) {
+    args.push('--sub-bottom-pct', String(options.subBottomPct));
+  }
   if (options.enableFloatingWatermark) {
     args.push('--enable-float-wm');
     if (options.floatingWatermarkText) args.push('--float-wm-text', options.floatingWatermarkText);

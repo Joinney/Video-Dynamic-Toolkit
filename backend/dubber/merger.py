@@ -186,19 +186,19 @@ def srt_to_ass(
     srt_path = Path(srt_path)
     ass_path = Path(ass_path)
     
-    # Chuẩn hóa tỷ lệ font_size theo chiều rộng / kích thước ngắn nhất của video
-    # Đảm bảo video dọc (TikTok, Shorts, Reels) không bị phóng đại quá khổ
+    # Chuẩn hóa tỷ lệ font_size và khoảng cách đáy Y theo đúng chiều cao PlayResY của video
+    # Đảm bảo hiển thị khớp 1:1 tuyệt đối với Canvas preview trên Web UI
     v_w = max(320, int(video_w or 1280))
     v_h = max(240, int(video_h or 720))
-    scale_ref = min(v_w, v_h) / 720.0
+    scale_ref = v_h / 720.0
 
-    raw_fsize = max(16, min(90, int(font_size)))
-    f_size = max(18, min(120, int(raw_fsize * scale_ref)))
+    raw_fsize = max(14, min(90, int(font_size)))
+    f_size = max(16, min(140, int(round(raw_fsize * scale_ref))))
 
-    if int(margin_v) <= 85:
-        mv = max(8, min(int(v_h * 0.85), int(v_h * (float(margin_v) / 100.0))))
+    if float(margin_v) <= 85.0:
+        mv = max(8, min(int(v_h * 0.85), int(round(v_h * (float(margin_v) / 100.0)))))
     else:
-        mv = max(8, min(int(v_h * 0.85), int(float(margin_v) * scale_ref)))
+        mv = max(8, min(int(v_h * 0.85), int(round(float(margin_v) * scale_ref))))
 
     style_str = str(style).lower()
     is_glass = ("kính mờ" in style_str or "glass" in style_str)
@@ -637,9 +637,9 @@ class VideoMerger:
         audio_path: Union[str, Path],
         output_video_path: Union[str, Path],
         subtitle_path: Optional[Union[str, Path]] = None,
-        subtitle_font_size: int = 42,
+        subtitle_font_size: int = 32,
         subtitle_style: str = "white_outline",
-        subtitle_margin_v: int = 35,
+        subtitle_margin_v: int = 7,
         logo_path: Optional[Union[str, Path]] = None,
         logo_x_pct: float = 0.80,
         logo_y_pct: float = 0.05,

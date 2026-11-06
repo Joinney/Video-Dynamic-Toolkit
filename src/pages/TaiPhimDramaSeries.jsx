@@ -910,8 +910,7 @@ export default function TaiPhimDramaSeries({
               <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
                 {directDramaData && directDramaData.episodes && directDramaData.episodes.length > 0 ? (
                   directDramaData.episodes.map((ep) => {
-                    const isSoda = (directDramaData.app === 'sodareels');
-                    const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
+                    const url = ep.directUrl || ((selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl);
                     const durationMins = ep.duration ? `${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, '0')}` : '';
 
                     return (
@@ -935,11 +934,7 @@ export default function TaiPhimDramaSeries({
                               ({durationMins})
                             </span>
                           )}
-                          {isSoda ? (
-                            <span className="text-slate-600 text-[11px] truncate">
-                              {ep.isComplete ? '✅ Sẵn sàng trong bộ đệm PSSDK' : `⏳ Đang tải ${ep.pct}%`}
-                            </span>
-                          ) : (
+                          {url ? (
                             <a
                               href={url}
                               target="_blank"
@@ -949,10 +944,14 @@ export default function TaiPhimDramaSeries({
                             >
                               {url}
                             </a>
+                          ) : (
+                            <span className="text-amber-600 text-[11px] font-medium truncate">
+                              ⏳ Chưa tải vào máy (Bấm &apos;Lướt Tập Này&apos; trên giả lập để bắt link)
+                            </span>
                           )}
                         </div>
                         <div className="flex gap-1.5 shrink-0">
-                          {!isSoda && (
+                          {url ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -963,23 +962,35 @@ export default function TaiPhimDramaSeries({
                             >
                               Copy Link
                             </button>
+                          ) : null}
+                          {ep.isCached || url ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSingleDirect(ep)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
+                            >
+                              Tải (1s)
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                showToast(`Đang lướt giả lập để tải Tập ${ep.epNumber}...`);
+                                await fetch('/api/auto-swipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 1 }) });
+                                setTimeout(fetchDirectEpisodes, 2000);
+                              }}
+                              className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs px-2 py-1 rounded border border-amber-300 cursor-pointer shadow-2xs"
+                            >
+                              ⚡ Lướt Tập Này
+                            </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadSingleDirect(ep)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
-                          >
-                            {isSoda ? 'Xuất MP4 (1s)' : 'Tải (1s)'}
-                          </button>
                         </div>
                       </div>
                     );
                   })
                 ) : (
                   <div className="p-8 text-center text-xs text-slate-400">
-                    {directDramaData?.app === 'sodareels'
-                      ? 'Chưa có tập nào trong bộ nhớ đệm Soda Reels. Hãy bật giả lập lướt xem vài tập rồi quay lại xuất nhé!'
-                      : 'Đang quét danh sách link tập trực tiếp từ máy chủ CDN...'}
+                    Đang quét danh sách link tập trực tiếp từ máy chủ CDN...
                   </div>
                 )}
               </div>

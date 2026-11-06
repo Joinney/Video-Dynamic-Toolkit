@@ -26167,10 +26167,9 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
         "\u0110\u1ED5i chu\u1EA9n: ",
         selectedCodec === "h264" ? "Sang H.265 (G\u1ED1c)" : "Sang H.264 (Windows)"
       )), /* @__PURE__ */ import_react8.default.createElement("div", { className: "space-y-1.5 flex-1 overflow-y-auto pr-1" }, directDramaData && directDramaData.episodes && directDramaData.episodes.length > 0 ? directDramaData.episodes.map((ep) => {
-        const isSoda = directDramaData.app === "sodareels";
-        const url = selectedCodec === "h264" && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl;
+        const url = ep.directUrl || (selectedCodec === "h264" && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl);
         const durationMins = ep.duration ? `${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, "0")}` : "";
-        return /* @__PURE__ */ import_react8.default.createElement("div", { key: ep.epNumber, className: "bg-slate-50 hover:bg-blue-50/40 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "min-w-0 flex-1 flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "font-bold text-blue-700 text-xs shrink-0 w-14" }, "T\u1EADp ", ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber, ":"), ep.isVip && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-300 shrink-0" }, "VIP"), ep.sizeFormatted && /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono shrink-0" }, ep.sizeFormatted), durationMins && /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-slate-400 shrink-0" }, "(", durationMins, ")"), isSoda ? /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-slate-600 text-[11px] truncate" }, ep.isComplete ? "\u2705 S\u1EB5n s\xE0ng trong b\u1ED9 \u0111\u1EC7m PSSDK" : `\u23F3 \u0110ang t\u1EA3i ${ep.pct}%`) : /* @__PURE__ */ import_react8.default.createElement(
+        return /* @__PURE__ */ import_react8.default.createElement("div", { key: ep.epNumber, className: "bg-slate-50 hover:bg-blue-50/40 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition" }, /* @__PURE__ */ import_react8.default.createElement("div", { className: "min-w-0 flex-1 flex items-center gap-2" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "font-bold text-blue-700 text-xs shrink-0 w-14" }, "T\u1EADp ", ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber, ":"), ep.isVip && /* @__PURE__ */ import_react8.default.createElement("span", { className: "bg-amber-100 text-amber-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-300 shrink-0" }, "VIP"), ep.sizeFormatted && /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono shrink-0" }, ep.sizeFormatted), durationMins && /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-slate-400 shrink-0" }, "(", durationMins, ")"), url ? /* @__PURE__ */ import_react8.default.createElement(
           "a",
           {
             href: url,
@@ -26180,7 +26179,7 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             title: url
           },
           url
-        )), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex gap-1.5 shrink-0" }, !isSoda && /* @__PURE__ */ import_react8.default.createElement(
+        ) : /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-amber-600 text-[11px] font-medium truncate" }, "\u23F3 Ch\u01B0a t\u1EA3i v\xE0o m\xE1y (B\u1EA5m 'L\u01B0\u1EDBt T\u1EADp N\xE0y' tr\xEAn gi\u1EA3 l\u1EADp \u0111\u1EC3 b\u1EAFt link)")), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex gap-1.5 shrink-0" }, url ? /* @__PURE__ */ import_react8.default.createElement(
           "button",
           {
             type: "button",
@@ -26191,16 +26190,28 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             className: "bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
           },
           "Copy Link"
-        ), /* @__PURE__ */ import_react8.default.createElement(
+        ) : null, ep.isCached || url ? /* @__PURE__ */ import_react8.default.createElement(
           "button",
           {
             type: "button",
             onClick: () => handleDownloadSingleDirect(ep),
             className: "bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
           },
-          isSoda ? "Xu\u1EA5t MP4 (1s)" : "T\u1EA3i (1s)"
+          "T\u1EA3i (1s)"
+        ) : /* @__PURE__ */ import_react8.default.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: async () => {
+              showToast(`\u0110ang l\u01B0\u1EDBt gi\u1EA3 l\u1EADp \u0111\u1EC3 t\u1EA3i T\u1EADp ${ep.epNumber}...`);
+              await fetch("/api/auto-swipe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count: 1 }) });
+              setTimeout(fetchDirectEpisodes, 2e3);
+            },
+            className: "bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs px-2 py-1 rounded border border-amber-300 cursor-pointer shadow-2xs"
+          },
+          "\u26A1 L\u01B0\u1EDBt T\u1EADp N\xE0y"
         )));
-      }) : /* @__PURE__ */ import_react8.default.createElement("div", { className: "p-8 text-center text-xs text-slate-400" }, directDramaData?.app === "sodareels" ? "Ch\u01B0a c\xF3 t\u1EADp n\xE0o trong b\u1ED9 nh\u1EDB \u0111\u1EC7m Soda Reels. H\xE3y b\u1EADt gi\u1EA3 l\u1EADp l\u01B0\u1EDBt xem v\xE0i t\u1EADp r\u1ED3i quay l\u1EA1i xu\u1EA5t nh\xE9!" : "\u0110ang qu\xE9t danh s\xE1ch link t\u1EADp tr\u1EF1c ti\u1EBFp t\u1EEB m\xE1y ch\u1EE7 CDN...")), /* @__PURE__ */ import_react8.default.createElement("div", { className: "mt-4 flex justify-between items-center pt-3 border-t border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement(
+      }) : /* @__PURE__ */ import_react8.default.createElement("div", { className: "p-8 text-center text-xs text-slate-400" }, "\u0110ang qu\xE9t danh s\xE1ch link t\u1EADp tr\u1EF1c ti\u1EBFp t\u1EEB m\xE1y ch\u1EE7 CDN...")), /* @__PURE__ */ import_react8.default.createElement("div", { className: "mt-4 flex justify-between items-center pt-3 border-t border-blue-100" }, /* @__PURE__ */ import_react8.default.createElement(
         "button",
         {
           type: "button",

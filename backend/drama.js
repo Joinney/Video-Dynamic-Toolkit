@@ -345,7 +345,8 @@ function exportVideos(device, payload) {
   const incompleteList = [];
 
   selectedPaths.forEach(item => {
-    const remotePath = typeof item === 'string' ? item : item.path;
+    const remotePath = typeof item === 'string' ? item : item?.path;
+    if (!remotePath) return;
     const info = compInfo.map[remotePath];
     if (info && !info.isComplete) {
       incompleteList.push({
@@ -377,7 +378,8 @@ function exportVideos(device, payload) {
   });
 
   selectedPaths.forEach((item, idx) => {
-    const remotePath = typeof item === 'string' ? item : item.path;
+    const remotePath = typeof item === 'string' ? item : item?.path;
+    if (!remotePath) return;
     let epNum = (typeof item === 'object' && item.epNumber) ? item.epNumber : (startEp + idx);
     let remoteSize = (typeof item === 'object' && item.sizeBytes) ? item.sizeBytes : 0;
 
@@ -520,29 +522,58 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
       // Lấy danh sách các tập video đã được cache trong bộ nhớ PSSDK của Soda Reels
       const { getRemoteCacheList } = require('./cache');
       const cacheList = getRemoteCacheList(device, 'sodareels', currentDrama ? (currentDrama.currentEpisode || 1) : 1);
+      const cacheMap = new Map();
+      cacheList.forEach(c => {
+        if (c.epNumber) cacheMap.set(c.epNumber, c);
+      });
 
-      const episodes = cacheList.map(c => ({
-        epNumber: c.epNumber,
-        directUrl: '',
-        directUrlH264: '',
-        directUrlH265: '',
-        path: c.path,
-        filename: c.filename,
-        duration: 0,
-        sizeFormatted: c.sizeMb ? `${c.sizeMb} MB` : '',
-        sizeBytes: c.sizeBytes || 0,
-        isCached: true,
-        isComplete: c.isComplete,
-        pct: c.pct || 100,
-        isVip: false
-      }));
+      // Tạo đầy đủ toàn bộ các tập từ 1 đến totalEpisodes của cả bộ phim
+      const totalCount = Math.max(totalEpisodes || 60, cacheList.length > 0 ? Math.max(...cacheList.map(c => c.epNumber)) : 60);
+      const episodes = [];
+      for (let i = 1; i <= totalCount; i++) {
+        const c = cacheMap.get(i);
+        if (c) {
+          const streamUrl = `http://localhost:3000/api/stream-cache?drama=${encodeURIComponent(dramaTitle)}&ep=${i}`;
+          episodes.push({
+            epNumber: i,
+            directUrl: streamUrl,
+            directUrlH264: streamUrl,
+            directUrlH265: streamUrl,
+            path: c.path,
+            filename: c.filename,
+            duration: 0,
+            sizeFormatted: c.sizeMb ? `${c.sizeMb} MB` : '',
+            sizeBytes: c.sizeBytes || 0,
+            isCached: true,
+            isComplete: c.isComplete,
+            pct: c.pct || 100,
+            isVip: false
+          });
+        } else {
+          episodes.push({
+            epNumber: i,
+            directUrl: '',
+            directUrlH264: '',
+            directUrlH265: '',
+            path: '',
+            filename: '',
+            duration: 0,
+            sizeFormatted: '',
+            sizeBytes: 0,
+            isCached: false,
+            isComplete: false,
+            pct: 0,
+            isVip: false
+          });
+        }
+      }
 
       return {
         app: 'sodareels',
         title: dramaTitle,
         coverUrl,
-        totalEpisodes,
-        cachedCount: episodes.length,
+        totalEpisodes: totalCount,
+        cachedCount: cacheList.length,
         episodes,
         availableDramas: []
       };

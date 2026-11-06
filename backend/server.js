@@ -402,7 +402,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/connect-adb' && req.method === 'POST') {
     try {
       const payload = await parseJsonBody(req);
-      const host = (payload.host || '127.0.0.1:5555').trim();
+      const host = (payload.host || payload.address || '127.0.0.1:5555').trim();
       const output = execSync(`"${ADB_PATH}" connect ${host}`, { encoding: 'utf8' });
       const device = checkAdbDevice();
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -442,6 +442,44 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 8. API Direct Episodes & CDN Download
+  if (url.pathname === '/api/stream-cache' && (req.method === 'GET' || req.method === 'HEAD')) {
+    try {
+      const dramaTitle = url.searchParams.get('drama') || 'Bo_Phim';
+      const epNum = parseInt(url.searchParams.get('ep'), 10) || 1;
+      const folderName = resolveExistingDramaFolder(dramaTitle);
+      const epStr = String(epNum).padStart(2, '0');
+      const targetFile = path.join(TARGET_DIR, folderName, `Tap_${epStr}.mp4`);
+
+      // 1. Nếu đã có file trong thư mục thì phát trực tiếp
+      if (fs.existsSync(targetFile)) {
+        return streamVideoFile(req, res, targetFile);
+      }
+
+      // 2. Nếu chưa có, tự động kéo file từ cache của thiết bị
+      const device = checkAdbDevice();
+      if (device) {
+        const { getRemoteCacheList } = require('./cache');
+        const cacheList = getRemoteCacheList(device, 'sodareels', 1);
+        const item = cacheList.find(c => c.epNumber === epNum);
+        if (item && item.path) {
+          const dramaDir = path.join(TARGET_DIR, folderName);
+          if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
+          pullRemoteFile(device, item.path, targetFile);
+          if (fs.existsSync(targetFile)) {
+            return streamVideoFile(req, res, targetFile);
+          }
+        }
+      }
+
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Chưa tải tập này vào bộ nhớ đệm giả lập!');
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Lỗi phát video: ' + e.message);
+    }
+    return;
+  }
+
   if (url.pathname === '/api/direct-episodes' && req.method === 'GET') {
     try {
       const device = checkAdbDevice();

@@ -33,20 +33,20 @@ export default function Header({
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/90 px-5 py-2.5 flex items-center justify-between shadow-xs">
+    <header className="bg-white/95 backdrop-blur-md rounded-2xl border border-blue-100 px-5 py-2.5 flex items-center justify-between shadow-xs">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-full border-2 border-sky-400 overflow-hidden shadow-xs flex items-center justify-center bg-gradient-to-tr from-sky-500 to-blue-600 text-white font-black text-sm shrink-0">
+        <div className="w-11 h-11 rounded-full border-2 border-blue-400 overflow-hidden shadow-xs flex items-center justify-center bg-gradient-to-tr from-blue-600 to-sky-500 text-white font-black text-sm shrink-0">
           VDT
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xl font-black tracking-tight text-gray-900">{title}</span>
-            <span className="bg-[#e6f4ff] text-[#0958d9] border border-[#91caff] text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="text-xl font-black tracking-tight text-slate-900">{title}</span>
+            <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               • {badge}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Bản quyền: <strong className="text-sky-700 font-bold">Võ Duy Toàn</strong> | VieNeu Neural Voice & AI Dubbing Engine
+          <p className="text-xs text-slate-500 mt-0.5">
+            Bản quyền: <strong className="text-blue-600 font-bold">Võ Duy Toàn</strong> | VieNeu Neural Voice & AI Dubbing Engine
           </p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function Header({
       <div className="flex items-center gap-3 flex-wrap">
         {/* Trạng thái kết nối ADB */}
         {backendData?.connected ? (
-          <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs text-emerald-600 font-bold">
+          <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-lg text-xs font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>ADB: {backendData.deviceName}</span>
           </div>
@@ -69,13 +69,13 @@ export default function Header({
               value={adbAddress}
               onChange={(e) => setAdbAddress(e.target.value)}
               placeholder="127.0.0.1:5555"
-              className="w-28 bg-slate-50 border border-slate-300 text-slate-800 text-xs px-2 py-1 rounded-lg font-mono"
+              className="w-28 bg-blue-50/40 border border-blue-200 text-slate-800 text-xs px-2 py-1 rounded-lg font-mono focus:border-blue-500 focus:bg-white focus:outline-none"
             />
             <button
               type="button"
               onClick={handleConnect}
               disabled={isConnecting}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-2.5 py-1 rounded-lg transition"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-xs transition cursor-pointer"
             >
               {isConnecting ? 'Đang nối...' : '⚡ Nối ADB'}
             </button>
@@ -87,7 +87,7 @@ export default function Header({
           <button
             type="button"
             onClick={onBackHome}
-            className="bg-white hover:bg-slate-50 text-gray-800 border border-gray-300 font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+            className="bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
           >
             ← Quay lại Trang Chủ
           </button>

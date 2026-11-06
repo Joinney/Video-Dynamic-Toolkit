@@ -1,4 +1,4 @@
-/* Custom Polish for Video Dynamic Toolkit */
+/* Custom Polish for Video Dynamic Toolkit - Blue & White Theme */
 
 /* Custom Smooth Scrollbar */
 ::-webkit-scrollbar {
@@ -6,43 +6,43 @@
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #94a3b8;
 }
 
-/* Glassmorphism Classes */
+/* Glassmorphism Classes (Light Blue & White) */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.75);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(219, 234, 254, 0.8);
 }
 
 .glass-card {
-  background: rgba(31, 41, 55, 0.6);
+  background: #ffffff;
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: #93c5fd;
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.08), 0 8px 10px -6px rgba(37, 99, 235, 0.04);
 }
 
 /* Glow effects */
 .glow-brand {
-  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 25px -5px rgba(37, 99, 235, 0.25);
 }
 .glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
 }
 
 /* Badge pulse */

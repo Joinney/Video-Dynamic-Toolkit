@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi" class="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,17 +23,17 @@
             },
             colors: {
               brand: {
-                50: '#f5f3ff',
-                100: '#ede9fe',
-                200: '#ddd6fe',
-                300: '#c4b5fd',
-                400: '#a78bfa',
-                500: '#8b5cf6',
-                600: '#7c3aed',
-                700: '#6d28d9',
-                800: '#5b21b6',
-                900: '#4c1d95',
-                950: '#2e1065',
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
+                950: '#172554',
               }
             }
           }
@@ -50,13 +50,13 @@
       const root = document.getElementById('root');
       if (root && root.querySelector('.animate-spin')) {
         root.innerHTML = `
-          <div class="flex flex-col items-center justify-center min-h-screen text-slate-300 gap-3 p-6 text-center">
-            <div class="text-rose-500 font-bold text-xl mb-1">⚠️ Lỗi tải giao diện</div>
-            <div class="bg-slate-900 border border-rose-500/30 text-rose-300 text-xs p-4 rounded-xl max-w-lg overflow-auto font-mono text-left">
+          <div class="flex flex-col items-center justify-center min-h-screen text-slate-600 gap-3 p-6 text-center">
+            <div class="text-rose-600 font-bold text-xl mb-1">⚠️ Lỗi tải giao diện</div>
+            <div class="bg-white border border-rose-200 text-rose-700 text-xs p-4 rounded-xl max-w-lg overflow-auto font-mono text-left shadow-md">
               ${e.message || 'Lỗi không xác định khi nạp script'}<br/>
-              <span class="text-slate-500">${e.filename || ''}:${e.lineno || ''}</span>
+              <span class="text-slate-400">${e.filename || ''}:${e.lineno || ''}</span>
             </div>
-            <button onclick="window.location.reload(true)" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition">
+            <button onclick="window.location.reload(true)" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition">
               🔄 Tải lại trang (Xoá cache)
             </button>
           </div>
@@ -65,16 +65,16 @@
     });
   </script>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 min-h-screen antialiased font-sans selection:bg-brand-500 selection:text-white">
+<body class="bg-[#f0f7ff] text-slate-800 min-h-screen antialiased font-sans selection:bg-blue-600 selection:text-white">
   <div id="root">
     <!-- Loading state until React boots up -->
-    <div class="flex flex-col items-center justify-center min-h-screen text-slate-400 gap-4">
-      <div class="w-12 h-12 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin"></div>
-      <p class="font-medium text-sm tracking-wide text-slate-300">Đang khởi tạo Video Dynamic Toolkit...</p>
+    <div class="flex flex-col items-center justify-center min-h-screen text-slate-600 gap-4">
+      <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      <p class="font-medium text-sm tracking-wide text-blue-600">Đang khởi tạo Video Dynamic Toolkit...</p>
     </div>
   </div>
 
   <!-- React Application Bundle -->
-  <script src="/js/app.js?v=2.3.0"></script>
+  <script src="/js/app.js?v=2.4.0-blue-white"></script>
 </body>
 </html>

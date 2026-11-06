@@ -272,10 +272,10 @@ export default function TaiPhimDramaSeries({
 
       <div className="max-w-[1740px] w-full mx-auto space-y-4">
         {/* Switcher App & ADB Status */}
-        <div className="bg-[#0f172a] text-white rounded-2xl p-3 px-5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="bg-white text-slate-800 rounded-2xl p-3 px-5 flex flex-wrap items-center justify-between gap-3 border border-blue-100 shadow-xs">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-300">📱 ỨNG DỤNG ĐANG QUÉT:</span>
-            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+            <span className="text-xs font-bold text-blue-800">📱 ỨNG DỤNG ĐANG QUÉT:</span>
+            <div className="flex bg-blue-50/70 p-1 rounded-xl border border-blue-100">
               {[
                 { id: 'auto', label: 'Tự động quét' },
                 { id: 'sodareels', label: '🥤 Soda Reels' },
@@ -293,7 +293,7 @@ export default function TaiPhimDramaSeries({
                     });
                   }}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    activeApp === app.id ? 'bg-sky-500 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                    activeApp === app.id ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-blue-600'
                   }`}
                 >
                   {app.label}
@@ -304,14 +304,14 @@ export default function TaiPhimDramaSeries({
 
           <div className="flex items-center gap-3">
             {connected ? (
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-lg text-xs text-emerald-400 font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg text-xs text-blue-700 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>ADB: {deviceName}</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="flex items-center gap-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded text-[11px] text-rose-400 font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                <div className="flex items-center gap-1 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-[11px] text-rose-700 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                   <span>Chưa có ADB</span>
                 </div>
                 <input
@@ -319,13 +319,13 @@ export default function TaiPhimDramaSeries({
                   value={adbAddress}
                   onChange={(e) => setAdbAddress(e.target.value)}
                   placeholder="127.0.0.1:5555"
-                  className="w-28 bg-slate-900 border border-slate-700 text-white text-[11px] px-2 py-0.5 rounded"
+                  className="w-28 bg-blue-50/40 border border-blue-200 text-slate-800 text-[11px] px-2 py-0.5 rounded focus:outline-none focus:border-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleConnectAdb(adbAddress)}
                   disabled={isConnectingAdb}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2 py-0.5 rounded transition cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] px-2.5 py-0.5 rounded transition cursor-pointer shadow-xs"
                 >
                   {isConnectingAdb ? 'Đang nối...' : '⚡ Nối ADB'}
                 </button>
@@ -522,13 +522,13 @@ export default function TaiPhimDramaSeries({
             </div>
 
             {/* Thanh Tự Động Lướt Tập (Auto Swipe) */}
-            <div className="bg-[#0f172a] text-white rounded-xl p-3 border border-sky-500/30 flex flex-col gap-2.5">
+            <div className="bg-blue-50/60 text-slate-800 rounded-xl p-3 border border-blue-200 flex flex-col gap-2.5 shadow-2xs">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
                   🤖 Tải Video Từng Tập (Đủ 100% Mới Qua Tập Tiếp)
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  isSwiping ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse' : 'bg-slate-800 text-slate-400'
+                  isSwiping ? 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse' : 'bg-white text-slate-600 border border-blue-200'
                 }`}>
                   {isSwiping ? 'Đang tự động tải...' : 'Sẵn sàng'}
                 </span>
@@ -724,15 +724,15 @@ export default function TaiPhimDramaSeries({
 
         {/* Modal 1: Player */}
         {showPlayerModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowPlayerModal(false)}>
-            <div className="bg-[#0f172a] rounded-2xl max-w-2xl w-full p-4 border border-slate-700 text-white shadow-2xl" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
-                <h3 className="font-bold text-sm text-sky-400">Xem video</h3>
-                <button onClick={() => setShowPlayerModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowPlayerModal(false)}>
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-4 border border-blue-100 text-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-100">
+                <h3 className="font-bold text-sm text-blue-700">Xem video</h3>
+                <button onClick={() => setShowPlayerModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
-              <div className="bg-black aspect-video rounded-xl flex flex-col items-center justify-center border border-slate-800 text-slate-500 text-xs p-4 text-center overflow-hidden">
+              <div className="bg-black aspect-video rounded-xl flex flex-col items-center justify-center border border-slate-200 text-slate-500 text-xs p-4 text-center overflow-hidden">
                 {previewVideoUrl ? (
                   <video src={previewVideoUrl} controls autoPlay className="w-full h-full object-contain" />
                 ) : (
@@ -745,27 +745,27 @@ export default function TaiPhimDramaSeries({
 
         {/* Modal 2: Direct CDN Links */}
         {showDirectLinksModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowDirectLinksModal(false)}>
-            <div className="bg-[#0f172a] rounded-2xl max-w-4xl w-full p-5 border border-slate-700 text-white shadow-2xl" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowDirectLinksModal(false)}>
+            <div className="bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-100">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-sky-400">⚡ Danh Sách Link Trực Tiếp (CDN)</h3>
-                  <span className="text-[10px] bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
+                  <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Link Trực Tiếp (CDN)</h3>
+                  <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold">
                     MinuteDrama
                   </span>
                 </div>
-                <button onClick={() => setShowDirectLinksModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <button onClick={() => setShowDirectLinksModal(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
                   <X size={18} />
                 </button>
               </div>
 
               {/* Codec Switcher */}
-              <div className="flex items-center justify-between mb-3 text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                <span>Chuẩn Video: <strong className="text-emerald-400">H.264 (Chuẩn Windows - Xem không lỗi 0xC00D36C4)</strong></span>
+              <div className="flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                <span>Chuẩn Video: <strong className="text-blue-800 font-bold">H.264 (Chuẩn Windows - Xem không lỗi 0xC00D36C4)</strong></span>
                 <button
                   type="button"
                   onClick={() => setSelectedCodec(selectedCodec === 'h264' ? 'h265' : 'h264')}
-                  className="text-[11px] bg-slate-800 hover:bg-slate-700 text-sky-400 px-2 py-1 rounded border border-slate-700 font-bold cursor-pointer"
+                  className="text-[11px] bg-white hover:bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200 font-bold cursor-pointer shadow-2xs"
                 >
                   Đổi chuẩn: {selectedCodec.toUpperCase()}
                 </button>
@@ -776,10 +776,10 @@ export default function TaiPhimDramaSeries({
                   directDramaData.episodes.map((ep) => {
                     const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
                     return (
-                      <div key={ep.epNumber} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                      <div key={ep.epNumber} className="bg-slate-50 hover:bg-blue-50/40 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition">
                         <div className="truncate text-xs">
-                          <span className="font-bold text-sky-400 mr-2">Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:</span>
-                          <span className="text-slate-400 text-[11px] font-mono truncate">{url}</span>
+                          <span className="font-bold text-blue-700 mr-2">Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:</span>
+                          <span className="text-slate-500 text-[11px] font-mono truncate">{url}</span>
                         </div>
                         <div className="flex gap-1.5 shrink-0">
                           <button
@@ -788,14 +788,14 @@ export default function TaiPhimDramaSeries({
                               navigator.clipboard.writeText(url);
                               showToast(`Đã copy link CDN Tập ${ep.epNumber}!`);
                             }}
-                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-2.5 py-1 rounded border border-slate-700 cursor-pointer"
+                            className="bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
                           >
                             Copy
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDownloadSingleDirect(ep)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
                           >
                             Tải (1s)
                           </button>
@@ -810,18 +810,18 @@ export default function TaiPhimDramaSeries({
                 )}
               </div>
 
-              <div className="mt-4 flex justify-between items-center pt-3 border-t border-slate-800">
+              <div className="mt-4 flex justify-between items-center pt-3 border-t border-blue-100">
                 <button
                   type="button"
                   onClick={handleDownloadAllDirect}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md transition cursor-pointer"
+                  className="bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs hover:shadow-md transition cursor-pointer"
                 >
                   🚀 Tải Tự Động Tất Cả Các Tập
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDirectLinksModal(false)}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
                 >
                   Đóng
                 </button>

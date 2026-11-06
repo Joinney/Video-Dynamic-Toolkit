@@ -761,7 +761,7 @@ export default function TextLongTieng({ onBackHome, backendData }) {
               </button>
               <button
                 onClick={() => setShowEmotionTableModal(false)}
-                className="px-4 py-2 bg-slate-800 text-white font-bold text-xs rounded-xl hover:bg-slate-700 transition"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
               >
                 Đóng
               </button>

@@ -22,7 +22,7 @@ export default function Home({
   const totalSizeMb = localDramas.reduce((acc, d) => acc + (parseFloat(d.totalSizeMb) || 0), 0).toFixed(1);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex font-sans">
+    <div className="min-h-screen bg-[#f0f7ff] text-slate-800 flex font-sans">
       {/* SIDEBAR BÊN TRÁI */}
       <Sidebar
         currentPage="home"
@@ -34,7 +34,7 @@ export default function Home({
       {/* NỘI DUNG CHÍNH TRANG CHỦ */}
       <main className="flex-1 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-6">
         {/* Banner Chào Mừng & Trạng Thái Hệ Thống */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-blue-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-0.5 rounded-full text-xs font-bold mb-1.5">
               <Sparkles size={13} /> Studio VDT • Phiên bản 2.1
@@ -45,9 +45,9 @@ export default function Home({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-xl flex-wrap">
+          <div className="flex items-center gap-2 bg-blue-50/50 border border-blue-100 p-2 rounded-xl flex-wrap">
             {backendData?.connected ? (
-              <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-bold">
+              <div className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>ADB: {backendData.deviceName}</span>
               </div>
@@ -62,28 +62,28 @@ export default function Home({
 
         {/* 4 Thẻ Thống Kê Dữ Liệu Thực Tế */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-xs hover:border-blue-300 transition">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bộ Phim Trong Máy</div>
             <div className="text-2xl font-black text-slate-900 mt-1">{localDramas.length} <span className="text-xs font-bold text-slate-500">Bộ phim</span></div>
-            <div className="text-[10px] text-emerald-600 font-semibold mt-1">Đã lưu trữ an toàn</div>
+            <div className="text-[10px] text-blue-600 font-semibold mt-1">Đã lưu trữ an toàn</div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-xs hover:border-blue-300 transition">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Số Tập Video</div>
             <div className="text-2xl font-black text-blue-600 mt-1">{totalEpisodes} <span className="text-xs font-bold text-slate-500">Tập MP4</span></div>
             <div className="text-[10px] text-blue-500 font-semibold mt-1">Sẵn sàng lồng tiếng</div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-xs hover:border-blue-300 transition">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dung Lượng Đã Dùng</div>
-            <div className="text-2xl font-black text-purple-600 mt-1">{totalSizeMb} <span className="text-xs font-bold text-slate-500">MB</span></div>
-            <div className="text-[10px] text-purple-500 font-semibold mt-1">Thư mục Soda_Reels_Videos</div>
+            <div className="text-2xl font-black text-blue-700 mt-1">{totalSizeMb} <span className="text-xs font-bold text-slate-500">MB</span></div>
+            <div className="text-[10px] text-blue-500 font-semibold mt-1">Thư mục Soda_Reels_Videos</div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-xs hover:border-blue-300 transition">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Bộ Nhớ Đệm RAM Máy Ảo</div>
-            <div className="text-2xl font-black text-amber-600 mt-1">{backendData?.remoteCacheCount || 0} <span className="text-xs font-bold text-slate-500">Tập</span></div>
-            <div className="text-[10px] text-amber-600 font-semibold mt-1">Video chờ xuất về máy</div>
+            <div className="text-2xl font-black text-sky-600 mt-1">{backendData?.remoteCacheCount || 0} <span className="text-xs font-bold text-slate-500">Tập</span></div>
+            <div className="text-[10px] text-sky-600 font-semibold mt-1">Video chờ xuất về máy</div>
           </div>
         </div>
 

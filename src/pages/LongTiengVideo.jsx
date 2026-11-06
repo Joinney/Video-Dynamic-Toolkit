@@ -989,10 +989,10 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
                       {/* Trình xem trước Video Outro */}
                       {customOutroPreviewUrl && (
-                        <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                        <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-200 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] text-blue-900 font-bold">
                             <span>🎬 Xem trước Video Outro:</span>
-                            <span className="text-[9px] text-sky-400 font-mono truncate max-w-[150px]">
+                            <span className="text-[9px] text-blue-600 font-mono truncate max-w-[150px]">
                               {serverOutroPath}
                             </span>
                           </div>
@@ -1218,12 +1218,12 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
               </div>
             )}
 
-            {/* Terminal Nhật ký tiến trình Realtime */}
-            <div className="bg-[#0f172a] border border-slate-800 rounded-xl p-3 flex flex-col gap-2 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            {/* Terminal Nhật ký tiến trình Realtime (Blue & White) */}
+            <div className="bg-white border border-blue-200 rounded-xl p-3 flex flex-col gap-2 shadow-xs">
+              <div className="flex items-center justify-between border-b border-blue-100 pb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${isDubbingProcessing || isTranscribingSubtitles ? 'bg-sky-400 animate-ping' : dubbingCompleted ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
-                  <span className="text-[10px] font-black text-slate-300 tracking-wider uppercase">
+                  <span className={`w-2 h-2 rounded-full ${isDubbingProcessing || isTranscribingSubtitles ? 'bg-blue-600 animate-ping' : dubbingCompleted ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                  <span className="text-[10px] font-black text-blue-800 tracking-wider uppercase">
                     🖥️ NHẬT KÝ TIẾN TRÌNH AI (LOGS)
                   </span>
                 </div>
@@ -1235,7 +1235,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                       const allLogs = dubLogs.map(l => `[${l.time}] ${l.text}`).join('\n');
                       navigator.clipboard.writeText(allLogs);
                     }}
-                    className="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                    className="text-[10px] text-slate-500 hover:text-blue-600 px-1.5 py-0.5 rounded hover:bg-blue-50 transition cursor-pointer font-bold"
                     title="Sao chép toàn bộ log"
                   >
                     📋 Copy
@@ -1243,7 +1243,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                   <button
                     type="button"
                     onClick={() => setDubLogs([])}
-                    className="text-[10px] text-slate-400 hover:text-rose-400 px-1.5 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer"
+                    className="text-[10px] text-slate-500 hover:text-rose-600 px-1.5 py-0.5 rounded hover:bg-rose-50 transition cursor-pointer font-bold"
                     title="Xóa log"
                   >
                     🗑️ Xóa
@@ -1254,21 +1254,21 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
               <div className="font-mono text-[11px] leading-relaxed max-h-64 overflow-y-auto space-y-1 pr-1 select-text">
                 {dubLogs && dubLogs.length > 0 ? (
                   dubLogs.map((log, index) => {
-                    let textColor = 'text-slate-300';
-                    if (log.text.includes('%')) textColor = 'text-sky-400 font-semibold';
-                    if (log.text.includes('✅') || log.text.includes('🎉') || log.text.includes('hoàn tất') || log.text.includes('thành công') || log.text.includes('sẵn sàng')) textColor = 'text-emerald-400 font-bold';
-                    if (log.text.includes('⚠️') || log.text.includes('warning') || log.text.includes('Warning')) textColor = 'text-amber-300';
-                    if (log.text.includes('❌') || log.text.includes('Lỗi') || log.text.includes('Error')) textColor = 'text-rose-400 font-bold';
+                    let textColor = 'text-slate-700';
+                    if (log.text.includes('%')) textColor = 'text-blue-600 font-semibold';
+                    if (log.text.includes('✅') || log.text.includes('🎉') || log.text.includes('hoàn tất') || log.text.includes('thành công') || log.text.includes('sẵn sàng')) textColor = 'text-emerald-600 font-bold';
+                    if (log.text.includes('⚠️') || log.text.includes('warning') || log.text.includes('Warning')) textColor = 'text-amber-600 font-semibold';
+                    if (log.text.includes('❌') || log.text.includes('Lỗi') || log.text.includes('Error')) textColor = 'text-rose-600 font-bold';
 
                     return (
                       <div key={index} className="flex items-start gap-1.5 break-words">
-                        <span className="text-slate-500 shrink-0 select-none">[{log.time}]</span>
+                        <span className="text-slate-400 shrink-0 select-none">[{log.time}]</span>
                         <span className={textColor}>{log.text}</span>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-slate-500 italic py-2 leading-relaxed">
+                  <div className="text-slate-400 italic py-2 leading-relaxed">
                     🖥️ Studio VDT AI Engine v3.0 sẵn sàng.<br />
                     &gt; Bấm nút để bắt đầu theo dõi tiến trình trực tiếp.
                   </div>

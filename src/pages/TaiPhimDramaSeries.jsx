@@ -17,7 +17,7 @@ export default function TaiPhimDramaSeries({
 }) {
   const [activeApp, setActiveApp] = useState(backendData?.activeApp || 'auto');
   const [dramaTitle, setDramaTitle] = useState(
-    initialDrama ? (initialDrama.name || initialDrama.title) : 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh'
+    initialDrama ? (initialDrama.name || initialDrama.title) : ''
   );
   const [currentDramaCover, setCurrentDramaCover] = useState(null);
   const [startEp, setStartEp] = useState(1);
@@ -75,7 +75,7 @@ export default function TaiPhimDramaSeries({
       setConnected(data.connected);
       setDeviceName(data.deviceName || 'Chưa tìm thấy giả lập');
       if (data.currentDrama && data.currentDrama.title) {
-        if (!dramaTitle || dramaTitle === 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh') {
+        if (!dramaTitle || dramaTitle === 'Tiệm Tạp Hóa Âm Dương - Ám Ảnh' || (data.activeApp === 'sodareels' && dramaTitle.includes('Tiệm Tạp Hóa'))) {
           setDramaTitle(data.currentDrama.title);
         }
         const cover = data.currentDrama.image || data.currentDrama.cover || data.currentDrama.coverUrl;
@@ -237,36 +237,84 @@ export default function TaiPhimDramaSeries({
   };
 
   const handleDownloadSingleDirect = async (ep) => {
-    const targetFolder = dramaTitle || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
-    showToast(`Đang tải trực tiếp Tập ${ep.epNumber} vào: ${targetFolder}...`);
+    const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    showToast(`Đang tải/xuất Tập ${ep.epNumber} vào: ${targetFolder}...`);
     try {
-      const res = await fetch('/api/download-direct', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
-          dramaName: targetFolder,
-          dramaTitle: targetFolder,
-          epNumber: ep.epNumber
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(data.alreadyExists ? `Tập ${ep.epNumber} đã có sẵn trong bộ: ${targetFolder}` : `Tập ${ep.epNumber} tải xong vào: ${targetFolder}!`);
-        fetchStatusData();
+      if (directDramaData?.app === 'sodareels') {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dramaTitle: targetFolder,
+            selectedPaths: [ep.path],
+            startEpisode: ep.epNumber,
+            force: true
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Tập ${ep.epNumber} đã được xuất thành công vào: ${targetFolder}!`);
+          fetchStatusData();
+        } else {
+          showToast(`Lỗi xuất tập: ${data.message}`);
+        }
       } else {
-        showToast(`Lỗi tải tập: ${data.message}`);
+        const res = await fetch('/api/download-direct', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
+            dramaName: targetFolder,
+            dramaTitle: targetFolder,
+            epNumber: ep.epNumber
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.alreadyExists ? `Tập ${ep.epNumber} đã có sẵn trong bộ: ${targetFolder}` : `Tập ${ep.epNumber} tải xong vào: ${targetFolder}!`);
+          fetchStatusData();
+        } else {
+          showToast(`Lỗi tải tập: ${data.message}`);
+        }
       }
     } catch (e) {
-      showToast('Lỗi kết nối tải file');
+      showToast('Lỗi kết nối tải/xuất file');
     }
   };
 
   const handleDownloadAllDirect = async () => {
     if (!directDramaData?.episodes || directDramaData.episodes.length === 0) return;
     const eps = directDramaData.episodes;
-    const targetFolder = dramaTitle || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
     setIsDownloadingDirectAll(true);
+
+    if (directDramaData?.app === 'sodareels') {
+      showToast(`Đang xuất toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dramaTitle: targetFolder,
+            selectedPaths: eps.map(e => ({ path: e.path, suggestedEp: e.epNumber })),
+            force: true
+          })
+        });
+        const resJson = await res.json();
+        if (resJson.success) {
+          showToast(`Đã xuất hoàn tất ${eps.length} tập vào: ${targetFolder}!`);
+          fetchStatusData();
+        } else {
+          showToast(`Lỗi xuất: ${resJson.message}`);
+        }
+      } catch (e) {
+        showToast('Lỗi kết nối xuất toàn bộ tập');
+      } finally {
+        setIsDownloadingDirectAll(false);
+      }
+      return;
+    }
+
     setDownloadProgressDirect({ current: 0, total: eps.length });
     showToast(`Bắt đầu tải toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
     let countSuccess = 0;
@@ -795,19 +843,23 @@ export default function TaiPhimDramaSeries({
           </div>
         )}
 
-        {/* Modal 2: Direct CDN Links */}
+        {/* Modal 2: Direct CDN Links & Batch Export */}
         {showDirectLinksModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setShowDirectLinksModal(false)}>
             <div className="bg-white rounded-2xl max-w-4xl w-full p-5 border border-blue-100 text-slate-800 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-100">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Link Trực Tiếp Cả Bộ Phim</h3>
-                  <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold">
-                    MinuteDrama CDN
+                  <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Cả Bộ Phim & Xuất Video</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${
+                    directDramaData?.app === 'sodareels'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {directDramaData?.app === 'sodareels' ? '🥤 Soda Reels (Bộ nhớ đệm PSSDK)' : '🎬 MinuteDrama CDN'}
                   </span>
                   {directDramaData && directDramaData.episodes && (
                     <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
-                      Đã tìm thấy {directDramaData.episodes.length} tập
+                      {directDramaData.app === 'sodareels' ? `Đã có ${directDramaData.episodes.length}/${directDramaData.totalEpisodes || 60} tập trong máy` : `Đã tìm thấy ${directDramaData.episodes.length} tập`}
                     </span>
                   )}
                 </div>
@@ -816,11 +868,11 @@ export default function TaiPhimDramaSeries({
                 </button>
               </div>
 
-              {/* Drama Switcher from Database */}
+              {/* Drama Switcher */}
               {directDramaData?.availableDramas && directDramaData.availableDramas.length > 0 && (
                 <div className="mb-2.5 bg-blue-50/50 p-2.5 rounded-xl border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-blue-900">🎬 Chọn bộ phim từ Database:</span>
+                    <span className="font-bold text-blue-900">🎬 Bộ phim đang chọn:</span>
                     <select
                       value={directDramaData.title || ''}
                       onChange={(e) => {
@@ -838,7 +890,7 @@ export default function TaiPhimDramaSeries({
                     </select>
                   </div>
                   <span className="text-[11px] text-blue-700 font-medium">
-                    Có {directDramaData.availableDramas.length} bộ phim được lưu trong bộ nhớ
+                    {directDramaData.app === 'sodareels' ? 'Ứng dụng: Soda Reels' : 'Ứng dụng: MinuteDrama'}
                   </span>
                 </div>
               )}
@@ -848,7 +900,7 @@ export default function TaiPhimDramaSeries({
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-slate-800">📁 Lưu vào thư mục máy tính:</span>
                   <select
-                    value={dramaTitle}
+                    value={dramaTitle || directDramaData?.title || ''}
                     onChange={(e) => setDramaTitle(e.target.value)}
                     className="bg-white border border-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg font-bold focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer max-w-xs truncate"
                   >
@@ -857,36 +909,40 @@ export default function TaiPhimDramaSeries({
                         {d.name || d.title} ({d.videos ? d.videos.length : (d.count || 0)} tập đã có)
                       </option>
                     ))}
-                    {!localDramas.some(d => (d.name || d.title) === dramaTitle) && dramaTitle && (
-                      <option value={dramaTitle}>{dramaTitle}</option>
+                    {!localDramas.some(d => (d.name || d.title) === (dramaTitle || directDramaData?.title)) && (dramaTitle || directDramaData?.title) && (
+                      <option value={dramaTitle || directDramaData?.title}>{dramaTitle || directDramaData?.title}</option>
                     )}
                   </select>
                 </div>
                 <span className="text-[11px] text-emerald-700 font-semibold">
-                  {localDramas.some(d => (d.name || d.title) === dramaTitle) ? '✅ Khớp đúng bộ phim đã có - Không tạo thư mục mới' : '📁 Tự động lưu đúng bộ phim'}
+                  {localDramas.some(d => (d.name || d.title) === (dramaTitle || directDramaData?.title)) ? '✅ Khớp đúng bộ phim đã có trên máy' : '📁 Tự động tạo đúng thư mục phim'}
                 </span>
               </div>
 
-              {/* Codec Switcher */}
-              <div className="flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2 rounded-xl border border-blue-100">
-                <span>
-                  Chuẩn Video: <strong className="text-blue-800 font-bold">{selectedCodec === 'h264' ? 'H.264 (Chuẩn Windows - Xem ngay không lỗi)' : 'H.265 (HEVC - Dung lượng nhẹ)'}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCodec(selectedCodec === 'h264' ? 'h265' : 'h264')}
-                  className="text-[11px] bg-white hover:bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200 font-bold cursor-pointer shadow-2xs"
-                >
-                  Đổi chuẩn: {selectedCodec === 'h264' ? 'Sang H.265 (Gốc)' : 'Sang H.264 (Windows)'}
-                </button>
-              </div>
+              {/* Codec Switcher for MinuteDrama */}
+              {directDramaData?.app === 'minutedrama' && (
+                <div className="flex items-center justify-between mb-3 text-xs text-slate-700 bg-blue-50/70 p-2 rounded-xl border border-blue-100">
+                  <span>
+                    Chuẩn Video: <strong className="text-blue-800 font-bold">{selectedCodec === 'h264' ? 'H.264 (Chuẩn Windows - Xem ngay không lỗi)' : 'H.265 (HEVC - Dung lượng nhẹ)'}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCodec(selectedCodec === 'h264' ? 'h265' : 'h264')}
+                    className="text-[11px] bg-white hover:bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200 font-bold cursor-pointer shadow-2xs"
+                  >
+                    Đổi chuẩn: {selectedCodec === 'h264' ? 'Sang H.265 (Gốc)' : 'Sang H.264 (Windows)'}
+                  </button>
+                </div>
+              )}
 
               {/* Episode list */}
               <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
                 {directDramaData && directDramaData.episodes && directDramaData.episodes.length > 0 ? (
                   directDramaData.episodes.map((ep) => {
+                    const isSoda = (directDramaData.app === 'sodareels');
                     const url = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
                     const durationMins = ep.duration ? `${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, '0')}` : '';
+
                     return (
                       <div key={ep.epNumber} className="bg-slate-50 hover:bg-blue-50/40 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition">
                         <div className="min-w-0 flex-1 flex items-center gap-2">
@@ -898,38 +954,51 @@ export default function TaiPhimDramaSeries({
                               VIP
                             </span>
                           )}
+                          {ep.sizeFormatted && (
+                            <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono shrink-0">
+                              {ep.sizeFormatted}
+                            </span>
+                          )}
                           {durationMins && (
                             <span className="text-[10px] text-slate-400 shrink-0">
                               ({durationMins})
                             </span>
                           )}
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-slate-600 hover:text-blue-600 text-[11px] font-mono truncate hover:underline"
-                            title={url}
-                          >
-                            {url}
-                          </a>
+                          {isSoda ? (
+                            <span className="text-slate-600 text-[11px] truncate">
+                              {ep.isComplete ? '✅ Sẵn sàng trong bộ đệm PSSDK' : `⏳ Đang tải ${ep.pct}%`}
+                            </span>
+                          ) : (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-slate-600 hover:text-blue-600 text-[11px] font-mono truncate hover:underline"
+                              title={url}
+                            >
+                              {url}
+                            </a>
+                          )}
                         </div>
                         <div className="flex gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(url);
-                              showToast(`Đã copy link CDN Tập ${ep.epNumber}!`);
-                            }}
-                            className="bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
-                          >
-                            Copy Link
-                          </button>
+                          {!isSoda && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(url);
+                                showToast(`Đã copy link CDN Tập ${ep.epNumber}!`);
+                              }}
+                              className="bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
+                            >
+                              Copy Link
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDownloadSingleDirect(ep)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
                           >
-                            Tải (1s)
+                            {isSoda ? 'Xuất MP4 (1s)' : 'Tải (1s)'}
                           </button>
                         </div>
                       </div>
@@ -937,7 +1006,9 @@ export default function TaiPhimDramaSeries({
                   })
                 ) : (
                   <div className="p-8 text-center text-xs text-slate-400">
-                    Đang quét danh sách link tập trực tiếp từ máy chủ CDN...
+                    {directDramaData?.app === 'sodareels'
+                      ? 'Chưa có tập nào trong bộ nhớ đệm Soda Reels. Hãy bật giả lập lướt xem vài tập rồi quay lại xuất nhé!'
+                      : 'Đang quét danh sách link tập trực tiếp từ máy chủ CDN...'}
                   </div>
                 )}
               </div>
@@ -954,8 +1025,11 @@ export default function TaiPhimDramaSeries({
                   }`}
                 >
                   {isDownloadingDirectAll
-                    ? `⏳ Đang Tải Tập ${downloadProgressDirect.current}/${downloadProgressDirect.total}...`
-                    : `🚀 Tải Tự Động Tất Cả Các Tập (${directDramaData?.episodes?.length || 0} Tập)`}
+                    ? `⏳ Đang Xử Lý Tập ${downloadProgressDirect.current}/${downloadProgressDirect.total}...`
+                    : (directDramaData?.app === 'sodareels'
+                        ? `🚀 Xuất Ngay Toàn Bộ ${directDramaData?.episodes?.length || 0} Tập Sang MP4`
+                        : `🚀 Tải Tự Động Tất Cả Các Tập (${directDramaData?.episodes?.length || 0} Tập)`)
+                  }
                 </button>
                 <button
                   type="button"

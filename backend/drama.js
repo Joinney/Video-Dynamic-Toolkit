@@ -510,15 +510,76 @@ async function downloadDirectVideo(url, rawDramaName, epNum) {
   return { success: ok, filename: fileName, folder: folderName, path: destPath, sizeBytes };
 }
 
-function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle = '') {
-  if (!device) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '') {
+  if (!device) return { app: appKey, title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+
+  const effectiveApp = (appKey === 'auto') ? detectActiveApp(device) : appKey;
+
+  // 1. NẾU ĐANG CHỌN SODA REELS -> LẤY DỮ LIỆU ĐÚNG CỦA SODA REELS
+  if (effectiveApp === 'sodareels') {
+    try {
+      const sodaInfo = getDramaInfoFromDevice(device, 'sodareels');
+      let currentDrama = sodaInfo.currentDrama;
+      const allDramas = sodaInfo.allDramas || [];
+
+      // Nếu có requestedTitle, tìm đúng bộ phim đó trong Soda Reels
+      if (requestedTitle) {
+        const reqLower = requestedTitle.trim().toLowerCase();
+        const matched = allDramas.find(d => d.title && (d.title.toLowerCase().includes(reqLower) || reqLower.includes(d.title.toLowerCase())));
+        if (matched) currentDrama = matched;
+      }
+
+      const dramaTitle = currentDrama ? currentDrama.title : (requestedTitle || 'Dám rút kiếm đối đầu với thần linh');
+      const coverUrl = currentDrama ? (currentDrama.image || currentDrama.cover || currentDrama.coverUrl || '') : '';
+      const totalEpisodes = currentDrama ? (currentDrama.totalEpisodes || 60) : 60;
+
+      // Lấy danh sách các tập video đã được cache trong bộ nhớ PSSDK của Soda Reels
+      const { getRemoteCacheList } = require('./cache');
+      const cacheList = getRemoteCacheList(device, 'sodareels', currentDrama ? (currentDrama.currentEpisode || 1) : 1);
+
+      const episodes = cacheList.map(c => ({
+        epNumber: c.epNumber,
+        directUrl: '',
+        directUrlH264: '',
+        directUrlH265: '',
+        path: c.path,
+        filename: c.filename,
+        duration: 0,
+        sizeFormatted: c.sizeMb ? `${c.sizeMb} MB` : '',
+        sizeBytes: c.sizeBytes || 0,
+        isCached: true,
+        isComplete: c.isComplete,
+        pct: c.pct || 100,
+        isVip: false
+      }));
+
+      return {
+        app: 'sodareels',
+        title: dramaTitle,
+        coverUrl,
+        totalEpisodes,
+        cachedCount: episodes.length,
+        episodes,
+        availableDramas: allDramas.map(d => ({
+          id: d.id,
+          title: d.title,
+          coverUrl: d.image || d.cover || d.coverUrl || '',
+          totalEpisodes: d.totalEpisodes || 60
+        }))
+      };
+    } catch (e) {
+      return { app: 'sodareels', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+    }
+  }
+
+  // 2. NẾU ĐANG CHỌN MINUTEDRAMA -> LẤY TỪ FILE_MANAGER.DB CỦA MINUTEDRAMA
   try {
     const dbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';
     const rawIds = adbQuerySqlite(device, dbPath, 'SELECT id FROM videoDetail ORDER BY id DESC;');
-    if (!rawIds) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+    if (!rawIds) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
 
     const ids = rawIds.trim().split(/\s+/).filter(Boolean);
-    if (ids.length === 0) return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+    if (ids.length === 0) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
 
     let activeTitle = (requestedTitle || '').trim().toLowerCase();
     let bestDrama = null;
@@ -551,10 +612,8 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
       } catch (e) {}
     }
 
-    // Nếu có activeTitle nhưng chưa tìm thấy phim khớp hoàn toàn, hoặc không có activeTitle
     if (!bestDrama && availableDramas.length > 0) {
       try {
-        // Nếu có activeTitle, thử tìm phim có tên gần giống nhất
         if (activeTitle) {
           const matched = availableDramas.find(a => {
             const words = activeTitle.split(/\s+/).filter(w => w.length > 1);
@@ -572,10 +631,9 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
       } catch (e) {}
     }
 
-    if (!bestDrama) return { title: '', totalEpisodes: 0, episodes: [], availableDramas };
+    if (!bestDrama) return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas };
 
     const episodes = (bestDrama.episodesInfos || []).map(ep => {
-      // Ưu tiên signPlayUrlH264 (H.264) để xem mượt mà trên mọi thiết bị và Windows Media Player
       const directUrl = ep.signPlayUrlH264 || ep.signPlayUrl || ep.bkSignPlayUrl || '';
       return {
         epNumber: ep.episodeNum,
@@ -588,6 +646,7 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
     });
 
     return {
+      app: 'minutedrama',
       title: bestDrama.title || '',
       coverUrl: bestDrama.coverUrl || '',
       totalEpisodes: bestDrama.episodesCount || episodes.length,
@@ -595,7 +654,7 @@ function getDirectDramaEpisodes(device, appKey = 'minutedrama', requestedTitle =
       availableDramas
     };
   } catch (e) {
-    return { title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+    return { app: 'minutedrama', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
   }
 }
 

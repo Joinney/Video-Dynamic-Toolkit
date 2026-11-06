@@ -85,15 +85,23 @@ export default function TaiPhimDramaSeries({
         }
       }
       if (data.remoteList && data.remoteList.length > 0) {
-        const mapped = data.remoteList.map((item, idx) => ({
-          id: idx + 1,
-          ep: item.suggestedEp || (idx + 1),
-          title: item.suggestedEp ? `Tập ${String(item.suggestedEp).padStart(2, '0')}` : item.name,
-          size: item.sizeFormatted,
-          isNew: !item.isAlreadyExported,
-          checked: !item.isAlreadyExported,
-          path: item.path
-        }));
+        const mapped = data.remoteList.map((item, idx) => {
+          const epNum = item.epNumber || item.suggestedEp || (idx + 1);
+          const epTitle = item.epLabel || `Tập ${String(epNum).padStart(2, '0')}`;
+          const sz = item.sizeMb ? `${item.sizeMb} MB` : (item.sizeFormatted || '');
+          const isNew = !item.isDownloaded && !item.isAlreadyExported;
+          return {
+            id: idx + 1,
+            ep: epNum,
+            title: epTitle,
+            size: sz,
+            isNew: isNew,
+            checked: isNew,
+            path: item.path,
+            pct: item.pct || 100,
+            isComplete: item.isComplete !== false
+          };
+        });
         setQueueItems(mapped);
       } else {
         setQueueItems([]);

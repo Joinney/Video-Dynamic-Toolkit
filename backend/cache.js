@@ -144,9 +144,6 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
       return isMinute ? trimmed.endsWith('.mp4') : trimmed.endsWith('.mdl');
     });
 
-    // Đảo ngược danh sách để file tạo đầu tiên (Tập 1) luôn nằm ở vị trí đầu danh sách
-    lines.reverse();
-
     // Đọc lịch sử xem và ánh xạ URL -> số tập từ SQLite của app
     let dbEpisodes = [];
     const minutedramaHashMap = new Map();
@@ -198,6 +195,35 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
         }
       }
     } catch (e) {}
+
+    // LỌC CHUẨN: Chỉ giữ lại các tập thuộc ĐÚNG bộ phim đang xem/lướt hiện tại, loại bỏ các file cũ của phim khác
+    if (appKey === 'sodareels') {
+      let activePrefix = null;
+      for (const l of lines) {
+        const parts = l.trim().split(/\s+/);
+        const fName = path.basename(parts[parts.length - 1]);
+        if (fName.includes('_')) {
+          activePrefix = fName.split('_')[0];
+          break;
+        }
+      }
+      if (activePrefix) {
+        lines = lines.filter(l => {
+          const parts = l.trim().split(/\s+/);
+          const fName = path.basename(parts[parts.length - 1]);
+          return fName.startsWith(activePrefix);
+        });
+      }
+    } else if (appKey === 'minutedrama' && minutedramaHashMap.size > 0) {
+      lines = lines.filter(l => {
+        const parts = l.trim().split(/\s+/);
+        const fName = path.basename(parts[parts.length - 1], '.mp4').toLowerCase();
+        return minutedramaHashMap.has(fName);
+      });
+    }
+
+    // Đảo ngược danh sách để file tạo đầu tiên (Tập 1) luôn nằm ở vị trí đầu danh sách
+    lines.reverse();
 
     const completenessInfo = getRemoteCacheCompletenessMap(device, appKey);
 

@@ -25599,15 +25599,23 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
           }
         }
         if (data.remoteList && data.remoteList.length > 0) {
-          const mapped = data.remoteList.map((item, idx) => ({
-            id: idx + 1,
-            ep: item.suggestedEp || idx + 1,
-            title: item.suggestedEp ? `T\u1EADp ${String(item.suggestedEp).padStart(2, "0")}` : item.name,
-            size: item.sizeFormatted,
-            isNew: !item.isAlreadyExported,
-            checked: !item.isAlreadyExported,
-            path: item.path
-          }));
+          const mapped = data.remoteList.map((item, idx) => {
+            const epNum = item.epNumber || item.suggestedEp || idx + 1;
+            const epTitle = item.epLabel || `T\u1EADp ${String(epNum).padStart(2, "0")}`;
+            const sz = item.sizeMb ? `${item.sizeMb} MB` : item.sizeFormatted || "";
+            const isNew = !item.isDownloaded && !item.isAlreadyExported;
+            return {
+              id: idx + 1,
+              ep: epNum,
+              title: epTitle,
+              size: sz,
+              isNew,
+              checked: isNew,
+              path: item.path,
+              pct: item.pct || 100,
+              isComplete: item.isComplete !== false
+            };
+          });
           setQueueItems(mapped);
         } else {
           setQueueItems([]);

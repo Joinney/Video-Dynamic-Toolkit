@@ -40,29 +40,33 @@ class TTSService:
             from vieneu_tts import enhance_vocal
 
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        communicate = edge_tts.Communicate(
-            text=text,
-            voice=voice,
-            rate=rate,
-            volume=volume,
-        )
-        # Tạm lưu raw audio để convert sang chuẩn studio WAV 48kHz
         raw_tmp = output_file.with_suffix(".raw.mp3")
-        try:
-            await communicate.save(str(raw_tmp))
-            if raw_tmp.exists() and raw_tmp.stat().st_size > 300:
-                snd = AudioSegment.from_file(str(raw_tmp))
-                snd = enhance_vocal(snd, voice_name=voice, deep_warmth=True)
-                snd.export(str(output_file), format="wav")
-                return True
-        except Exception as e_master:
-            logger.warning(f"Edge TTS processing note: {e_master}")
-        finally:
-            if raw_tmp.exists():
-                try:
-                    raw_tmp.unlink(missing_ok=True)
-                except Exception:
-                    pass
+
+        for attempt in range(2):
+            try:
+                communicate = edge_tts.Communicate(
+                    text=text,
+                    voice=voice,
+                    rate=rate,
+                    volume=volume,
+                )
+                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
+                if raw_tmp.exists() and raw_tmp.stat().st_size > 300:
+                    snd = AudioSegment.from_file(str(raw_tmp))
+                    snd = enhance_vocal(snd, voice_name=voice, deep_warmth=True)
+                    snd.export(str(output_file), format="wav")
+                    return True
+            except Exception as e_master:
+                if attempt == 0:
+                    await asyncio.sleep(0.5)
+                    continue
+                logger.warning(f"Edge TTS processing note: {e_master}")
+            finally:
+                if raw_tmp.exists():
+                    try:
+                        raw_tmp.unlink(missing_ok=True)
+                    except Exception:
+                        pass
         return False
 
     def generate_speech_for_segments(
@@ -94,37 +98,46 @@ class TTSService:
                 text = seg.translated_text.strip() or seg.text.strip()
                 if not text:
                     continue
+                snip = text.replace('"', '')[:30]
+                cur_pct = 0.50 + min(0.24, (idx / tot_segs) * 0.24)
+                if progress_callback:
+                    progress_callback(
+                        f"[Lồng tiếng AI] [{idx+1}/{tot_segs}] Đang tạo giọng ({clean_voice}): \"{snip}...\"",
+                        cur_pct
+                    )
                 audio_file = output_dir / f"seg_{seg.id:04d}.wav"
                 generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
                 seg.tts_audio_path = str(audio_file)
                 if progress_callback:
-                    sub_pct = 0.50 + min(0.25, ((idx + 1) / tot_segs) * 0.25)
-                    snip = text.replace('"', '')[:30]
+                    done_pct = 0.50 + min(0.25, ((idx + 1) / tot_segs) * 0.25)
                     progress_callback(
-                        f"[Lồng tiếng AI] [{idx+1}/{tot_segs}] Tạo giọng đọc ({clean_voice}): \"{snip}...\"",
-                        sub_pct
+                        f"[Lồng tiếng AI] [{idx+1}/{tot_segs}] Hoàn thành câu: \"{snip}...\"",
+                        done_pct
                     )
         else:
-            # Edge TTS (Async concurrent with progressive callback per sentence)
+            # Edge TTS with Semaphore concurrency limiter (max 3 at once) to prevent rate limits
             async def run_edge_batch():
                 done_count = 0
+                sem = asyncio.Semaphore(3)
+
                 async def wrapped_gen(seg_item):
                     nonlocal done_count
                     t_val = seg_item.translated_text.strip() or seg_item.text.strip()
                     if not t_val:
                         return
                     out_f = output_dir / f"seg_{seg_item.id:04d}.wav"
-                    await self._generate_single_audio_edge(
-                        text=t_val,
-                        output_file=out_f,
-                        voice=self.voice,
-                        rate=self.rate,
-                        volume=self.volume,
-                    )
+                    snip = t_val.replace('"', '')[:30]
+                    async with sem:
+                        await self._generate_single_audio_edge(
+                            text=t_val,
+                            output_file=out_f,
+                            voice=self.voice,
+                            rate=self.rate,
+                            volume=self.volume,
+                        )
                     done_count += 1
                     if progress_callback:
                         sub_pct = 0.50 + min(0.25, (done_count / tot_segs) * 0.25)
-                        snip = t_val.replace('"', '')[:30]
                         progress_callback(
                             f"[Lồng tiếng AI] [{done_count}/{tot_segs}] Tạo giọng đọc: \"{snip}...\"",
                             sub_pct

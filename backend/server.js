@@ -608,7 +608,9 @@ const server = http.createServer(async (req, res) => {
   // 9.3 API Voice Sample Preview (Real Studio VDT 48kHz Voice Preview)
   if (url.pathname === '/api/voice-preview') {
     const voiceParam = (url.searchParams.get('voice') || '').trim();
-    const previewDir = path.join(__dirname, '..', 'output', 'preview_samples');
+    const assetsPreviewDir = path.join(__dirname, 'dubber', 'assets', 'preview_samples');
+    const legacyPreviewDir = path.join(__dirname, '..', 'output', 'preview_samples');
+    const previewDir = fs.existsSync(assetsPreviewDir) ? assetsPreviewDir : legacyPreviewDir;
     
     const normalize = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]/g, '');
     const normVoice = normalize(voiceParam);

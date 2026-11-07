@@ -33,6 +33,7 @@ class TTSService:
         volume: str,
     ) -> bool:
         import edge_tts
+        import re
         from pydub import AudioSegment
         try:
             from .vieneu_tts import enhance_vocal
@@ -42,23 +43,41 @@ class TTSService:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         raw_tmp = output_file.with_suffix(".raw.mp3")
 
-        for attempt in range(2):
+        clean_text = re.sub(r'[\r\n\t]+', ' ', text).strip()
+        clean_text = re.sub(r'[-—–_]{2,}', ' ', clean_text).strip()
+        if not clean_text:
+            return False
+
+        # Thử lại tối đa 3 lần với backoff và đổi giọng dự phòng nếu cần
+        candidate_voices = [voice]
+        if "HoaiMy" in voice:
+            candidate_voices.append("vi-VN-NamMinhNeural")
+        elif "NamMinh" in voice:
+            candidate_voices.append("vi-VN-HoaiMyNeural")
+        else:
+            candidate_voices.append("vi-VN-HoaiMyNeural")
+
+        for attempt in range(3):
+            cur_voice = candidate_voices[0] if attempt < 2 else candidate_voices[-1]
             try:
                 communicate = edge_tts.Communicate(
-                    text=text,
-                    voice=voice,
+                    text=clean_text,
+                    voice=cur_voice,
                     rate=rate,
                     volume=volume,
                 )
                 await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
-                if raw_tmp.exists() and raw_tmp.stat().st_size > 300:
+                if raw_tmp.exists() and raw_tmp.stat().st_size > 150:
                     snd = AudioSegment.from_file(str(raw_tmp))
-                    snd = enhance_vocal(snd, voice_name=voice, deep_warmth=True)
+                    try:
+                        snd = enhance_vocal(snd, voice_name=cur_voice, deep_warmth=True)
+                    except Exception as e_enh:
+                        logger.debug(f"enhance_vocal note: {e_enh}")
                     snd.export(str(output_file), format="wav")
                     return True
             except Exception as e_master:
-                if attempt == 0:
-                    await asyncio.sleep(0.5)
+                if attempt < 2:
+                    await asyncio.sleep(0.4 * (attempt + 1))
                     continue
                 logger.warning(f"Edge TTS processing note: {e_master}")
             finally:
@@ -106,8 +125,20 @@ class TTSService:
                         cur_pct
                     )
                 audio_file = output_dir / f"seg_{seg.id:04d}.wav"
-                generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
-                seg.tts_audio_path = str(audio_file)
+                try:
+                    generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
+                except Exception as vn_err:
+                    logger.warning(f"VieNeu TTS note on seg {seg.id}: {vn_err}, trying fallback...")
+                    import asyncio
+                    try:
+                        asyncio.run(self._generate_single_audio_edge(text, audio_file, voice="vi-VN-HoaiMyNeural", rate=self.rate, volume=self.volume))
+                    except Exception:
+                        pass
+
+                if audio_file.exists() and audio_file.stat().st_size > 150:
+                    seg.tts_audio_path = str(audio_file)
+                else:
+                    seg.tts_audio_path = None
                 if progress_callback:
                     done_pct = 0.50 + min(0.25, ((idx + 1) / tot_segs) * 0.25)
                     progress_callback(

@@ -25,6 +25,25 @@ class Segment:
             self.original_duration = max(0.1, round(self.end - self.start, 2))
 
 
+def is_valid_speech_text(text: str) -> bool:
+    """
+    Kiểm tra xem chuỗi có phải là lời thoại hợp lệ hay không.
+    Loại bỏ triệt để ảo giác vòng lặp dấu gạch (----------------), dấu chấm, ký hiệu vô nghĩa của Whisper.
+    """
+    if not text or not str(text).strip():
+        return False
+    clean = str(text).strip()
+    # Loại bỏ toàn bộ khoảng trắng, dấu gạch ngang, gạch dưới, chấm, phẩy, ký hiệu đặc biệt
+    core = re.sub(r'[\s\-_—–.…*#~+=|/\\?!,;:()\[\]{}"\'`^<>@$%&]', '', clean)
+    if not core:
+        return False
+    # Nếu chuỗi bị áp đảo bởi các dấu gạch ngang/gạch nối lặp lại (ảo giác autoregressive của Whisper)
+    dashes_count = len(re.findall(r'[-—–_]', clean))
+    if dashes_count >= 3 and dashes_count > len(core) * 2:
+        return False
+    return True
+
+
 _SHARED_WHISPER_MODELS = {}
 
 
@@ -133,9 +152,11 @@ class Transcriber:
             initial_prompt=initial_prompt,
             beam_size=3,
             best_of=3,
-            temperature=0.0,
+            temperature=(0.0, 0.2, 0.4),
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
             vad_filter=False,
+            repetition_penalty=1.15,
+            no_repeat_ngram_size=3,
             compression_ratio_threshold=2.0,
             hallucination_silence_threshold=0.6,
             word_timestamps=False,
@@ -174,7 +195,9 @@ class Transcriber:
             if getattr(s, "no_speech_prob", 0.0) > 0.96:
                 continue
             text = s.text.strip()
-            if not text:
+            # Dọn sạch các chuỗi gạch nối / gạch ngang bị lặp lại
+            text = re.sub(r'[-—–_]{2,}', ' ', text).strip()
+            if not is_valid_speech_text(text):
                 continue
 
             # Bỏ qua nhãn bản quyền kênh hoặc credit phụ đề cuối phim

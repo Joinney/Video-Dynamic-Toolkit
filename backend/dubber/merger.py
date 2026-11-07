@@ -319,6 +319,10 @@ def srt_to_ass(
                 end_ass = srt_time_to_ass(t_parts[1])
                 raw_text = " ".join(lines_raw[time_line_idx + 1:])
                 raw_text = raw_text.replace("{", "(").replace("}", ")")
+                raw_text = re.sub(r'[-—–_]{2,}', ' ', raw_text).strip()
+                # Bỏ qua các dòng phụ đề rỗng hoặc chỉ chứa ký hiệu gạch ngang ảo giác
+                if not re.sub(r'[\s\-_—–.…*#~+=|/\\?!,;:()\[\]{}"\'`^<>@$%&]', '', raw_text):
+                    continue
 
                 wrapped_lines = textwrap.wrap(raw_text, width=wrap_chars)
                 if not wrapped_lines:
@@ -416,7 +420,10 @@ def generate_watermark_png(
 
 
 
-def parse_srt_file(srt_path: Path):
+def parse_srt_file(srt_path: Union[str, Path]):
+    srt_path = Path(srt_path)
+    if not srt_path.exists():
+        return []
     content = srt_path.read_text(encoding="utf-8", errors="replace")
     import re
     blocks = re.split(r"\n\s*\n", content.strip())
@@ -437,7 +444,11 @@ def parse_srt_file(srt_path: Path):
                 t_parts = lines[t_idx].split("-->")
                 start = parse_time(t_parts[0])
                 end = parse_time(t_parts[1])
-                text = " ".join(lines[t_idx + 1:])
+                text = " ".join(lines[t_idx + 1:]).strip()
+                text = re.sub(r'[-—–_]{2,}', ' ', text).strip()
+                # Bỏ qua dòng phụ đề rỗng hoặc toàn dấu gạch ngang
+                if not re.sub(r'[\s\-_—–.…*#~+=|/\\?!,;:()\[\]{}"\'`^<>@$%&]', '', text):
+                    continue
                 items.append((start, end, text))
     return items
 

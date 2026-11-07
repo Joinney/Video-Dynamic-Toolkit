@@ -12,9 +12,9 @@ import urllib.parse
 import urllib.request
 from typing import List, Optional
 try:
-    from .transcriber import Segment
+    from .transcriber import Segment, is_valid_speech_text
 except ImportError:
-    from transcriber import Segment
+    from transcriber import Segment, is_valid_speech_text
 
 logger = logging.getLogger(__name__)
 
@@ -595,10 +595,12 @@ class Translator:
         if progress_callback:
             progress_callback(f"[Dịch thuật AI] Đang dịch {len(segments)} câu thoại sang tiếng Việt...", 0.36)
 
-        # Batch translation via clients5 using newline delimiter
-        all_texts = [preprocess_source_text(seg.text.strip(), eff_src) for seg in segments]
-        delimiter = "\n---\n"
-        combined_payload = delimiter.join(all_texts)
+        # Batch translation via clients5 using XML-tag delimiters
+        # Dùng thẻ tag XML đặc biệt (<<<VDT_0>>>) để Google Translate không bao giờ coi là markdown hay biến thành dấu gạch ngang
+        TAG_PREFIX = "<<<VDT_"
+        TAG_SUFFIX = ">>>"
+        clean_texts = [re.sub(r'[-—–_]{2,}', ' ', preprocess_source_text(seg.text.strip(), eff_src)).strip() for seg in segments]
+        combined_payload = "\n".join([f"{TAG_PREFIX}{idx}{TAG_SUFFIX}\n{t}" for idx, t in enumerate(clean_texts)])
         
         batch_success = False
         try:
@@ -607,10 +609,18 @@ class Translator:
                 batch_result = translate_with_gtx(combined_payload, target_lang=self.target_lang, source_lang=eff_src)
             
             if batch_result:
-                split_parts = [p.strip() for p in re.split(r'\s*---\s*', batch_result) if p.strip()]
-                if len(split_parts) == len(segments):
+                extracted = {}
+                for idx in range(len(segments)):
+                    pattern = rf"{re.escape(TAG_PREFIX)}{idx}{re.escape(TAG_SUFFIX)}\s*(.*?)(?={re.escape(TAG_PREFIX)}|\Z)"
+                    m = re.search(pattern, batch_result, re.DOTALL)
+                    if m:
+                        part = m.group(1).strip()
+                        part = re.sub(r'[-—–_]{2,}', ' ', part).strip()
+                        extracted[idx] = part
+
+                if len(extracted) == len(segments):
                     for idx, seg in enumerate(segments):
-                        seg.translated_text = split_parts[idx]
+                        seg.translated_text = extracted[idx]
                     logger.info("✅ Batch translation succeeded for all segments!")
                     batch_success = True
         except Exception as batch_err:
@@ -619,13 +629,14 @@ class Translator:
         # Fallback to segment-by-segment if batch failed or had count mismatch
         if not batch_success:
             for idx, seg in enumerate(segments):
-                clean_text = seg.text.strip()
-                if not clean_text:
+                clean_text = re.sub(r'[-—–_]{2,}', ' ', seg.text).strip()
+                if not is_valid_speech_text(clean_text):
                     seg.translated_text = ""
                     continue
                 
                 translated = self.translate_single(clean_text)
-                seg.translated_text = translated if translated else clean_text
+                translated = re.sub(r'[-—–_]{2,}', ' ', translated).strip() if translated else ""
+                seg.translated_text = translated if is_valid_speech_text(translated) else clean_text
                 time.sleep(0.04)
 
         # Hậu kiểm: nếu câu dịch vẫn còn sót chữ Hán (tiếng Trung chưa dịch), dịch lại đơn lẻ từng câu
@@ -634,9 +645,14 @@ class Translator:
                 try:
                     re_trans = translate_with_clients5(seg.text.strip(), target_lang=self.target_lang, source_lang="zh-CN")
                     if re_trans and not is_chinese_text(re_trans):
-                        seg.translated_text = re_trans
+                        seg.translated_text = re.sub(r'[-—–_]{2,}', ' ', re_trans).strip()
                 except Exception:
                     pass
+            # Bảo đảm phụ đề không bị dính chuỗi ký hiệu / gạch ngang
+            if seg.translated_text:
+                seg.translated_text = re.sub(r'[-—–_]{2,}', ' ', seg.translated_text).strip()
+            if not is_valid_speech_text(seg.translated_text or ""):
+                seg.translated_text = seg.text if is_valid_speech_text(seg.text) else ""
 
         # Tinh chỉnh văn phong lồng tiếng tự nhiên và truyền cảm cho tiếng Việt theo từng câu
         tot_segs = max(1, len(segments))

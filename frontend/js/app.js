@@ -24205,19 +24205,21 @@
     const videoRef = (0, import_react6.useRef)(null);
     const [videoCurrentTime, setVideoCurrentTime] = (0, import_react6.useState)(0);
     const displayedSubText = (0, import_react6.useMemo)(() => {
+      const isClean = (t) => t && typeof t === "string" && t.replace(/[\s\-_—–]/g, "").length > 0;
       if (previewSegments && previewSegments.length > 0) {
         const activeSeg = previewSegments.find(
           (s) => videoCurrentTime >= s.start && videoCurrentTime <= s.end
         );
-        if (activeSeg && activeSeg.text) {
+        if (activeSeg && isClean(activeSeg.text)) {
           return activeSeg.text;
         }
         if (videoRef.current && !videoRef.current.paused && videoCurrentTime > 0) {
           return "";
         }
-        return previewSegments[activeSegmentIndex]?.text || previewSubText;
+        const curSelected = previewSegments[activeSegmentIndex]?.text;
+        return isClean(curSelected) ? curSelected : isClean(previewSubText) ? previewSubText : "";
       }
-      return previewSubText;
+      return isClean(previewSubText) ? previewSubText : "";
     }, [previewSegments, videoCurrentTime, activeSegmentIndex, previewSubText]);
     const handleQuickTranscribe = async () => {
       const targetVideo = serverVideoPath || videoUrl || (videoFile ? videoFile.name : "");
@@ -24243,14 +24245,15 @@
         });
         const data = await res.json();
         if (data.success && data.segments && data.segments.length > 0) {
-          setPreviewSegments(data.segments);
+          const validSegs = data.segments.filter((s) => s && s.text && s.text.replace(/[\s\-_—–]/g, "").length > 0);
+          setPreviewSegments(validSegs);
           setActiveSegmentIndex(0);
-          if (data.segments[0].text) {
-            setPreviewSubText(data.segments[0].text);
+          if (validSegs.length > 0 && validSegs[0].text) {
+            setPreviewSubText(validSegs[0].text);
           }
           setDubLogs((prev) => [
             ...prev,
-            { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: `\u2705 \u0110\xE3 tr\xEDch xu\u1EA5t & d\u1ECBch th\xE0nh c\xF4ng ${data.segments.length} c\xE2u tho\u1EA1i t\u1EEB video.` }
+            { time: (/* @__PURE__ */ new Date()).toLocaleTimeString("vi-VN", { hour12: false }), text: `\u2705 \u0110\xE3 tr\xEDch xu\u1EA5t & d\u1ECBch th\xE0nh c\xF4ng ${validSegs.length} c\xE2u tho\u1EA1i t\u1EEB video.` }
           ]);
         } else {
           alert(data.message || "Kh\xF4ng t\xECm th\u1EA5y c\xE2u tho\u1EA1i n\xE0o trong video!");
@@ -24440,7 +24443,7 @@
             sourceLang,
             targetLang,
             whisperModel,
-            subtitles: previewSegments && previewSegments.length > 0 ? previewSegments : void 0,
+            subtitles: previewSegments && previewSegments.length > 0 ? previewSegments.filter((s) => s && s.text && s.text.replace(/[\s\-_—–]/g, "").length > 0) : void 0,
             burnSubtitles,
             subStyle,
             subFontSize,

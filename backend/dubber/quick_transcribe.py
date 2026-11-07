@@ -46,7 +46,7 @@ def main():
         extract_audio_wav(input_file, temp_wav)
 
         # 2. Nhận diện giọng nói
-        from transcriber import Transcriber
+        from transcriber import Transcriber, is_valid_speech_text
         w_device = "cpu"
         try:
             import torch
@@ -61,15 +61,19 @@ def main():
 
         # 3. Dịch sang ngôn ngữ đích (Tiếng Việt)
         from translator import Translator
+        import re
         translator = Translator(target_lang=args.target_lang, source_lang=detected_lang)
         translated_segments = translator.translate_segments(segments)
 
         res_list = []
-        for i, seg in enumerate(translated_segments, 1):
+        for seg in translated_segments:
             text_val = str(getattr(seg, "translated_text", "") or getattr(seg, "text", "")).strip()
+            text_val = re.sub(r'[-—–_]{2,}', ' ', text_val).strip()
+            if not is_valid_speech_text(text_val):
+                continue
             orig_val = str(getattr(seg, "text", "")).strip()
             res_list.append({
-                "id": getattr(seg, "id", i),
+                "id": len(res_list) + 1,
                 "start": round(float(seg.start), 2),
                 "end": round(float(seg.end), 2),
                 "text": text_val,

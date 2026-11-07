@@ -61,19 +61,21 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
 
   // Hiển thị câu phụ đề bám sát theo thời gian thực khi phát video hoặc câu đang chọn sửa
   const displayedSubText = useMemo(() => {
+    const isClean = (t) => t && typeof t === 'string' && t.replace(/[\s\-_—–]/g, '').length > 0;
     if (previewSegments && previewSegments.length > 0) {
       const activeSeg = previewSegments.find(
         (s) => videoCurrentTime >= s.start && videoCurrentTime <= s.end
       );
-      if (activeSeg && activeSeg.text) {
+      if (activeSeg && isClean(activeSeg.text)) {
         return activeSeg.text;
       }
       if (videoRef.current && !videoRef.current.paused && videoCurrentTime > 0) {
         return '';
       }
-      return previewSegments[activeSegmentIndex]?.text || previewSubText;
+      const curSelected = previewSegments[activeSegmentIndex]?.text;
+      return isClean(curSelected) ? curSelected : (isClean(previewSubText) ? previewSubText : '');
     }
-    return previewSubText;
+    return isClean(previewSubText) ? previewSubText : '';
   }, [previewSegments, videoCurrentTime, activeSegmentIndex, previewSubText]);
 
   // Dịch trước từ Video bằng Whisper AI
@@ -102,14 +104,15 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
       });
       const data = await res.json();
       if (data.success && data.segments && data.segments.length > 0) {
-        setPreviewSegments(data.segments);
+        const validSegs = data.segments.filter(s => s && s.text && s.text.replace(/[\s\-_—–]/g, '').length > 0);
+        setPreviewSegments(validSegs);
         setActiveSegmentIndex(0);
-        if (data.segments[0].text) {
-          setPreviewSubText(data.segments[0].text);
+        if (validSegs.length > 0 && validSegs[0].text) {
+          setPreviewSubText(validSegs[0].text);
         }
         setDubLogs(prev => [
           ...prev,
-          { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `✅ Đã trích xuất & dịch thành công ${data.segments.length} câu thoại từ video.` }
+          { time: new Date().toLocaleTimeString('vi-VN', { hour12: false }), text: `✅ Đã trích xuất & dịch thành công ${validSegs.length} câu thoại từ video.` }
         ]);
       } else {
         alert(data.message || 'Không tìm thấy câu thoại nào trong video!');
@@ -327,7 +330,9 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
           sourceLang: sourceLang,
           targetLang: targetLang,
           whisperModel: whisperModel,
-          subtitles: (previewSegments && previewSegments.length > 0) ? previewSegments : undefined,
+          subtitles: (previewSegments && previewSegments.length > 0)
+            ? previewSegments.filter(s => s && s.text && s.text.replace(/[\s\-_—–]/g, '').length > 0)
+            : undefined,
           burnSubtitles: burnSubtitles,
           subStyle: subStyle,
           subFontSize: subFontSize,

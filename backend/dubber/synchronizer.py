@@ -124,7 +124,7 @@ class AudioSynchronizer:
             else:
                 next_start = total_duration_seconds
 
-            available_window_s = max(0.3, next_start - seg.start - 0.08)
+            available_window_s = max(0.3, next_start - seg.start - 0.05)
             clip_len_s = len(clip) / 1000.0
 
             # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng trống tới câu tiếp theo

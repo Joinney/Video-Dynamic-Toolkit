@@ -198,3 +198,6 @@ class DubbingConfig:
                 if cand.exists():
                     self.logo_path = cand
                     break
+
+# Alias for compatibility
+VideoDubberConfig = DubbingConfig

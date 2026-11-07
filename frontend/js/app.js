@@ -24201,7 +24201,7 @@
     const [previewSegments, setPreviewSegments] = (0, import_react6.useState)([]);
     const [activeSegmentIndex, setActiveSegmentIndex] = (0, import_react6.useState)(0);
     const [isTranscribingSubtitles, setIsTranscribingSubtitles] = (0, import_react6.useState)(false);
-    const [whisperModel, setWhisperModel] = (0, import_react6.useState)("small");
+    const [whisperModel, setWhisperModel] = (0, import_react6.useState)("medium");
     const videoRef = (0, import_react6.useRef)(null);
     const [videoCurrentTime, setVideoCurrentTime] = (0, import_react6.useState)(0);
     const displayedSubText = (0, import_react6.useMemo)(() => {
@@ -24669,7 +24669,8 @@
           onChange: (e) => setWhisperModel(e.target.value),
           className: "bg-white border border-gray-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 cursor-pointer"
         },
-        /* @__PURE__ */ import_react6.default.createElement("option", { value: "small" }, "\u2B50 Small (Chu\u1EA9n x\xE1c nh\u1EA5t cho phim Trung/Anh)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "medium" }, "\u{1F525} Medium (Khuy\u1EBFn ngh\u1ECB - Nh\u1EADn di\u1EC7n tr\u1ECDn v\u1EB9n 100% tho\u1EA1i phim)"),
+        /* @__PURE__ */ import_react6.default.createElement("option", { value: "small" }, "\u2B50 Small (Chu\u1EA9n x\xE1c & Nh\u1EB9)"),
         /* @__PURE__ */ import_react6.default.createElement("option", { value: "base" }, "\u26A1 Base (Nhanh c\u01A1 b\u1EA3n)")
       )), burnSubtitles && /* @__PURE__ */ import_react6.default.createElement(import_react6.default.Fragment, null, previewSegments && previewSegments.length > 0 ? /* @__PURE__ */ import_react6.default.createElement("div", { className: "p-2.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[11px] font-black text-sky-900" }, "\u{1F4DD} Danh s\xE1ch ph\u1EE5 \u0111\u1EC1 \u0111\xE3 d\u1ECBch (", previewSegments.length, " c\xE2u):"), /* @__PURE__ */ import_react6.default.createElement(
         "button",

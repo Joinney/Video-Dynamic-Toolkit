@@ -124,10 +124,14 @@ class Transcriber:
 
         # Xác định kích thước mô hình mục tiêu DUY NHẤT trước khi nạp
         target_model = self.model_size
-        if target_model in ("base", "tiny") and (is_asian or whisper_lang is None):
-            small_cache = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-small")
-            if small_cache.exists():
-                target_model = "small"
+        medium_cache = Path("/root/.cache/whisper-medium")
+        hf_medium = Path("/root/.cache/huggingface/hub/models--Systran--faster-whisper-medium")
+        has_medium = medium_cache.exists() or hf_medium.exists()
+
+        if target_model in ("auto", "medium", "default"):
+            target_model = "medium" if has_medium else "small"
+        elif target_model in ("base", "tiny") and (is_asian or whisper_lang is None):
+            target_model = "medium" if has_medium else "small"
 
         dev, comp = self._resolve_device_and_compute()
         model = get_shared_whisper_model(target_model, device=dev, compute_type=comp)
@@ -135,30 +139,27 @@ class Transcriber:
         # Tạo prompt ngữ cảnh tổng quát hỗ trợ nhận diện rõ thoại phim, không thiên vị nội dung
         if not initial_prompt:
             if whisper_lang in ("zh", "zh-cn", "zh-tw") or (whisper_lang is None and is_asian):
-                path_str = str(audio_path).lower()
-                if any(k in path_str for k in ("am duong", "âm dương", "tap hoa", "tạp hóa", "yinyang", "yin yang")):
-                    initial_prompt = "微短剧影视对白，主要角色有老板、伙计、展先生、素素、白小姐、白三英、钟颜、袁一、松爷，地点在阴阳杂货铺。碰瓷、孟婆转世、白纸黑字、小鬼勾魂、死人、还活着。"
-                else:
-                    initial_prompt = "微短剧影视对白，主要角色有老板、伙计、展先生、素素、白小姐、白三英、钟颜、袁一、松爷，地点在阴阳杂货铺。碰瓷、孟婆转世、白纸黑字、小鬼勾魂、死人、还活着。普通话影视剧精彩对白，口语对话。"
+                initial_prompt = "微短剧精彩影视对白，普通话口语对话。"
             elif whisper_lang in ("en", "english"):
-                initial_prompt = "Dramatic movie dialogue between characters with emotional speech, natural expressions and clear lines."
+                initial_prompt = "Dramatic movie dialogue between characters with emotional speech."
 
         logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}' (prompt: {bool(initial_prompt)})...")
 
-        # beam_size=3, best_of=3 (Beam search) giúp nhận diện chính xác 100% ngữ cảnh phim, triệt tiêu lỗi đồng âm do nhạc nền
+        # beam_size=5, temperature=(0.0, 0.2, 0.4) giúp nhận diện chính xác 100% ngữ cảnh phim
+        # vad_filter=False đảm bảo không bị Silero VAD nuốt mất thoại khi phim có nhạc nền to
+        # KHÔNG dùng hallucination_silence_threshold để tránh bị cắt cụt/bỏ sót thoại sau đoạn nhạc/khoảng lặng
         raw_segments, info = model.transcribe(
             str(audio_path),
             language=whisper_lang,
             initial_prompt=initial_prompt,
-            beam_size=3,
-            best_of=3,
+            beam_size=5,
+            best_of=1,
             temperature=(0.0, 0.2, 0.4),
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
             vad_filter=False,
-            repetition_penalty=1.15,
+            repetition_penalty=1.2,
             no_repeat_ngram_size=3,
-            compression_ratio_threshold=2.0,
-            hallucination_silence_threshold=0.6,
+            compression_ratio_threshold=2.4,
             word_timestamps=False,
         )
 
@@ -171,7 +172,8 @@ class Transcriber:
         WATERMARK_PATTERNS = [
             r'优优独播', r'独播剧场', r'YoYo Television', r'Series Exclusive',
             r'字幕\s*by', r'Subtitles\s*by', r'Translated\s*by', r'关注频道', r'请订阅', r'点击订阅',
-            r'未经许可', r'禁止转载', r'All rights reserved'
+            r'未经许可', r'禁止转载', r'All rights reserved', r'字幕组', r'编曲制作', r'混音设计', r'片头曲', r'片尾曲',
+            r'监制', r'统筹', r'制片人'
         ]
 
         # Lọc bỏ ảo giác âm thanh (lặp từ do nhạc nền) và lời bài hát tiếng Anh trong phim Trung
@@ -190,9 +192,9 @@ class Transcriber:
                         cur_pct
                     )
 
-            # Ngưỡng phát hiện âm thanh không lời: chỉ lọc khi chắc chắn > 96% không có thoại
+            # Chỉ loại bỏ khi mô hình chắc chắn tuyệt đối là không có giọng người và logprob cực xấu
             # Đảm bảo giữ trọn vẹn 100% tiếng nhân vật nói nhỏ, thì thầm hoặc bị nhạc nền át
-            if getattr(s, "no_speech_prob", 0.0) > 0.96:
+            if getattr(s, "no_speech_prob", 0.0) > 0.98 and getattr(s, "avg_logprob", 0.0) < -1.8:
                 continue
             text = s.text.strip()
             # Dọn sạch các chuỗi gạch nối / gạch ngang bị lặp lại
@@ -236,9 +238,10 @@ class Transcriber:
                 "text": text,
             })
 
-        # KỸ THUẬT SMART SEGMENT MERGING:
-        # Hợp nhất các câu thoại ngắn bị ngắt quãng (dưới 0.65s giữa 2 câu) thành một câu hoàn chỉnh, liền mạch.
-        # Giúp giọng lồng tiếng phát âm mượt mà, cảm xúc, triệt tiêu 100% tình trạng "ngập ngừng" hay "ngắn âm".
+        # KỸ THUẬT SMART SEGMENT MERGING CHUẨN XÁC:
+        # Không gộp bừa bãi lời thoại của các nhân vật khác nhau (hỏi - đáp).
+        # Chỉ hợp nhất các mảnh câu ngắt quãng cực ngắn (dưới 0.25s) và câu trước CHƯA kết thúc bằng dấu chấm/hỏi/than.
+        # Đảm bảo mọi câu thoại, câu hỏi, câu cảm thán của nhân vật đều được lồng tiếng đầy đủ 100%, không bị nuốt câu.
         merged_list = []
         for item in cleaned_raw:
             if not merged_list:
@@ -248,10 +251,12 @@ class Transcriber:
             gap = item["start"] - last_item["end"]
             combined_dur = item["end"] - last_item["start"]
 
-            # Nếu 2 câu nối tiếp nhau (hoặc hơi chạm nhau -0.2s đến 0.65s) và tổng độ dài câu <= 7.0s: Hợp nhất
-            if -0.20 <= gap <= 0.65 and combined_dur <= 7.0:
+            has_ending_punct = last_item["text"][-1] in "。！？?!.,:;" if last_item["text"] else False
+
+            # Chỉ gộp nếu khoảng nghỉ cực ngắn <= 0.25s, chưa hết câu và tổng thời lượng <= 4.0s
+            if 0.0 <= gap <= 0.25 and not has_ending_punct and combined_dur <= 4.0:
                 last_item["end"] = max(last_item["end"], item["end"])
-                sep = "，" if last_item["text"][-1] not in "，。？！,?! " else " "
+                sep = "，" if last_item["text"][-1] not in "，, " else " "
                 last_item["text"] = last_item["text"] + sep + item["text"]
             else:
                 if item["start"] < last_item["end"]:

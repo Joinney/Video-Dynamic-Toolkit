@@ -55,7 +55,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [previewSegments, setPreviewSegments] = useState([]);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [isTranscribingSubtitles, setIsTranscribingSubtitles] = useState(false);
-  const [whisperModel, setWhisperModel] = useState('small');
+  const [whisperModel, setWhisperModel] = useState('medium');
   const videoRef = useRef(null);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
 
@@ -745,7 +745,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                       onChange={(e) => setWhisperModel(e.target.value)}
                       className="bg-white border border-gray-300 rounded px-1.5 py-0.5 text-xs font-bold text-slate-800 cursor-pointer"
                     >
-                      <option value="small">⭐ Small (Chuẩn xác nhất cho phim Trung/Anh)</option>
+                      <option value="medium">🔥 Medium (Khuyến nghị - Nhận diện trọn vẹn 100% thoại phim)</option>
+                      <option value="small">⭐ Small (Chuẩn xác & Nhẹ)</option>
                       <option value="base">⚡ Base (Nhanh cơ bản)</option>
                     </select>
                   </div>

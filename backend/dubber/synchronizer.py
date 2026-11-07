@@ -70,7 +70,7 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
 class AudioSynchronizer:
     def __init__(
         self,
-        max_speed_factor: float = 1.35,
+        max_speed_factor: float = 1.45,
         min_speed_factor: float = 1.0,
     ):
         self.max_speed_factor = max(1.05, min(2.0, max_speed_factor))
@@ -128,23 +128,19 @@ class AudioSynchronizer:
             clip_len_s = len(clip) / 1000.0
 
             # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng trống tới câu tiếp theo
-            # Tuyệt đối KHÔNG bao giờ cắt ngang âm thanh (triệt tiêu hoàn toàn lỗi ngắn âm / nuốt âm cuối)
+            # TUYỆT ĐỐI KHÔNG BAO GIỜ CẮT CỤT ÂM THANH (đảm bảo 100% nhân vật nói trọn vẹn câu thoại, không bao giờ bị cụt âm cuối)
             if clip_len_s > available_window_s:
                 needed_speed = clip_len_s / available_window_s
                 target_speed = min(needed_speed, self.max_speed_factor)
                 adjusted_clip = change_audio_speed(clip, speed=target_speed)
-                max_allowed_len = int((available_window_s + 0.12) * 1000)
-                if len(adjusted_clip) > max_allowed_len and idx + 1 < len(segments):
-                    # Nếu thực sự chạm nhẹ vào câu sau: áp dụng fade-out 40ms mềm mại thay vì cắt cụt
-                    adjusted_clip = adjusted_clip[:max_allowed_len + 30].fade_out(40)
             else:
                 adjusted_clip = clip
 
-            # Mốc kết thúc phụ đề chuẩn xác: Đúng thời điểm giọng đọc dứt câu là phụ đề ẩn đi ngay lập tức
+            # Mốc kết thúc phụ đề chuẩn xác: Đúng thời điểm giọng đọc dứt câu là phụ đề ẩn đi
             actual_spoken_len_s = round(len(adjusted_clip) / 1000.0, 3)
             seg.sub_end = round(seg.start + actual_spoken_len_s, 3)
-            if seg.sub_end > next_start:
-                seg.sub_end = next_start
+            if seg.sub_end > next_start and idx + 1 < len(segments):
+                seg.sub_end = max(seg.start + 0.6, next_start)
 
             start_pos_ms = int(seg.start * 1000)
             master_track = master_track.overlay(adjusted_clip, position=start_pos_ms)

@@ -24175,8 +24175,8 @@
     const [videoFile, setVideoFile] = (0, import_react6.useState)(null);
     const [videoUrl, setVideoUrl] = (0, import_react6.useState)(initialVideo ? `/video/${encodeURIComponent(initialVideo.relPath)}` : null);
     const [serverVideoPath, setServerVideoPath] = (0, import_react6.useState)(initialVideo ? initialVideo.relPath : "");
-    const [selectedVoice, setSelectedVoice] = (0, import_react6.useState)("vieneu:Adam T\u1ED1p T\u1ED1p");
-    const [selectedVoiceLabel, setSelectedVoiceLabel] = (0, import_react6.useState)("Adam T\u1ED1p T\u1ED1p (VieNeu - Nam Mi\u1EC1n Nam)");
+    const [selectedVoice, setSelectedVoice] = (0, import_react6.useState)("vi-VN-HoaiMyNeural");
+    const [selectedVoiceLabel, setSelectedVoiceLabel] = (0, import_react6.useState)("vi-VN-HoaiMyNeural (Edge - N\u1EEF truy\u1EC1n c\u1EA3m, t\u1EF1 nhi\xEAn)");
     const [voicesCatalog, setVoicesCatalog] = (0, import_react6.useState)([]);
     const [localDramas, setLocalDramas] = (0, import_react6.useState)(backendData?.localDramas || []);
     const [sourceLang, setSourceLang] = (0, import_react6.useState)("auto");

@@ -23,8 +23,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [videoFile, setVideoFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(initialVideo ? `/video/${encodeURIComponent(initialVideo.relPath)}` : null);
   const [serverVideoPath, setServerVideoPath] = useState(initialVideo ? initialVideo.relPath : '');
-  const [selectedVoice, setSelectedVoice] = useState('vieneu:Adam Tốp Tốp');
-  const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('Adam Tốp Tốp (VieNeu - Nam Miền Nam)');
+  const [selectedVoice, setSelectedVoice] = useState('vi-VN-HoaiMyNeural');
+  const [selectedVoiceLabel, setSelectedVoiceLabel] = useState('vi-VN-HoaiMyNeural (Edge - Nữ truyền cảm, tự nhiên)');
   const [voicesCatalog, setVoicesCatalog] = useState([]);
   const [localDramas, setLocalDramas] = useState(backendData?.localDramas || []);
   const [sourceLang, setSourceLang] = useState('auto');

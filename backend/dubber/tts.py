@@ -129,9 +129,10 @@ class TTSService:
                     generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
                 except Exception as vn_err:
                     logger.warning(f"VieNeu TTS note on seg {seg.id}: {vn_err}, trying fallback...")
-                    import asyncio
                     try:
-                        asyncio.run(self._generate_single_audio_edge(text, audio_file, voice="vi-VN-HoaiMyNeural", rate=self.rate, volume=self.volume))
+                        loop_fb = asyncio.new_event_loop()
+                        loop_fb.run_until_complete(self._generate_single_audio_edge(text, audio_file, voice="vi-VN-HoaiMyNeural", rate=self.rate, volume=self.volume))
+                        loop_fb.close()
                     except Exception:
                         pass
 

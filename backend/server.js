@@ -622,6 +622,15 @@ const server = http.createServer(async (req, res) => {
       } else if (payload.posterUrl && payload.posterUrl.trim().startsWith('http')) {
         const ok = await downloadFile(payload.posterUrl.trim(), targetPosterPath);
         if (ok) posterUpdated = true;
+      } else if (payload.posterUrl && payload.posterUrl.includes('/api/dramabox-cover?path=')) {
+        const remotePath = decodeURIComponent(payload.posterUrl.split('path=')[1]);
+        const device = checkAdbDevice();
+        if (remotePath && device) {
+          pullRemoteFile(device, remotePath, targetPosterPath);
+          if (fs.existsSync(targetPosterPath) && fs.statSync(targetPosterPath).size > 0) {
+            posterUpdated = true;
+          }
+        }
       } else if (payload.autoPoster) {
         const device = checkAdbDevice();
         if (device) {
@@ -1017,14 +1026,17 @@ const server = http.createServer(async (req, res) => {
     if (!device) {
       res.writeHead(404); return res.end('Device not connected');
     }
-    const localCover = path.join(TEMP_DIR, 'dramabox_cover_preview.jpg');
+    const safeName = 'db_cover_' + path.basename(remotePath).replace(/[^a-zA-Z0-9_.-]/g, '_') + '.jpg';
+    const localCover = path.join(TEMP_DIR, safeName);
     try {
       if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
-      pullRemoteFile(device, remotePath, localCover);
+      if (!fs.existsSync(localCover) || fs.statSync(localCover).size === 0) {
+        pullRemoteFile(device, remotePath, localCover);
+      }
       if (fs.existsSync(localCover) && fs.statSync(localCover).size > 0) {
         res.writeHead(200, {
           'Content-Type': 'image/jpeg',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'public, max-age=86400'
         });
         return fs.createReadStream(localCover).pipe(res);
       }

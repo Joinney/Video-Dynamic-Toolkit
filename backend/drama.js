@@ -101,6 +101,76 @@ function downloadFile(url, destPath) {
   });
 }
 
+// Trích xuất kích thước và định dạng ảnh từ Buffer nhị phân (hỗ trợ PNG, JPEG, WebP)
+function getImageDimensions(buffer) {
+  if (!buffer || buffer.length < 24) return null;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+    return { type: 'png', width, height };
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
+    let offset = 2;
+    while (offset < buffer.length - 8) {
+      if (buffer[offset] !== 0xFF) { offset++; continue; }
+      const marker = buffer[offset + 1];
+      if (marker >= 0xC0 && marker <= 0xC3 && marker !== 0xC4) {
+        const height = buffer.readUInt16BE(offset + 5);
+        const width = buffer.readUInt16BE(offset + 7);
+        return { type: 'jpg', width, height };
+      }
+      const len = buffer.readUInt16BE(offset + 2);
+      offset += 2 + len;
+    }
+  }
+  // WebP: RIFF ... WEBP
+  if (buffer.length >= 30 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    const format = buffer.toString('ascii', 12, 16);
+    if (format === 'VP8 ') {
+      const width = buffer.readUInt16LE(26) & 0x3fff;
+      const height = buffer.readUInt16LE(28) & 0x3fff;
+      return { type: 'webp', width, height };
+    } else if (format === 'VP8L') {
+      const b0 = buffer[21], b1 = buffer[22], b2 = buffer[23], b3 = buffer[24];
+      const width = 1 + (((b1 & 0x3f) << 8) | b0);
+      const height = 1 + ((((b3 & 0xf) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)));
+      return { type: 'webp', width, height };
+    }
+  }
+  return null;
+}
+
+// Tìm đúng file ảnh poster của DramaBox trong glide_cache
+// Đặc điểm poster phim DramaBox: tỷ lệ chân dung chuẩn ~3:4 (ratio chiều cao / chiều rộng từ 1.20 đến 1.55), chiều rộng >= 150px
+// Không lấy nhầm avatar/icon vuông (1:1) hay ảnh video dọc 9:16 (ratio > 1.65)
+function findDramaBoxPosterFromGlide(device) {
+  if (!device) return null;
+  try {
+    const raw = execSync(
+      `"${ADB_PATH}" -s ${device} shell "su root ls -1t /sdcard/Android/data/com.storymatrix.drama/cache/glide_cache/*.0 2>/dev/null | head -n 35"`,
+      { encoding: 'utf8', timeout: 3500 }
+    );
+    const files = raw.trim().split('\n').map(s => s.trim()).filter(Boolean);
+    for (const f of files) {
+      try {
+        const b64 = execSync(`"${ADB_PATH}" -s ${device} shell "su root head -c 2048 '${f}' | base64"`, { encoding: 'utf8', timeout: 1500 }).trim();
+        if (!b64) continue;
+        const buf = Buffer.from(b64, 'base64');
+        const dim = getImageDimensions(buf);
+        if (dim && dim.width >= 150 && dim.height >= 200) {
+          const ratio = dim.height / dim.width;
+          if (ratio >= 1.20 && ratio <= 1.55) {
+            return f;
+          }
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return null;
+}
+
 function getDramaInfoFromDevice(device, appKey = 'sodareels') {
   if (!device) return { currentDrama: null, allDramas: [], currentEpisode: 1, totalEpisodes: 0 };
 
@@ -177,15 +247,12 @@ function getDramaInfoFromDevice(device, appKey = 'sodareels') {
         }
       } catch (e) {}
 
-      // 1.3 Lấy poster từ glide_cache mới nhất nếu chưa có
+      // 1.3 Lấy poster từ glide_cache mới nhất theo chuẩn tỷ lệ 3:4 nếu chưa có
       if (!coverUrl) {
         try {
-          const newestGlide = execSync(
-            `"${ADB_PATH}" -s ${device} shell "su root ls -1t /sdcard/Android/data/com.storymatrix.drama/cache/glide_cache/*.0 2>/dev/null | head -n 1"`,
-            { encoding: 'utf8', timeout: 3000 }
-          ).trim();
-          if (newestGlide) {
-            coverUrl = `/api/dramabox-cover?path=${encodeURIComponent(newestGlide)}`;
+          const posterGlide = findDramaBoxPosterFromGlide(device);
+          if (posterGlide) {
+            coverUrl = `/api/dramabox-cover?path=${encodeURIComponent(posterGlide)}`;
           }
         } catch (e) {}
       }
@@ -840,7 +907,13 @@ async function downloadDramaPoster(device, rawDramaName, customUrl = '') {
       try {
         const ok = pullRemoteFile(device, remotePath, posterPath);
         if (ok && fs.existsSync(posterPath) && fs.statSync(posterPath).size > 0) {
-          return true;
+          return {
+            success: true,
+            folder: folderName,
+            path: posterPath,
+            sizeBytes: fs.statSync(posterPath).size,
+            source: 'dramabox_direct'
+          };
         }
       } catch (e) {}
     }
@@ -859,14 +932,17 @@ async function downloadDramaPoster(device, rawDramaName, customUrl = '') {
 
       if (!url) {
         try {
-          const newestGlide = execSync(
-            `"${ADB_PATH}" -s ${device} shell "su root ls -1t /sdcard/Android/data/com.storymatrix.drama/cache/glide_cache/*.0 2>/dev/null | head -n 1"`,
-            { encoding: 'utf8', timeout: 3000 }
-          ).trim();
-          if (newestGlide) {
-            pullRemoteFile(device, newestGlide, posterPath);
+          const dramaboxPoster = findDramaBoxPosterFromGlide(device);
+          if (dramaboxPoster) {
+            pullRemoteFile(device, dramaboxPoster, posterPath);
             if (fs.existsSync(posterPath) && fs.statSync(posterPath).size > 0) {
-              return true;
+              return {
+                success: true,
+                folder: folderName,
+                path: posterPath,
+                sizeBytes: fs.statSync(posterPath).size,
+                source: 'dramabox_glide'
+              };
             }
           }
         } catch (e) {}

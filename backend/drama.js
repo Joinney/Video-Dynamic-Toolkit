@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { ADB_PATH, TARGET_DIR } = require('./config');
+const { ADB_PATH, TARGET_DIR, TEMP_DIR } = require('./config');
 const { adbQuerySqlite, resolveActiveApp, pullRemoteFile } = require('./adb');
 const { getRemoteCacheCompletenessMap } = require('./cache');
 
@@ -104,7 +104,117 @@ function downloadFile(url, destPath) {
 function getDramaInfoFromDevice(device, appKey = 'sodareels') {
   if (!device) return { currentDrama: null, allDramas: [], currentEpisode: 1, totalEpisodes: 0 };
 
-  // 1. MINUTEDRAMA
+  // 1. DRAMABOX
+  if (appKey === 'dramabox') {
+    try {
+      let currentDrama = null;
+      let title = '';
+      let currentEpisode = 1;
+      let totalEpisodes = 0;
+      let desc = '';
+      let coverUrl = '';
+
+      // 1.1 Đọc từ SQLite drama.db trước
+      try {
+        const dbRow = adbQuerySqlite(
+          device,
+          '/data/data/com.storymatrix.drama/databases/drama.db',
+          'SELECT bookId, bookName, cover, chapterCount, chapterIndex FROM book WHERE bookName IS NOT NULL AND bookName != "" ORDER BY utime DESC LIMIT 1;'
+        );
+        if (dbRow) {
+          const parts = dbRow.split('|');
+          if (parts[1]) {
+            title = parts[1].trim();
+            coverUrl = (parts[2] || '').trim();
+            totalEpisodes = parseInt(parts[3], 10) || 0;
+            currentEpisode = parseInt(parts[4], 10) || 1;
+          }
+        }
+      } catch (e) {}
+
+      // 1.2 Đọc từ UI dump nếu chưa có title hoặc để lấy tập chính xác đang xem
+      try {
+        const tmpLocal = path.join(TEMP_DIR || path.join(__dirname, '..', '.temp_preview'), 'dramabox_cur.xml');
+        if (!fs.existsSync(path.dirname(tmpLocal))) fs.mkdirSync(path.dirname(tmpLocal), { recursive: true });
+
+        execSync(`"${ADB_PATH}" -s ${device} shell "uiautomator dump /sdcard/dramabox_cur.xml 2>/dev/null"`, { timeout: 3500 });
+        pullRemoteFile(device, '/sdcard/dramabox_cur.xml', tmpLocal);
+        if (fs.existsSync(tmpLocal)) {
+          let xml = fs.readFileSync(tmpLocal, 'utf8');
+
+          const parseAttr = (id) => {
+            const m = xml.match(new RegExp(`<node[^>]*resource-id="${id}"[^>]*>`));
+            if (!m) return '';
+            const tm = m[0].match(/text="([^"]*)"/);
+            return tm ? tm[1] : '';
+          };
+
+          let uiTitle = parseAttr('com.storymatrix.drama:id/tv_name') || parseAttr('com.storymatrix.drama:id/tv_book_name');
+          // Nếu overlay đang ẩn (uiTitle rỗng), chạm nhẹ để hiện overlay
+          if (!uiTitle) {
+            try {
+              execSync(`"${ADB_PATH}" -s ${device} shell "input tap 450 800"`, { timeout: 2000 });
+              execSync('powershell Start-Sleep -Milliseconds 400');
+              execSync(`"${ADB_PATH}" -s ${device} shell "uiautomator dump /sdcard/dramabox_cur.xml 2>/dev/null"`, { timeout: 3500 });
+              pullRemoteFile(device, '/sdcard/dramabox_cur.xml', tmpLocal);
+              if (fs.existsSync(tmpLocal)) {
+                xml = fs.readFileSync(tmpLocal, 'utf8');
+                uiTitle = parseAttr('com.storymatrix.drama:id/tv_name') || parseAttr('com.storymatrix.drama:id/tv_book_name');
+              }
+            } catch (e) {}
+          }
+
+          if (uiTitle) title = uiTitle;
+
+          const epText = parseAttr('com.storymatrix.drama:id/tv_play_progress') || parseAttr('com.storymatrix.drama:id/tv_chapter_index');
+          if (epText) {
+            const n = parseInt(epText.replace(/\D/g, ''), 10);
+            if (n) currentEpisode = n;
+          }
+
+          const uiDesc = parseAttr('com.storymatrix.drama:id/tv_introduction');
+          if (uiDesc) desc = uiDesc;
+        }
+      } catch (e) {}
+
+      // 1.3 Lấy poster từ glide_cache mới nhất nếu chưa có
+      if (!coverUrl) {
+        try {
+          const newestGlide = execSync(
+            `"${ADB_PATH}" -s ${device} shell "su root ls -1t /sdcard/Android/data/com.storymatrix.drama/cache/glide_cache/*.0 2>/dev/null | head -n 1"`,
+            { encoding: 'utf8', timeout: 3000 }
+          ).trim();
+          if (newestGlide) {
+            coverUrl = `/api/dramabox-cover?path=${encodeURIComponent(newestGlide)}`;
+          }
+        } catch (e) {}
+      }
+
+      if (title) {
+        currentDrama = {
+          id: `dramabox_${title}`,
+          title,
+          image: coverUrl,
+          cover: coverUrl,
+          coverUrl: coverUrl,
+          desc: desc || `Phim DramaBox • Đang xem tập ${currentEpisode}`,
+          currentEpisode,
+          totalEpisodes: totalEpisodes || 50
+        };
+      }
+
+      return {
+        currentDrama,
+        allDramas: currentDrama ? [currentDrama] : [],
+        currentEpisode: currentDrama ? currentDrama.currentEpisode : 1,
+        totalEpisodes: currentDrama ? currentDrama.totalEpisodes : 0
+      };
+    } catch (e) {
+      return { currentDrama: null, allDramas: [], currentEpisode: 1, totalEpisodes: 0 };
+    }
+  }
+
+  // 2. MINUTEDRAMA
   if (appKey === 'minutedrama') {
     try {
       let currentDrama = null;
@@ -598,7 +708,76 @@ function getDirectDramaEpisodes(device, appKey = 'sodareels', requestedTitle = '
     }
   }
 
-  // 2. NẾU ĐANG CHỌN MINUTEDRAMA -> CHỈ LẤY ĐÚNG BỘ PHIM ĐANG MỞ TRÊN MINUTEDRAMA
+  // 2. NẾU ĐANG CHỌN DRAMABOX -> LẤY ĐÚNG BỘ PHIM ĐANG MỞ TRÊN DRAMABOX
+  if (effectiveApp === 'dramabox') {
+    try {
+      const dbInfo = getDramaInfoFromDevice(device, 'dramabox');
+      const currentDrama = dbInfo.currentDrama;
+      const dramaTitle = currentDrama ? currentDrama.title : (requestedTitle || 'DramaBox Series');
+      const coverUrl = currentDrama ? (currentDrama.image || currentDrama.cover || currentDrama.coverUrl || '') : '';
+      const totalEpisodes = currentDrama ? (currentDrama.totalEpisodes || 50) : 50;
+
+      const { getRemoteCacheList } = require('./cache');
+      const cacheList = getRemoteCacheList(device, 'dramabox', currentDrama ? (currentDrama.currentEpisode || 1) : 1);
+      const cacheMap = new Map();
+      cacheList.forEach(c => {
+        if (c.epNumber) cacheMap.set(c.epNumber, c);
+      });
+
+      const totalCount = Math.max(totalEpisodes || 50, cacheList.length > 0 ? Math.max(...cacheList.map(c => c.epNumber)) : 50);
+      const episodes = [];
+      for (let i = 1; i <= totalCount; i++) {
+        const c = cacheMap.get(i);
+        if (c) {
+          episodes.push({
+            epNumber: i,
+            directUrl: c.directUrl || '',
+            directUrlH264: c.directUrl || '',
+            directUrlH265: c.directUrl || '',
+            path: c.path,
+            filename: c.filename,
+            duration: 0,
+            sizeFormatted: c.sizeMb ? `${c.sizeMb} MB` : '',
+            sizeBytes: c.sizeBytes || 0,
+            isCached: true,
+            isComplete: c.isComplete,
+            pct: c.pct || 100,
+            isVip: false
+          });
+        } else {
+          episodes.push({
+            epNumber: i,
+            directUrl: '',
+            directUrlH264: '',
+            directUrlH265: '',
+            path: '',
+            filename: '',
+            duration: 0,
+            sizeFormatted: '',
+            sizeBytes: 0,
+            isCached: false,
+            isComplete: false,
+            pct: 0,
+            isVip: false
+          });
+        }
+      }
+
+      return {
+        app: 'dramabox',
+        title: dramaTitle,
+        coverUrl,
+        totalEpisodes: totalCount,
+        cachedCount: cacheList.length,
+        episodes,
+        availableDramas: []
+      };
+    } catch (e) {
+      return { app: 'dramabox', title: '', totalEpisodes: 0, episodes: [], availableDramas: [] };
+    }
+  }
+
+  // 3. NẾU ĐANG CHỌN MINUTEDRAMA -> CHỈ LẤY ĐÚNG BỘ PHIM ĐANG MỞ TRÊN MINUTEDRAMA
   try {
     const dbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';
     
@@ -655,11 +834,43 @@ async function downloadDramaPoster(device, rawDramaName, customUrl = '') {
 
   // 1. Nếu có URL truyền trực tiếp
   let url = (customUrl || '').trim();
+  if (url.startsWith('/api/dramabox-cover?path=')) {
+    const remotePath = decodeURIComponent(url.replace('/api/dramabox-cover?path=', ''));
+    if (remotePath && device) {
+      try {
+        const ok = pullRemoteFile(device, remotePath, posterPath);
+        if (ok && fs.existsSync(posterPath) && fs.statSync(posterPath).size > 0) {
+          return true;
+        }
+      } catch (e) {}
+    }
+  }
 
   // 2. Nếu chưa có URL, tự truy xuất từ thiết bị
   if (!url && device) {
     try {
       const cleanT = (rawDramaName || folderName).replace(/['"\\]/g, '');
+
+      // 2.0 Thử tìm trong DramaBox database hoặc glide_cache
+      try {
+        const dbCover = adbQuerySqlite(device, '/data/data/com.storymatrix.drama/databases/drama.db', `SELECT cover FROM book WHERE bookName LIKE '%${cleanT}%' LIMIT 1;`);
+        if (dbCover && dbCover.trim()) url = dbCover.trim();
+      } catch (e) {}
+
+      if (!url) {
+        try {
+          const newestGlide = execSync(
+            `"${ADB_PATH}" -s ${device} shell "su root ls -1t /sdcard/Android/data/com.storymatrix.drama/cache/glide_cache/*.0 2>/dev/null | head -n 1"`,
+            { encoding: 'utf8', timeout: 3000 }
+          ).trim();
+          if (newestGlide) {
+            pullRemoteFile(device, newestGlide, posterPath);
+            if (fs.existsSync(posterPath) && fs.statSync(posterPath).size > 0) {
+              return true;
+            }
+          }
+        } catch (e) {}
+      }
 
       // 2.1 Thử tìm trong MinuteDrama database
       const minDbPath = '/data/data/com.minute.minishort.drama/databases/file_manager.db';

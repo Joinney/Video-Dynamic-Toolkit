@@ -34,6 +34,25 @@ if [ "$APP" = "minutedrama" ]; then
       fi
     fi
   done
+elif [ "$APP" = "dramabox" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /sdcard/Android/data/com.storymatrix.drama/files/download/*/\${FILTER}*.mp4 \
+                    /sdcard/Android/data/com.storymatrix.drama/files/\${FILTER}*.mp4 \
+                    /sdcard/Movies/\${FILTER}*.mp4 \
+                    /sdcard/Download/\${FILTER}*.mp4 2>/dev/null)
+  else
+    FILES=$(ls -1tr /sdcard/Android/data/com.storymatrix.drama/files/download/*/*.mp4 \
+                    /sdcard/Android/data/com.storymatrix.drama/files/*.mp4 \
+                    /data/data/com.storymatrix.drama/files/*.mp4 \
+                    /sdcard/Movies/*.mp4 \
+                    /sdcard/Download/*.mp4 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      echo "$f|$SZ|COMPLETE"
+    fi
+  done
 else
   if [ -n "$FILTER" ]; then
     FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/\${FILTER}*.mdl 2>/dev/null)
@@ -93,7 +112,7 @@ function getRemoteCacheCompletenessMap(device, appKey = 'sodareels', filterPrefi
       let expectedBytes = sizeBytes;
       let pct = 100;
 
-      if (appKey === 'minutedrama') {
+      if (appKey === 'minutedrama' || appKey === 'dramabox') {
         if (b64OrStatus === 'COMPLETE') {
           isComplete = true;
           pct = 100;
@@ -159,26 +178,48 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
   try {
     let raw = '';
     const isMinute = (appKey === 'minutedrama');
+    const isDramaBox = (appKey === 'dramabox');
 
     // Dùng ls -lt để lấy file mới nhất trước, hoặc đảo chiều để đúng trình tự Tập 1 -> Tập N
     if (appKey === 'minutedrama') {
       raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null || true"`, { encoding: 'utf8' });
+    } else if (appKey === 'dramabox') {
+      raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /sdcard/Android/data/com.storymatrix.drama/files/download/*/*.mp4 /sdcard/Android/data/com.storymatrix.drama/files/*.mp4 /data/data/com.storymatrix.drama/files/*.mp4 /sdcard/Movies/*.mp4 /sdcard/Download/*.mp4 2>/dev/null || true"`, { encoding: 'utf8' });
     } else {
       raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null || true"`, { encoding: 'utf8' });
     }
 
     let lines = raw.trim().split(/\r?\n/).filter(l => {
       const trimmed = l.trim();
-      return isMinute ? trimmed.endsWith('.mp4') : trimmed.endsWith('.mdl');
+      return (isMinute || isDramaBox) ? trimmed.endsWith('.mp4') : trimmed.endsWith('.mdl');
     });
 
     // Đọc lịch sử xem và ánh xạ URL -> số tập từ SQLite của app
     let dbEpisodes = [];
     const minutedramaHashMap = new Map();
+    const dramaboxDownloadMap = new Map();
 
     try {
       const { adbQuerySqlite } = require('./adb');
-      if (appKey === 'minutedrama') {
+      if (appKey === 'dramabox') {
+        try {
+          const dlRows = adbQuerySqlite(
+            device,
+            '/data/data/com.storymatrix.drama/databases/drama.db',
+            'SELECT fileName, path, chapterIndex, url FROM downloads ORDER BY chapterIndex ASC;'
+          );
+          if (dlRows) {
+            dlRows.split(/\r?\n/).forEach(r => {
+              const p = r.split('|');
+              const fName = (p[0] || '').trim();
+              const fullPath = (p[1] || '').trim();
+              const chIdx = parseInt(p[2], 10) || 0;
+              const dlUrl = (p[3] || '').trim();
+              if (fName) dramaboxDownloadMap.set(fName.toLowerCase(), { epNumber: chIdx, path: fullPath, directUrl: dlUrl });
+            });
+          }
+        } catch (e) {}
+      } else if (appKey === 'minutedrama') {
         // 1. Ánh xạ chính xác mã hash của video sang số tập thực tế từ videoDetail
         try {
           const rawDetail = adbQuerySqlite(
@@ -294,10 +335,19 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
       let downloadedName = '';
       let directUrl = '';
 
-      // 1. ƯU TIÊN SỐ 1: Nhận diện chính xác tuyệt đối qua Hash URL trong MinuteDrama DB
+      // 1. ƯU TIÊN SỐ 1: Nhận diện chính xác tuyệt đối qua Hash URL trong MinuteDrama DB hoặc DramaBox Downloads
       const fileHash = path.basename(remotePath, '.mp4').toLowerCase();
+      const baseName = path.basename(remotePath).toLowerCase();
       if (minutedramaHashMap.has(fileHash)) {
         const hit = minutedramaHashMap.get(fileHash);
+        epNumber = hit.epNumber;
+        directUrl = hit.directUrl || '';
+        if (matchedLocal) {
+          isDownloaded = true;
+          downloadedName = matchedLocal.name;
+        }
+      } else if (dramaboxDownloadMap.has(baseName)) {
+        const hit = dramaboxDownloadMap.get(baseName);
         epNumber = hit.epNumber;
         directUrl = hit.directUrl || '';
         if (matchedLocal) {

@@ -24,10 +24,18 @@ const SUPPORTED_APPS = {
     pkg: 'com.minute.minishort.drama',
     cacheGlob: '/data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4',
     isMdl: false
+  },
+  dramabox: {
+    id: 'dramabox',
+    name: 'DramaBox',
+    icon: '🎁',
+    pkg: 'com.storymatrix.drama',
+    cacheGlob: '/sdcard/Android/data/com.storymatrix.drama/files/**/*.mp4',
+    isMdl: false
   }
 };
 
-let currentAppMode = 'auto'; // 'auto' | 'sodareels' | 'minutedrama'
+let currentAppMode = 'auto'; // 'auto' | 'sodareels' | 'minutedrama' | 'dramabox'
 
 function getAppMode() {
   return currentAppMode;

@@ -437,7 +437,7 @@ export default function TaiPhimDramaSeries({
     const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
     showToast(`Đang tải/xuất Tập ${ep.epNumber} vào: ${targetFolder}...`);
     try {
-      if (directDramaData?.app === 'sodareels') {
+      if (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox') {
         const res = await fetch('/api/export', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -485,7 +485,7 @@ export default function TaiPhimDramaSeries({
     const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
     setIsDownloadingDirectAll(true);
 
-    if (directDramaData?.app === 'sodareels') {
+    if (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox') {
       showToast(`Đang xuất toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
       try {
         const res = await fetch('/api/export', {
@@ -551,7 +551,7 @@ export default function TaiPhimDramaSeries({
       <div className="max-w-[1740px] w-full mx-auto">
         <Header
           title="Tải Phim Drama Series"
-          badge="SODA REELS & MINUTEDRAMA"
+          badge="SODA REELS • MINUTEDRAMA • DRAMABOX"
           showBackButton={true}
           onBackHome={onBackHome}
           backendData={backendData}
@@ -567,7 +567,8 @@ export default function TaiPhimDramaSeries({
               {[
                 { id: 'auto', label: 'Tự động quét' },
                 { id: 'sodareels', label: '🥤 Soda Reels' },
-                { id: 'minutedrama', label: '🎭 MinuteDrama' }
+                { id: 'minutedrama', label: '🎭 MinuteDrama' },
+                { id: 'dramabox', label: '🎁 DramaBox' }
               ].map((app) => (
                 <button
                   key={app.id}
@@ -874,7 +875,7 @@ export default function TaiPhimDramaSeries({
                   <span className="text-2xl mb-1.5">📥</span>
                   <h4 className="font-bold text-gray-700 text-xs">Chưa có video trong bộ nhớ đệm giả lập</h4>
                   <p className="text-[11px] text-gray-500 mt-1 max-w-sm">
-                    Hãy mở app <strong>Soda Reels</strong> hoặc <strong>MinuteDrama</strong> trên máy ảo để xem phim, tool sẽ tự động gom video vào đây. Hoặc bấm <strong>"Link Trực Tiếp Cả Bộ"</strong> ở trên để tải trực tiếp từ CDN!
+                    Hãy mở app <strong>Soda Reels</strong>, <strong>MinuteDrama</strong> hoặc <strong>DramaBox</strong> trên máy ảo để xem phim, tool sẽ tự động gom video vào đây. Hoặc bấm <strong>"Link Trực Tiếp Cả Bộ"</strong> ở trên để tải trực tiếp từ CDN!
                   </p>
                 </div>
               ) : (
@@ -1129,13 +1130,15 @@ export default function TaiPhimDramaSeries({
                   <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${
                     directDramaData?.app === 'sodareels'
                       ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                      : directDramaData?.app === 'dramabox'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
-                    {directDramaData?.app === 'sodareels' ? '🥤 Soda Reels (Bộ nhớ đệm PSSDK)' : '🎬 MinuteDrama CDN'}
+                    {directDramaData?.app === 'sodareels' ? '🥤 Soda Reels (Bộ nhớ đệm PSSDK)' : directDramaData?.app === 'dramabox' ? '🎁 DramaBox' : '🎬 MinuteDrama CDN'}
                   </span>
                   {directDramaData && directDramaData.episodes && (
                     <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
-                      {directDramaData.app === 'sodareels' ? `Đã có ${directDramaData.episodes.length}/${directDramaData.totalEpisodes || 60} tập trong máy` : `Đã tìm thấy ${directDramaData.episodes.length} tập`}
+                      {directDramaData.app === 'minutedrama' ? `Đã tìm thấy ${directDramaData.episodes.length} tập` : `Đã có ${directDramaData.episodes.length}/${directDramaData.totalEpisodes || 60} tập`}
                     </span>
                   )}
                 </div>
@@ -1286,7 +1289,7 @@ export default function TaiPhimDramaSeries({
                 >
                   {isDownloadingDirectAll
                     ? `⏳ Đang Xử Lý Tập ${downloadProgressDirect.current}/${downloadProgressDirect.total}...`
-                    : (directDramaData?.app === 'sodareels'
+                    : (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox'
                         ? `🚀 Xuất Ngay Toàn Bộ ${directDramaData?.episodes?.length || 0} Tập Sang MP4`
                         : `🚀 Tải Tự Động Tất Cả Các Tập (${directDramaData?.episodes?.length || 0} Tập)`)
                   }

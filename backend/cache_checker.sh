@@ -19,6 +19,18 @@ if [ "$APP" = "minutedrama" ]; then
       fi
     fi
   done
+elif [ "$APP" = "dramabox" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /sdcard/Android/data/com.storymatrix.drama/files/download/*/${FILTER}*.mp4                     /sdcard/Android/data/com.storymatrix.drama/files/${FILTER}*.mp4                     /sdcard/Movies/${FILTER}*.mp4                     /sdcard/Download/${FILTER}*.mp4 2>/dev/null)
+  else
+    FILES=$(ls -1tr /sdcard/Android/data/com.storymatrix.drama/files/download/*/*.mp4                     /sdcard/Android/data/com.storymatrix.drama/files/*.mp4                     /data/data/com.storymatrix.drama/files/*.mp4                     /sdcard/Movies/*.mp4                     /sdcard/Download/*.mp4 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      echo "$f|$SZ|COMPLETE"
+    fi
+  done
 else
   if [ -n "$FILTER" ]; then
     FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/${FILTER}*.mdl 2>/dev/null)

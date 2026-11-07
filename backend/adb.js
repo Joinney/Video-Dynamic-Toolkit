@@ -80,11 +80,18 @@ function detectActiveApp(device) {
   if (!device) return 'sodareels';
   try {
     const out = execSync(`"${ADB_PATH}" -s ${device} shell "dumpsys window | grep -E 'mCurrentFocus'"`, { encoding: 'utf8' });
+    if (out.includes('com.storymatrix.drama')) return 'dramabox';
     if (out.includes('com.minute.minishort.drama')) return 'minutedrama';
     if (out.includes('com.sodareels.drama.short')) return 'sodareels';
   } catch (e) {}
 
-  // Fallback: Kiểm tra database cập nhật mới nhất
+  // Fallback 1: Kiểm tra process đang chạy
+  try {
+    const dbPid = execSync(`"${ADB_PATH}" -s ${device} shell "pidof com.storymatrix.drama 2>/dev/null"`, { encoding: 'utf8', timeout: 2000 }).trim();
+    if (dbPid) return 'dramabox';
+  } catch (e) {}
+
+  // Fallback 2: Kiểm tra database cập nhật mới nhất
   try {
     let best = 'sodareels';
     let maxT = 0;

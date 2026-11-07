@@ -1007,6 +1007,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // 11.1 API Serve DramaBox Cover from device glide_cache
+  if (url.pathname === '/api/dramabox-cover') {
+    const remotePath = url.searchParams.get('path');
+    if (!remotePath) {
+      res.writeHead(400); return res.end('Missing path');
+    }
+    const device = checkAdbDevice();
+    if (!device) {
+      res.writeHead(404); return res.end('Device not connected');
+    }
+    const localCover = path.join(TEMP_DIR, 'dramabox_cover_preview.jpg');
+    try {
+      if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+      pullRemoteFile(device, remotePath, localCover);
+      if (fs.existsSync(localCover) && fs.statSync(localCover).size > 0) {
+        res.writeHead(200, {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'no-cache'
+        });
+        return fs.createReadStream(localCover).pipe(res);
+      }
+    } catch (e) {}
+    res.writeHead(404); return res.end('Cover not found');
+  }
+
   // 11. Serve Poster Image (Tự động tải & phục vụ ảnh poster thực tế của cả 2 app)
   if (url.pathname.startsWith('/poster/')) {
     const rawDramaName = decodeURIComponent(url.pathname.replace('/poster/', '')).split('?')[0];

@@ -216,6 +216,7 @@ class Transcriber:
         # Lọc bỏ ảo giác âm thanh (lặp từ do nhạc nền) và lời bài hát tiếng Anh trong phim Trung
         cleaned_raw = []
         prev_clean_text = ""
+        prev_s_end = 0.0
         for s in raw_segments:
             # Báo cáo tiến độ nhận diện thời gian thực tế theo từng mốc giây âm thanh
             if progress_callback and total_audio_dur > 0:
@@ -229,9 +230,9 @@ class Transcriber:
                         cur_pct
                     )
 
-            # Chỉ loại bỏ khi mô hình chắc chắn tuyệt đối là không có giọng người và logprob cực xấu
-            # Đảm bảo giữ trọn vẹn 100% tiếng nhân vật nói nhỏ, thì thầm hoặc bị nhạc nền át
-            if getattr(s, "no_speech_prob", 0.0) > 0.98 and getattr(s, "avg_logprob", 0.0) < -1.8:
+            # Giữ trọn vẹn 100% tiếng nhân vật nói nhỏ, thì thầm, hét lớn hoặc bị nhạc nền át
+            # Chỉ loại bỏ khi mô hình chắc chắn tuyệt đối là hoàn toàn không có giọng người và logprob cực xấu
+            if getattr(s, "no_speech_prob", 0.0) > 0.995 and getattr(s, "avg_logprob", 0.0) < -2.4:
                 continue
             text = s.text.strip()
             # Dọn sạch các chuỗi gạch nối / gạch ngang bị lặp lại
@@ -250,12 +251,15 @@ class Transcriber:
                 if clean_t in clean_p and len(clean_t) >= 10:
                     continue
 
-            # Bỏ qua từ bị lặp lại liên tiếp do nhạc nền hoặc khoảng lặng (ảo giác âm thanh)
+            # Bỏ qua ảo giác âm thanh lặp lại liên tiếp trong khoảng thời gian sát rạt <= 0.25s
+            # Bảo tồn trọn vẹn các câu thoại đáp lời tự nhiên (như "Không", "Đi đi", "Vâng", "Được")
             clean_norm = re.sub(r'[，。？！,?! \s\.\.\.]', '', text)
-            if clean_norm and clean_norm == prev_clean_text:
-                logger.info(f"Filtered repeated hallucination: '{text}'")
+            time_gap = (s.start - prev_s_end) if prev_s_end > 0 else 999.0
+            if clean_norm and clean_norm == prev_clean_text and time_gap < 0.25:
+                logger.info(f"Filtered repeated hallucination (<0.25s): '{text}'")
                 continue
             prev_clean_text = clean_norm
+            prev_s_end = s.end
 
             # Nếu là phim Trung nhưng nhận diện ra lời bài hát tiếng Anh thuần túy (ví dụ: "I love her come my way")
             # thì lọc bỏ để tránh lồng tiếng vào nhạc phim
@@ -298,6 +302,7 @@ class Transcriber:
             else:
                 if item["start"] < last_item["end"]:
                     item["start"] = last_item["end"]
+                item["end"] = max(item["end"], item["start"] + 0.3)
                 merged_list.append(item)
 
         segments: List[Segment] = []

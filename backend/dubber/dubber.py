@@ -423,10 +423,10 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
                     clip_len_s = len(clip_audio) / 1000.0
                     orig_dur = max(0.5, seg.get("end", seg["start"] + 1.0) - seg["start"])
                     max_win = max(0.5, next_s - seg["start"] - 0.05)
-                    target_win = min(max_win, max(orig_dur * 1.15, orig_dur + 0.25))
+                    target_win = min(max_win, orig_dur)
 
                     if change_audio_speed and clip_len_s > target_win:
-                        needed_spd = min(clip_len_s / target_win, 1.75)
+                        needed_spd = min(clip_len_s / target_win, 2.0)
                         clip_audio = change_audio_speed(clip_audio, speed=needed_spd)
 
                     start_ms = int(seg["start"] * 1000)

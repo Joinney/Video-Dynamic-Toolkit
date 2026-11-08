@@ -81,7 +81,7 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
     if 0.97 <= speed <= 1.03:
         return sound
 
-    speed = max(0.85, min(1.85, speed))
+    speed = max(0.85, min(2.0, speed))
     import tempfile, subprocess
     tmp_in = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -122,10 +122,10 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
 class AudioSynchronizer:
     def __init__(
         self,
-        max_speed_factor: float = 1.75,
+        max_speed_factor: float = 2.0,
         min_speed_factor: float = 1.0,
     ):
-        self.max_speed_factor = max(1.10, min(2.0, max_speed_factor))
+        self.max_speed_factor = max(1.10, min(2.5, max_speed_factor))
         self.min_speed_factor = 1.0  # Luôn giữ tối thiểu 1.0x, tuyệt đối không kéo chậm làm tụt tông/trầm giọng
 
     def align_and_assemble(
@@ -180,9 +180,9 @@ class AudioSynchronizer:
             orig_spoken_dur = max(0.5, seg.end - seg.start)
             max_window_s = max(0.5, next_start - seg.start - 0.05)
 
-            # Khớp khẩu hình: Cố gắng dứt câu bám sát lúc nhân vật kết thúc thoại (+ đệm tự nhiên 15-20%),
-            # nhưng không được vượt quá mốc câu kế tiếp để tránh đè lời thoại.
-            target_window_s = min(max_window_s, max(orig_spoken_dur * 1.15, orig_spoken_dur + 0.25))
+            # Khớp khẩu hình chuẩn xác: Giọng AI dứt câu kịp thời lúc nhân vật ngậm miệng (orig_spoken_dur),
+            # tuyệt đối không đọc kéo dài lê thê và không vượt quá mốc câu kế tiếp để tránh đè lời thoại.
+            target_window_s = min(max_window_s, orig_spoken_dur)
 
             # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng thời gian mục tiêu
             if clip_len_s > target_window_s:

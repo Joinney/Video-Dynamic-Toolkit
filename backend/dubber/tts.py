@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import List, Optional
 try:
     from .transcriber import Segment
+    from .synchronizer import get_ffmpeg_binary
 except ImportError:
     from transcriber import Segment
+    from synchronizer import get_ffmpeg_binary
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ class TTSService:
         if not clean_text:
             return False
 
-        # Thử lại tối đa 3 lần với backoff và đổi giọng dự phòng nếu cần
+        # Thử lại tối đa 4 lần với backoff và đổi giọng dự phòng nếu cần
         candidate_voices = [voice]
         if "HoaiMy" in voice:
             candidate_voices.append("vi-VN-NamMinhNeural")
@@ -56,20 +58,24 @@ class TTSService:
             candidate_voices.append("vi-VN-HoaiMyNeural")
         else:
             candidate_voices.append("vi-VN-HoaiMyNeural")
+            candidate_voices.append("vi-VN-NamMinhNeural")
 
-        for attempt in range(3):
-            cur_voice = candidate_voices[0] if attempt < 2 else candidate_voices[-1]
+        for attempt in range(4):
+            cur_voice = candidate_voices[attempt % len(candidate_voices)]
+            cur_rate = rate if attempt < 2 else "+0%"
             try:
                 communicate = edge_tts.Communicate(
                     text=clean_text,
                     voice=cur_voice,
-                    rate=rate,
+                    rate=cur_rate,
                     volume=volume,
                 )
-                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
-                if raw_tmp.exists() and raw_tmp.stat().st_size > 150:
+                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=25.0)
+                if raw_tmp.exists() and raw_tmp.stat().st_size > 100:
                     converted = False
                     try:
+                        ffmpeg_bin = get_ffmpeg_binary()
+                        AudioSegment.converter = ffmpeg_bin
                         snd = AudioSegment.from_file(str(raw_tmp))
                         try:
                             snd = enhance_vocal(snd, voice_name=cur_voice, deep_warmth=True)
@@ -80,12 +86,13 @@ class TTSService:
                     except Exception as e_pydub:
                         logger.warning(f"pydub audio conversion failed: {e_pydub}, trying direct ffmpeg...")
                         import subprocess
-                        ret = subprocess.run(["ffmpeg", "-y", "-i", str(raw_tmp), str(output_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                        converted = (ret.returncode == 0 and output_file.exists() and output_file.stat().st_size > 150)
+                        ffmpeg_bin = get_ffmpeg_binary()
+                        ret = subprocess.run([ffmpeg_bin, "-y", "-i", str(raw_tmp), str(output_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        converted = (ret.returncode == 0 and output_file.exists() and output_file.stat().st_size > 100)
                     if converted:
                         return True
             except Exception as e_master:
-                if attempt < 2:
+                if attempt < 3:
                     await asyncio.sleep(0.4 * (attempt + 1))
                     continue
                 logger.warning(f"Edge TTS processing note: {e_master}")
@@ -187,10 +194,34 @@ class TTSService:
                 tasks = [wrapped_gen(seg) for seg in segments if (seg.translated_text.strip() or seg.text.strip())]
                 await asyncio.gather(*tasks, return_exceptions=True)
 
-                # Chỉ gán tts_audio_path cho các tệp WAV thực sự sinh thành công
+                # Phục hồi triệt để: Tự động phát hiện và sinh lại tuần tự các câu chưa tạo được âm thanh
+                # Đảm bảo 100% video đều có tiếng nói, không bao giờ bị gián đoạn hay mất câu giữa chừng
+                for seg in segments:
+                    t_val = seg.translated_text.strip() or seg.text.strip()
+                    if not t_val:
+                        continue
+                    a_file = output_dir / f"seg_{seg.id:04d}.wav"
+                    if not a_file.exists() or a_file.stat().st_size <= 120:
+                        logger.warning(f"Segment {seg.id} missing TTS audio, retrying individually...")
+                        for retry_attempt in range(3):
+                            cur_fb = "vi-VN-NamMinhNeural" if "HoaiMy" in self.voice else "vi-VN-HoaiMyNeural"
+                            v_to_use = self.voice if retry_attempt == 0 else cur_fb
+                            r_to_use = self.rate if retry_attempt == 0 else "+0%"
+                            ok = await self._generate_single_audio_edge(
+                                text=t_val,
+                                output_file=a_file,
+                                voice=v_to_use,
+                                rate=r_to_use,
+                                volume=self.volume,
+                            )
+                            if ok and a_file.exists() and a_file.stat().st_size > 120:
+                                break
+                            await asyncio.sleep(0.3)
+
+                # Gán tts_audio_path cho các tệp WAV thực sự sinh thành công
                 for seg in segments:
                     a_file = output_dir / f"seg_{seg.id:04d}.wav"
-                    if a_file.exists() and a_file.stat().st_size > 500:
+                    if a_file.exists() and a_file.stat().st_size > 120:
                         seg.tts_audio_path = str(a_file)
                     else:
                         seg.tts_audio_path = None

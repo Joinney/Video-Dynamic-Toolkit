@@ -24194,7 +24194,7 @@
     const [targetLang, setTargetLang] = (0, import_react6.useState)("vi");
     const [videoAspect, setVideoAspect] = (0, import_react6.useState)("9 / 16");
     const [bgmVolume, setBgmVolume] = (0, import_react6.useState)(25);
-    const [speechRate, setSpeechRate] = (0, import_react6.useState)("+15%");
+    const [speechRate, setSpeechRate] = (0, import_react6.useState)("+20%");
     const [activeOverlayTab, setActiveOverlayTab] = (0, import_react6.useState)("logo");
     const [watermarkEnabled, setWatermarkEnabled] = (0, import_react6.useState)(true);
     const [logoSize, setLogoSize] = (0, import_react6.useState)(18);
@@ -24581,11 +24581,11 @@
           onChange: (e) => setBgmVolume(Number(e.target.value)),
           className: "flex-1 accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
         }
-      ), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-gray-400 font-bold" }, "60%"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement(Zap, { size: 15, className: "text-amber-500" }), /* @__PURE__ */ import_react6.default.createElement("span", null, "T\u1ED1c \u0110\u1ED9 \u0110\u1ECDc Gi\u1ECDng AI (Kh\u1EDBp Kh\u1EA9u H\xECnh):")), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded border border-amber-200" }, speechRate, " ", speechRate === "+15%" ? "(Chu\u1EA9n phim ng\u1EAFn)" : speechRate === "+25%" ? "(Nhanh - K\u1ECBch t\xEDnh)" : speechRate === "+0%" ? "(\u0110\u1ECDc thong th\u1EA3)" : "(Si\xEAu nhanh)")), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-500 leading-snug" }, "T\xF9y ch\u1EC9nh nh\u1ECBp \u0111\u1ECDc AI \u0111\u1EC3 theo k\u1ECBp t\u1ED1c \u0111\u1ED9 n\xF3i c\u1EE7a di\u1EC5n vi\xEAn trong phim, t\u1EF1 \u0111\u1ED9ng \u0111\u1ED3ng b\u1ED9 d\u1EE9t c\xE2u kh\u1EDBp khu\xF4n mi\u1EC7ng."), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-4 gap-1.5 pt-0.5" }, [
-        { val: "+0%", label: "B\xECnh th\u01B0\u1EDDng (+0%)" },
-        { val: "+15%", label: "\u26A1 Nhanh v\u1EEBa (+15%)" },
-        { val: "+25%", label: "\u{1F525} Nhanh (+25%)" },
-        { val: "+35%", label: "\u{1F680} R\u1EA5t nhanh (+35%)" }
+      ), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-[10px] text-gray-400 font-bold" }, "60%"))), /* @__PURE__ */ import_react6.default.createElement("div", { className: "bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs space-y-2" }, /* @__PURE__ */ import_react6.default.createElement("div", { className: "flex items-center justify-between text-xs font-bold text-gray-800" }, /* @__PURE__ */ import_react6.default.createElement("span", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react6.default.createElement(Zap, { size: 15, className: "text-amber-500" }), /* @__PURE__ */ import_react6.default.createElement("span", null, "T\u1ED1c \u0110\u1ED9 \u0110\u1ECDc Gi\u1ECDng AI (Kh\u1EDBp Kh\u1EA9u H\xECnh):")), /* @__PURE__ */ import_react6.default.createElement("span", { className: "text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded border border-amber-200" }, speechRate, " ", speechRate === "+20%" ? "(Chu\u1EA9n phim ng\u1EAFn)" : speechRate === "+30%" ? "(Nhanh - K\u1ECBch t\xEDnh)" : speechRate === "+0%" ? "(\u0110\u1ECDc thong th\u1EA3)" : "(Nhanh v\u1EEBa)")), /* @__PURE__ */ import_react6.default.createElement("p", { className: "text-[11px] text-gray-500 leading-snug" }, "T\xF9y ch\u1EC9nh nh\u1ECBp \u0111\u1ECDc AI \u0111\u1EC3 theo k\u1ECBp t\u1ED1c \u0111\u1ED9 n\xF3i c\u1EE7a di\u1EC5n vi\xEAn trong phim, t\u1EF1 \u0111\u1ED9ng \u0111\u1ED3ng b\u1ED9 d\u1EE9t c\xE2u kh\u1EDBp khu\xF4n mi\u1EC7ng."), /* @__PURE__ */ import_react6.default.createElement("div", { className: "grid grid-cols-4 gap-1.5 pt-0.5" }, [
+        { val: "+0%", label: "Thong th\u1EA3 (+0%)" },
+        { val: "+10%", label: "V\u1EEBa ph\u1EA3i (+10%)" },
+        { val: "+20%", label: "\u26A1 Chu\u1EA9n phim (+20%)" },
+        { val: "+30%", label: "\u{1F525} K\u1ECBch t\xEDnh (+30%)" }
       ].map((opt) => /* @__PURE__ */ import_react6.default.createElement(
         "button",
         {

@@ -155,10 +155,10 @@ class DubbingConfig:
     source_language: str = "auto"
     target_language: str = "vi"
     tts_voice: str = "vieneu:Adam"
-    tts_rate: str = "+15%"
+    tts_rate: str = "+20%"
     tts_volume: str = "+0%"
     original_audio_volume: float = 0.15
-    max_speed_factor: float = 1.75
+    max_speed_factor: float = 2.0
     min_speed_factor: float = 0.75
     temp_dir: Path = field(default_factory=lambda: Path("./temp"))
     output_dir: Path = field(default_factory=lambda: Path("./output"))

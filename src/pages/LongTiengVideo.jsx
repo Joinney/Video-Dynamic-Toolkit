@@ -32,7 +32,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [targetLang, setTargetLang] = useState('vi');
   const [videoAspect, setVideoAspect] = useState('9 / 16');
   const [bgmVolume, setBgmVolume] = useState(25); // 25% âm lượng video gốc làm nền (êm dịu, không át giọng đọc)
-  const [speechRate, setSpeechRate] = useState('+15%'); // Tốc độ đọc AI: +15% chuẩn khớp thoại phim ngắn
+  const [speechRate, setSpeechRate] = useState('+20%'); // Tốc độ đọc AI: +20% chuẩn khớp thoại phim ngắn kịch tính
 
   // 4 Tabs Tùy Chỉnh Overlay từ StudioVDT
   const [activeOverlayTab, setActiveOverlayTab] = useState('logo'); // 'logo' | 'sub' | 'wm' | 'outro'
@@ -544,7 +544,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 <span>Tốc Độ Đọc Giọng AI (Khớp Khẩu Hình):</span>
               </span>
               <span className="text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                {speechRate} {speechRate === '+15%' ? '(Chuẩn phim ngắn)' : speechRate === '+25%' ? '(Nhanh - Kịch tính)' : speechRate === '+0%' ? '(Đọc thong thả)' : '(Siêu nhanh)'}
+                {speechRate} {speechRate === '+20%' ? '(Chuẩn phim ngắn)' : speechRate === '+30%' ? '(Nhanh - Kịch tính)' : speechRate === '+0%' ? '(Đọc thong thả)' : '(Nhanh vừa)'}
               </span>
             </div>
             <p className="text-[11px] text-gray-500 leading-snug">
@@ -552,10 +552,10 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
             </p>
             <div className="grid grid-cols-4 gap-1.5 pt-0.5">
               {[
-                { val: '+0%', label: 'Bình thường (+0%)' },
-                { val: '+15%', label: '⚡ Nhanh vừa (+15%)' },
-                { val: '+25%', label: '🔥 Nhanh (+25%)' },
-                { val: '+35%', label: '🚀 Rất nhanh (+35%)' }
+                { val: '+0%', label: 'Thong thả (+0%)' },
+                { val: '+10%', label: 'Vừa phải (+10%)' },
+                { val: '+20%', label: '⚡ Chuẩn phim (+20%)' },
+                { val: '+30%', label: '🔥 Kịch tính (+30%)' }
               ].map(opt => (
                 <button
                   key={opt.val}

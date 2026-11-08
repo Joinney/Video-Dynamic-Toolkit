@@ -76,37 +76,40 @@ function adbQuerySqlite(device, dbPath, sql) {
   }
 }
 
+let cachedActiveApp = null;
+let lastActiveAppCheck = 0;
+
 function detectActiveApp(device) {
-  if (!device) return 'sodareels';
-  try {
-    const out = execSync(`"${ADB_PATH}" -s ${device} shell "dumpsys window | grep -E 'mCurrentFocus'"`, { encoding: 'utf8' });
-    if (out.includes('com.storymatrix.drama')) return 'dramabox';
-    if (out.includes('com.minute.minishort.drama')) return 'minutedrama';
-    if (out.includes('com.sodareels.drama.short')) return 'sodareels';
-  } catch (e) {}
-
-  // Fallback 1: Kiểm tra process đang chạy
-  try {
-    const dbPid = execSync(`"${ADB_PATH}" -s ${device} shell "pidof com.storymatrix.drama 2>/dev/null"`, { encoding: 'utf8', timeout: 2000 }).trim();
-    if (dbPid) return 'dramabox';
-  } catch (e) {}
-
-  // Fallback 2: Kiểm tra database cập nhật mới nhất
-  try {
-    let best = 'sodareels';
-    let maxT = 0;
-    try {
-      const minT = parseInt(adbQuerySqlite(device, '/data/data/com.minute.minishort.drama/databases/file_manager.db', 'SELECT update_time FROM playEpisodeHistory ORDER BY update_time DESC, id DESC LIMIT 1;'), 10) || 0;
-      if (minT > maxT) { maxT = minT; best = 'minutedrama'; }
-    } catch (e) {}
-    try {
-      const sodaT = parseInt(adbQuerySqlite(device, '/data/data/com.sodareels.drama.short/databases/PLAY_LET_BD_NAME_DRAMA', 'SELECT time FROM database_table_play_history ORDER BY time DESC LIMIT 1;'), 10) || 0;
-      if (sodaT > maxT) { maxT = sodaT; best = 'sodareels'; }
-    } catch (e) {}
-    return best;
-  } catch (e) {
-    return 'sodareels';
+  if (!device) return 'loveshots';
+  const now = Date.now();
+  if (cachedActiveApp && (now - lastActiveAppCheck < 3500)) {
+    return cachedActiveApp;
   }
+  let result = 'loveshots';
+  try {
+    const out = execSync(`"${ADB_PATH}" -s ${device} shell "dumpsys window | grep -E 'mCurrentFocus'"`, { encoding: 'utf8', timeout: 2000 });
+    if (out.includes('gallery') || out.includes('gallery3d') || out.includes('photos')) result = 'gallery';
+    else if (out.includes('com.short.movie.app')) result = 'loveshots';
+    else if (out.includes('you.drama.shorts')) result = 'youdrama';
+    else if (out.includes('com.minute.minishort.drama')) result = 'minutedrama';
+    else if (out.includes('com.sodareels.drama.short')) result = 'sodareels';
+    else if (out.includes('com.storymatrix.drama')) result = 'dramabox';
+    else {
+      // Fallback: Kiểm tra tiến trình
+      try {
+        const pids = execSync(`"${ADB_PATH}" -s ${device} shell "pidof com.minute.minishort.drama you.drama.shorts com.short.movie.app com.sodareels.drama.short 2>/dev/null"`, { encoding: 'utf8', timeout: 1500 }).trim();
+        if (pids) {
+          result = cachedActiveApp || 'minutedrama';
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    if (cachedActiveApp) return cachedActiveApp;
+  }
+
+  cachedActiveApp = result;
+  lastActiveAppCheck = now;
+  return result;
 }
 
 function resolveActiveApp(device, requestedApp) {
@@ -116,22 +119,51 @@ function resolveActiveApp(device, requestedApp) {
   return detectActiveApp(device);
 }
 
-function pullRemoteFile(device, remotePath, localPath) {
-  try {
-    execSync(`"${ADB_PATH}" -s ${device} pull "${remotePath}" "${localPath}"`, { stdio: 'pipe', timeout: 8000 });
-    if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
-      return true;
-    }
-  } catch (e) {}
+function pullRemoteFile(device, remotePath, localPath, onProgress, expectedTotalBytes = 0) {
+  let progressTimer = null;
+  let simulatedPct = 10;
+  if (onProgress) {
+    onProgress({ currentBytes: Math.round(expectedTotalBytes * 0.1), totalBytes: expectedTotalBytes, pct: 10, status: 'starting' });
+    progressTimer = setInterval(() => {
+      let cur = 0;
+      if (fs.existsSync(localPath)) {
+        try { cur = fs.statSync(localPath).size; } catch (e) {}
+      }
+      if (cur > 0 && expectedTotalBytes > 0) {
+        simulatedPct = Math.min(95, Math.round((cur / expectedTotalBytes) * 100));
+      } else {
+        simulatedPct = Math.min(90, simulatedPct + 15);
+        cur = Math.round((simulatedPct / 100) * expectedTotalBytes);
+      }
+      onProgress({ currentBytes: cur, totalBytes: expectedTotalBytes, pct: simulatedPct, status: 'copying' });
+    }, 200);
+  }
 
-  // Fallback nếu Permission denied trên /data/data/: Dùng su 0 copy sang /sdcard/ rồi pull
   try {
+    if (!remotePath.startsWith('/proc/')) {
+      try {
+        execSync(`"${ADB_PATH}" -s ${device} pull "${remotePath}" "${localPath}"`, { stdio: 'pipe', timeout: 8000 });
+        if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
+          if (progressTimer) clearInterval(progressTimer);
+          const finalSz = fs.statSync(localPath).size;
+          if (onProgress) onProgress({ currentBytes: finalSz, totalBytes: finalSz, pct: 100, status: 'done' });
+          return true;
+        }
+      } catch (e) {}
+    }
+
+    // Fallback nếu Permission denied trên /data/data/ hoặc file trong /proc/: Dùng su 0 copy sang /sdcard/ rồi pull
     const tmpSdcard = `/sdcard/_temp_pull_${Date.now()}.mp4`;
-    execSync(`"${ADB_PATH}" -s ${device} shell "su 0 cp '${remotePath}' '${tmpSdcard}' && su 0 chmod 666 '${tmpSdcard}'"`, { stdio: 'pipe', timeout: 6000 });
-    execSync(`"${ADB_PATH}" -s ${device} pull "${tmpSdcard}" "${localPath}"`, { stdio: 'pipe', timeout: 8000 });
+    execSync(`"${ADB_PATH}" -s ${device} shell "su 0 cp '${remotePath}' '${tmpSdcard}' && su 0 chmod 666 '${tmpSdcard}'"`, { stdio: 'pipe', timeout: 10000 });
+    execSync(`"${ADB_PATH}" -s ${device} pull "${tmpSdcard}" "${localPath}"`, { stdio: 'pipe', timeout: 10000 });
     execSync(`"${ADB_PATH}" -s ${device} shell "rm -f '${tmpSdcard}'"`, { stdio: 'ignore', timeout: 3000 });
+
+    if (progressTimer) clearInterval(progressTimer);
+    const finalSz = (fs.existsSync(localPath) && fs.statSync(localPath).size) || expectedTotalBytes;
+    if (onProgress) onProgress({ currentBytes: finalSz, totalBytes: finalSz, pct: 100, status: 'done' });
     return fs.existsSync(localPath) && fs.statSync(localPath).size > 0;
   } catch (err) {
+    if (progressTimer) clearInterval(progressTimer);
     throw new Error(`Không thể kéo file từ thiết bị: ${err.message}`);
   }
 }

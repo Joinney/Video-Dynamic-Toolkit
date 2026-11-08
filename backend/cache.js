@@ -53,6 +53,42 @@ elif [ "$APP" = "dramabox" ]; then
       echo "$f|$SZ|COMPLETE"
     fi
   done
+elif [ "$APP" = "loveshots" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/\${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/*.mdl 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      CONF="\${f%.mdl}.mdlnodeconf"
+      if [ -f "$CONF" ]; then
+        B64=$(base64 "$CONF" 2>/dev/null | tr -d '\\r\\n')
+        echo "$f|$SZ|$B64"
+      else
+        echo "$f|$SZ|NOCONF"
+      fi
+    fi
+  done
+elif [ "$APP" = "popdrama" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.popdramas.top/cache/pssdk/pssdk_video_cache/\${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.popdramas.top/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      CONF="\${f%.mdl}.mdlnodeconf"
+      if [ -f "$CONF" ]; then
+        B64=$(base64 "$CONF" 2>/dev/null | tr -d '\\r\\n')
+        echo "$f|$SZ|$B64"
+      else
+        echo "$f|$SZ|NOCONF"
+      fi
+    fi
+  done
 else
   if [ -n "$FILTER" ]; then
     FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/\${FILTER}*.mdl 2>/dev/null)
@@ -128,15 +164,15 @@ function getRemoteCacheCompletenessMap(device, appKey = 'sodareels', filterPrefi
           if (isComplete) pct = 100;
         }
       } else {
-        // Soda Reels
+        // LoveShots & Soda Reels
         if (b64OrStatus && b64OrStatus !== 'NOCONF') {
           try {
             const buf = Buffer.from(b64OrStatus, 'base64');
             if (buf.length >= 0x48) {
               expectedBytes = Number(buf.readBigInt64LE(0x10));
               const cached = Number(buf.readBigInt64LE(0x38));
-              pct = expectedBytes > 0 ? Math.min(100, Math.round((cached / expectedBytes) * 100)) : 100;
-              isComplete = (cached >= expectedBytes || sizeBytes >= expectedBytes || pct >= 97);
+              pct = expectedBytes > 0 ? Math.min(100, Math.round((Math.max(cached, sizeBytes) / expectedBytes) * 100)) : 100;
+              isComplete = (sizeBytes >= 2000000 || cached >= expectedBytes || sizeBytes >= expectedBytes || pct >= 97);
               if (isComplete) pct = 100;
             }
           } catch (e) {}
@@ -173,19 +209,59 @@ function getRemoteCacheCompletenessMap(device, appKey = 'sodareels', filterPrefi
   }
 }
 
-function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, localVideos = []) {
-  if (!device) return [];
+const remoteListCache = new Map();
+
+function getRemoteCacheList(device, appKey = 'loveshots', currentEpisode = 1, localVideos = []) {
+  if (!device || appKey === 'gallery') return [];
+  const cacheKey = `${device}_${appKey}_${currentEpisode}`;
+  const now = Date.now();
+  const cached = remoteListCache.get(cacheKey);
+  if (cached && (now - cached.time < 3000)) {
+    return cached.data;
+  }
   try {
     let raw = '';
     const isMinute = (appKey === 'minutedrama');
     const isDramaBox = (appKey === 'dramabox');
+    const isLoveShots = (appKey === 'loveshots');
 
     // Dùng ls -lt để lấy file mới nhất trước, hoặc đảo chiều để đúng trình tự Tập 1 -> Tập N
     if (appKey === 'minutedrama') {
       raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.minute.minishort.drama/cache/dm_video_cache/tp_dp_file/*/*.mp4 2>/dev/null || true"`, { encoding: 'utf8' });
     } else if (appKey === 'dramabox') {
       raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /sdcard/Android/data/com.storymatrix.drama/files/download/*/*.mp4 /sdcard/Android/data/com.storymatrix.drama/files/*.mp4 /data/data/com.storymatrix.drama/files/*.mp4 /sdcard/Movies/*.mp4 /sdcard/Download/*.mp4 2>/dev/null || true"`, { encoding: 'utf8' });
-    } else {
+    } else if (appKey === 'loveshots') {
+      raw = execSync(`"${ADB_PATH}" -s ${device} shell "su 0 sh -c 'ls -lt /data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/*.mdl 2>/dev/null'"`, { encoding: 'utf8' });
+      // Bổ sung các file cache đang mở trong /proc/<pid>/fd/ nếu bị VolcPlayer unlink (deleted) khi đầy bộ đệm
+      try {
+        const lsPid = execSync(`"${ADB_PATH}" -s ${device} shell "pidof com.short.movie.app 2>/dev/null"`, { encoding: 'utf8', timeout: 2000 }).trim();
+        if (lsPid) {
+          const fdOut = execSync(`"${ADB_PATH}" -s ${device} shell "su 0 ls -l /proc/${lsPid}/fd 2>/dev/null"`, { encoding: 'utf8', timeout: 3000 });
+          const fdLines = fdOut.split(/\r?\n/);
+          const existingVids = new Set(raw.trim().split(/\r?\n/).map(l => {
+            const p = l.trim().split(/\s+/);
+            return path.basename(p[p.length - 1], '.mdl');
+          }));
+
+          fdLines.forEach(fl => {
+            const m = fl.match(/(\d+)\s+->\s+(\S+\.mdl)/);
+            if (m) {
+              const fd = m[1];
+              const origPath = m[2];
+              const vid = path.basename(origPath, '.mdl');
+              if (!existingVids.has(vid)) {
+                try {
+                  const sz = parseInt(execSync(`"${ADB_PATH}" -s ${device} shell "su 0 stat -L -c %s /proc/${lsPid}/fd/${fd} 2>/dev/null"`, { encoding: 'utf8', timeout: 1500 }).trim(), 10) || 0;
+                  if (sz > 50000) {
+                    existingVids.add(vid);
+                    raw += `\n-rwx------ 1 u0_a88 u0_a88_cache ${sz} 2026-11-08 04:00 /proc/${lsPid}/fd/${fd}|${origPath}`;
+                  }
+                } catch (e) {}
+              }
+            }
+          });
+        }
+      } catch (e) {}} else {
       raw = execSync(`"${ADB_PATH}" -s ${device} shell "ls -lt /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null || true"`, { encoding: 'utf8' });
     }
 
@@ -198,10 +274,34 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
     let dbEpisodes = [];
     const minutedramaHashMap = new Map();
     const dramaboxDownloadMap = new Map();
+    const loveshotsVidMap = new Map();
 
     try {
       const { adbQuerySqlite } = require('./adb');
-      if (appKey === 'dramabox') {
+      if (appKey === 'loveshots') {
+        try {
+          const curDramaId = adbQuerySqlite(
+            device,
+            '/data/data/com.short.movie.app/databases/mini_drama.db',
+            'SELECT id FROM drama_record ORDER BY play_ts DESC LIMIT 1;'
+          );
+          if (curDramaId && curDramaId.trim()) {
+            const epRows = adbQuerySqlite(
+              device,
+              '/data/data/com.short.movie.app/databases/mini_drama.db',
+              `SELECT serial_no, vid FROM episode_record WHERE drama_id = '${curDramaId.trim()}';`
+            );
+            if (epRows) {
+              epRows.split(/\r?\n/).forEach(r => {
+                const parts = r.split('|');
+                if (parts[0] && parts[1]) {
+                  loveshotsVidMap.set(parts[1].trim(), parseInt(parts[0].trim(), 10));
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      } else if (appKey === 'dramabox') {
         try {
           const dlRows = adbQuerySqlite(
             device,
@@ -267,10 +367,20 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
 
     // LỌC CHUẨN: Chỉ giữ lại các tập thuộc ĐÚNG bộ phim đang xem/lướt hiện tại, loại bỏ các file cũ của phim khác
     let activePrefix = '';
-    if (appKey === 'sodareels') {
+    if (appKey === 'loveshots' && loveshotsVidMap.size > 0) {
+      lines = lines.filter(l => {
+        const parts = l.trim().split(/\s+/);
+        const pLast = parts[parts.length - 1];
+        const origName = pLast.includes('|') ? pLast.split('|')[1] : pLast;
+        const fName = path.basename(origName, '.mdl');
+        return loveshotsVidMap.has(fName);
+      });
+    } else if (appKey === 'sodareels') {
       for (const l of lines) {
         const parts = l.trim().split(/\s+/);
-        const fName = path.basename(parts[parts.length - 1]);
+        const pLast = parts[parts.length - 1];
+        const origName = pLast.includes('|') ? pLast.split('|')[1] : pLast;
+        const fName = path.basename(origName, '.mdl');
         if (fName.includes('_')) {
           activePrefix = fName.split('_')[0];
           break;
@@ -279,7 +389,9 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
       if (activePrefix) {
         lines = lines.filter(l => {
           const parts = l.trim().split(/\s+/);
-          const fName = path.basename(parts[parts.length - 1]);
+          const pLast = parts[parts.length - 1];
+          const origName = pLast.includes('|') ? pLast.split('|')[1] : pLast;
+          const fName = path.basename(origName, '.mdl');
           return fName.startsWith(activePrefix);
         });
       }
@@ -309,13 +421,20 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
 
     const list = lines.map((line, idx) => {
       const parts = line.trim().split(/\s+/);
-      const remotePath = parts[parts.length - 1];
+      let rawRemotePath = parts[parts.length - 1];
+      let remotePath = rawRemotePath;
+      let origMdlPath = rawRemotePath;
+      if (rawRemotePath.includes('|')) {
+        const pSplit = rawRemotePath.split('|');
+        remotePath = pSplit[0];
+        origMdlPath = pSplit[1];
+      }
       const sizeBytes = parseInt(parts[parts.length - 4], 10) || 0;
       const timeStr = `${parts[parts.length - 2]}`;
 
-      const comp = completenessInfo.map[remotePath] || {
-        isComplete: (sizeBytes > 3000000),
-        pct: 100,
+      const comp = completenessInfo.map[origMdlPath] || completenessInfo.map[remotePath] || {
+        isComplete: (sizeBytes >= 2000000),
+        pct: (sizeBytes >= 2000000) ? 100 : Math.min(100, Math.round((sizeBytes / 2000000) * 100)),
         expectedMb: (sizeBytes / (1024 * 1024)).toFixed(2)
       };
 
@@ -335,10 +454,18 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
       let downloadedName = '';
       let directUrl = '';
 
-      // 1. ƯU TIÊN SỐ 1: Nhận diện chính xác tuyệt đối qua Hash URL trong MinuteDrama DB hoặc DramaBox Downloads
-      const fileHash = path.basename(remotePath, '.mp4').toLowerCase();
-      const baseName = path.basename(remotePath).toLowerCase();
-      if (minutedramaHashMap.has(fileHash)) {
+      // 1. ƯU TIÊN SỐ 1: Nhận diện chính xác tuyệt đối qua Hash URL trong MinuteDrama DB hoặc DramaBox Downloads hoặc LoveShots VID
+      const fileHash = path.basename(origMdlPath, '.mp4').toLowerCase();
+      const baseName = path.basename(origMdlPath).toLowerCase();
+      const vidName = path.basename(origMdlPath, '.mdl');
+
+      if (loveshotsVidMap.has(vidName)) {
+        epNumber = loveshotsVidMap.get(vidName);
+        if (matchedLocal) {
+          isDownloaded = true;
+          downloadedName = matchedLocal.name;
+        }
+      } else if (minutedramaHashMap.has(fileHash)) {
         const hit = minutedramaHashMap.get(fileHash);
         epNumber = hit.epNumber;
         directUrl = hit.directUrl || '';
@@ -368,17 +495,20 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
         }
       }
 
+      const isCompl = (sizeBytes >= 2000000 || (comp.isComplete !== undefined ? comp.isComplete : false));
+      const calcPct = isCompl ? 100 : (comp.pct !== undefined ? comp.pct : Math.min(99, Math.round((sizeBytes / 2000000) * 100)));
+
       return {
         index: idx + 1,
         epNumber,
         epLabel: `EP. ${epNumber}`,
         path: remotePath,
-        filename: path.basename(remotePath),
+        filename: path.basename(origMdlPath),
         sizeBytes,
         sizeMb: (sizeBytes / (1024 * 1024)).toFixed(2),
         expectedMb: comp.expectedMb || (sizeBytes / (1024 * 1024)).toFixed(2),
-        pct: comp.pct !== undefined ? comp.pct : 100,
-        isComplete: comp.isComplete !== undefined ? comp.isComplete : true,
+        pct: calcPct,
+        isComplete: isCompl,
         time: timeStr,
         isDownloaded,
         downloadedName,
@@ -392,6 +522,7 @@ function getRemoteCacheList(device, appKey = 'sodareels', currentEpisode = 1, lo
       item.index = idx + 1;
     });
 
+    remoteListCache.set(cacheKey, { time: now, data: list });
     return list;
   } catch (e) {
     console.error('getRemoteCacheList ERROR:', e);

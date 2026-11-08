@@ -1,29 +1,38 @@
 """
 Complete End-to-End Video Dubbing Pipeline
 """
+import sys
+import io
 import json
 import logging
+import subprocess
 from pathlib import Path
 from typing import Callable, Optional, Union
 
+# Đảm bảo UTF-8 toàn diện trên Windows console để tránh UnicodeEncodeError
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 try:
-    from .config import DubbingConfig
-except ImportError:
     from config import DubbingConfig
-try:
-    from .extractor import extract_audio
-    from .transcriber import Transcriber, Segment
-    from .translator import Translator
-    from .tts import TTSService
-    from .synchronizer import AudioSynchronizer
-    from .merger import VideoMerger
-except ImportError:
     from extractor import extract_audio
     from transcriber import Transcriber, Segment
     from translator import Translator
     from tts import TTSService
     from synchronizer import AudioSynchronizer
     from merger import VideoMerger
+except ImportError:
+    from .config import DubbingConfig
+    from .extractor import extract_audio
+    from .transcriber import Transcriber, Segment
+    from .translator import Translator
+    from .tts import TTSService
+    from .synchronizer import AudioSynchronizer
+    from .merger import VideoMerger
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +111,15 @@ class VideoDubberPipeline:
             raise FileNotFoundError(f"Input video not found: {video_path}")
 
         def notify(msg: str, progress: float):
-            logger.info(f"[{int(progress*100)}%] {msg}")
+            try:
+                logger.info(f"[{int(progress*100)}%] {msg}")
+            except Exception:
+                pass
             if progress_callback:
-                progress_callback(msg, progress)
+                try:
+                    progress_callback(msg, progress)
+                except Exception:
+                    pass
 
         stem = video_path.stem
         work_dir = self.config.temp_dir / stem
@@ -132,7 +147,7 @@ class VideoDubberPipeline:
             probe_bin = find_ffprobe_binary()
             res = subprocess.run(
                 [probe_bin, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(orig_audio_path)],
-                stdout=subprocess.PIPE, text=True, check=True, close_fds=True
+                stdout=subprocess.PIPE, text=True, check=True
             )
             total_duration = float(res.stdout.strip())
         except Exception:

@@ -59,6 +59,27 @@ const MIME_TYPES = {
   '.woff2': 'font/woff2'
 };
 
+const downloadProgressMap = new Map();
+
+function updateDownloadProgress(dramaTitle, epNum, data) {
+  const key = `${sanitizeFolderName(dramaTitle)}_${epNum}`;
+  const total = data.totalBytes || 0;
+  const cur = data.currentBytes || 0;
+  const pct = data.pct !== undefined ? data.pct : (total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0);
+  downloadProgressMap.set(key, {
+    dramaTitle,
+    epNumber: epNum,
+    pct,
+    currentBytes: cur,
+    totalBytes: total,
+    currentMb: (cur / (1024 * 1024)).toFixed(2),
+    totalMb: (total / (1024 * 1024)).toFixed(2),
+    status: data.status || (pct >= 100 ? 'done' : 'downloading'),
+    message: data.message || '',
+    updatedAt: Date.now()
+  });
+}
+
 function serveStaticFile(res, filePath, contentType) {
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
@@ -213,11 +234,13 @@ function parseJsonBody(req) {
   });
 }
 
-let globalStatusCache = {
-  time: 0,
-  key: '',
-  data: null
-};
+const globalStatusCacheMap = new Map();
+const inFlightStatusPromises = new Map();
+
+function clearGlobalStatusCache() {
+  globalStatusCacheMap.clear();
+  inFlightStatusPromises.clear();
+}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -242,53 +265,77 @@ const server = http.createServer(async (req, res) => {
     const cacheKey = `${reqApp}_${dramaQuery}`;
     const now = Date.now();
 
-    // Cache trong 3500ms để giải phóng 100% tài nguyên CPU / ADB, không bị nghẽn Event Loop
-    if (!forceRefresh && globalStatusCache.data && (now - globalStatusCache.time < 3500) && globalStatusCache.key === cacheKey) {
+    // Cache trong 5000ms theo từng cacheKey để giải phóng 100% tài nguyên CPU / ADB, phản hồi tức thì < 2ms!
+    const cached = globalStatusCacheMap.get(cacheKey);
+    if (!forceRefresh && cached && (now - cached.time < 5000)) {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(globalStatusCache.data);
+      res.end(cached.data);
       return;
     }
 
-    const device = checkAdbDevice();
-    const activeApp = resolveActiveApp(device, reqApp);
-    const dramaInfo = getDramaInfoFromDevice(device, activeApp);
-    const localDramas = getLocalDramas();
-
-    // Đối chiếu với các bộ phim đã tải trong thư mục máy tính
-    let matchedLocal = null;
-    const targetTitle = dramaQuery || (dramaInfo.currentDrama ? dramaInfo.currentDrama.title : '');
-    if (targetTitle) {
-      const safe = sanitizeFolderName(targetTitle).toLowerCase();
-      matchedLocal = localDramas.find(d => 
-        d.name.toLowerCase() === safe || 
-        d.name.toLowerCase().includes(safe) || 
-        safe.includes(d.name.toLowerCase())
-      );
+    // Nếu đang có một request cùng cacheKey đang xử lý dở, dùng chung Promise để tránh kẹt ADB
+    if (!forceRefresh && inFlightStatusPromises.has(cacheKey)) {
+      try {
+        const sharedPayload = await inFlightStatusPromises.get(cacheKey);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(sharedPayload);
+        return;
+      } catch (e) {}
     }
-    const localVideos = matchedLocal ? matchedLocal.videos : [];
-    const remoteList = getRemoteCacheList(device, activeApp, dramaInfo.currentEpisode || 1, localVideos);
 
-    const payload = JSON.stringify({
-      connected: !!device,
-      deviceName: device || 'Chưa tìm thấy giả lập',
-      activeApp,
-      supportedApps: SUPPORTED_APPS,
-      currentAppMode: getAppMode(),
-      currentDrama: dramaInfo.currentDrama,
-      allDramas: dramaInfo.allDramas,
-      remoteCacheCount: remoteList.length,
-      remoteList,
-      localDramas
-    });
+    const computePromise = (async () => {
+      const device = checkAdbDevice();
+      const activeApp = resolveActiveApp(device, reqApp);
+      const dramaInfo = getDramaInfoFromDevice(device, activeApp);
+      const localDramas = getLocalDramas();
 
-    globalStatusCache = {
-      time: now,
-      key: cacheKey,
-      data: payload
-    };
+      // Đối chiếu với các bộ phim đã tải trong thư mục máy tính
+      let matchedLocal = null;
+      const targetTitle = dramaQuery || (dramaInfo.currentDrama ? dramaInfo.currentDrama.title : '');
+      if (targetTitle) {
+        const safe = sanitizeFolderName(targetTitle).toLowerCase();
+        matchedLocal = localDramas.find(d => 
+          d.name.toLowerCase() === safe || 
+          d.name.toLowerCase().includes(safe) || 
+          safe.includes(d.name.toLowerCase())
+        );
+      }
+      const localVideos = matchedLocal ? matchedLocal.videos : [];
+      const remoteList = getRemoteCacheList(device, activeApp, dramaInfo.currentEpisode || 1, localVideos);
 
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(payload);
+      const payload = JSON.stringify({
+        connected: !!device,
+        deviceName: device || 'Chưa tìm thấy giả lập',
+        activeApp,
+        supportedApps: SUPPORTED_APPS,
+        currentAppMode: getAppMode(),
+        currentDrama: dramaInfo.currentDrama,
+        allDramas: dramaInfo.allDramas,
+        remoteCacheCount: remoteList.length,
+        remoteList,
+        localDramas
+      });
+
+      // Lưu cache với timestamp CHÍNH XÁC tại thời điểm hoàn thành
+      globalStatusCacheMap.set(cacheKey, {
+        time: Date.now(),
+        data: payload
+      });
+
+      return payload;
+    })();
+
+    inFlightStatusPromises.set(cacheKey, computePromise);
+    try {
+      const resultPayload = await computePromise;
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(resultPayload);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    } finally {
+      inFlightStatusPromises.delete(cacheKey);
+    }
     return;
   }
 
@@ -376,7 +423,9 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, message: 'Giả lập chưa kết nối ADB!' }));
         return;
       }
-      const result = await exportVideos(device, payload);
+      const result = await exportVideos(device, payload, (drama, ep, prog) => {
+        updateDownloadProgress(drama, ep, prog);
+      });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, ...result }));
     } catch (err) {
@@ -404,7 +453,7 @@ const server = http.createServer(async (req, res) => {
         } else if (payload.paths && payload.paths.length > 0) {
           deleteRemoteCache(device, payload.paths);
         }
-        globalStatusCache = { time: 0, key: '', data: null };
+        clearGlobalStatusCache();
       }
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true }));
@@ -491,9 +540,40 @@ const server = http.createServer(async (req, res) => {
       // 2. Nếu chưa có, tự động kéo file từ cache của thiết bị
       const device = checkAdbDevice();
       if (device) {
+        const activeApp = resolveActiveApp(device);
         const { getRemoteCacheList } = require('./cache');
-        const cacheList = getRemoteCacheList(device, 'sodareels', 1);
-        const item = cacheList.find(c => c.epNumber === epNum);
+        const cacheList = getRemoteCacheList(device, activeApp, 1);
+        let item = cacheList.find(c => c.epNumber === epNum);
+        // Fallback cho Thư Viện (Gallery): Tìm file mp4 trong bộ nhớ máy
+        if (!item && (activeApp === 'gallery' || url.searchParams.get('app') === 'gallery')) {
+          try {
+            const { scanDeviceGalleryDramas } = require('./drama');
+            const { currentDrama } = scanDeviceGalleryDramas(device, dramaTitle);
+            if (currentDrama && currentDrama.episodes) {
+              const found = currentDrama.episodes.find(e => e.epNumber === epNum);
+              if (found) {
+                item = { path: found.filePath, filename: found.fileName };
+              }
+            }
+          } catch (e) {}
+        }
+
+        // Fallback cho LoveShots: Tìm file .mdl qua VID trong episode_record
+        if (!item && activeApp === 'loveshots') {
+          try {
+            const { adbQuerySqlite } = require('./adb');
+            const dRow = adbQuerySqlite(device, '/data/data/com.short.movie.app/databases/mini_drama.db', 'SELECT id FROM drama_record ORDER BY play_ts DESC LIMIT 1;');
+            if (dRow) {
+              const dramaId = dRow.trim();
+              const vid = adbQuerySqlite(device, '/data/data/com.short.movie.app/databases/mini_drama.db', `SELECT vid FROM episode_record WHERE drama_id = '${dramaId}' AND serial_no = ${epNum} LIMIT 1;`);
+              if (vid && vid.trim()) {
+                const mdlPath = `/data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/${vid.trim()}.mdl`;
+                item = { path: mdlPath };
+              }
+            }
+          } catch (e) {}
+        }
+
         if (item && item.path) {
           const dramaDir = path.join(TARGET_DIR, folderName);
           if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
@@ -518,7 +598,7 @@ const server = http.createServer(async (req, res) => {
       const device = checkAdbDevice();
       const appKey = url.searchParams.get('app') || resolveActiveApp(device);
       const requestedTitle = url.searchParams.get('title') || '';
-      const data = getDirectDramaEpisodes(device, appKey, requestedTitle);
+      const data = await getDirectDramaEpisodes(device, appKey, requestedTitle);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, ...data }));
     } catch (e) {
@@ -537,7 +617,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const dramaName = (payload.dramaName || payload.dramaTitle || payload.folder || '').trim();
-      const result = await downloadDirectVideo(payload.url, dramaName, payload.epNumber || 1);
+      const result = await downloadDirectVideo(payload.url, dramaName, payload.epNumber || 1, (drama, ep, prog) => {
+        updateDownloadProgress(drama, ep, prog);
+      });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: result.success, ...result }));
     } catch (e) {
@@ -555,10 +637,57 @@ const server = http.createServer(async (req, res) => {
       const customUrl = (payload.url || payload.posterUrl || payload.coverUrl || payload.image || '').trim();
       const device = checkAdbDevice();
       const result = await downloadDramaPoster(device, dramaName, customUrl);
-      globalStatusCache.data = null;
-      globalStatusCache.time = 0;
+      clearGlobalStatusCache();
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
+    return;
+  }
+
+  // 8.2 API Download Progress
+  if (url.pathname === '/api/download-progress' && req.method === 'GET') {
+    try {
+      const dramaTitle = url.searchParams.get('drama') || '';
+      const epNum = parseInt(url.searchParams.get('ep'), 10) || 1;
+      const key = `${sanitizeFolderName(dramaTitle)}_${epNum}`;
+      let prog = downloadProgressMap.get(key);
+
+      if (!prog) {
+        // Kiểm tra xem file đã có trên máy chưa
+        const folderName = resolveExistingDramaFolder(dramaTitle);
+        const targetFile = path.join(TARGET_DIR, folderName, `Tap_${String(epNum).padStart(2, '0')}.mp4`);
+        if (fs.existsSync(targetFile)) {
+          const sz = fs.statSync(targetFile).size;
+          const szMb = (sz / (1024 * 1024)).toFixed(2);
+          prog = {
+            dramaTitle,
+            epNumber: epNum,
+            pct: 100,
+            currentBytes: sz,
+            totalBytes: sz,
+            currentMb: szMb,
+            totalMb: szMb,
+            status: 'done'
+          };
+        } else {
+          prog = {
+            dramaTitle,
+            epNumber: epNum,
+            pct: 0,
+            currentBytes: 0,
+            totalBytes: 0,
+            currentMb: '0',
+            totalMb: '0',
+            status: 'idle'
+          };
+        }
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, progress: prog }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, message: e.message }));
@@ -639,8 +768,7 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      globalStatusCache.data = null;
-      globalStatusCache.time = 0;
+      clearGlobalStatusCache();
 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({
@@ -682,8 +810,7 @@ const server = http.createServer(async (req, res) => {
         fs.rmSync(targetPath, { recursive: true, force: true });
       }
 
-      globalStatusCache.data = null;
-      globalStatusCache.time = 0;
+      clearGlobalStatusCache();
 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, message: `Đã xóa bộ phim "${folderName}" thành công!` }));

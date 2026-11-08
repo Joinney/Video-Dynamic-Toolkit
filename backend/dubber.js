@@ -7,6 +7,20 @@ const dubJobs = new Map();
 let cachedRunner = null;
 let lastRunnerCheck = 0;
 
+function getPythonSpawnEnv() {
+  const { FFMPEG_PATH, FFPROBE_PATH } = require('./config');
+  const ffmpegDir = FFMPEG_PATH ? path.dirname(FFMPEG_PATH) : '';
+  const ffprobeDir = FFPROBE_PATH ? path.dirname(FFPROBE_PATH) : '';
+  return {
+    ...process.env,
+    HF_HUB_DISABLE_SYMLINKS_WARNING: '1',
+    PYTHONIOENCODING: 'utf-8',
+    PYTHONUTF8: '1',
+    PYTHONPATH: `${path.join(__dirname, 'dubber')};${path.join(__dirname, '..')};${process.env.PYTHONPATH || ''}`,
+    PATH: `${ffmpegDir};${ffprobeDir};${process.env.PATH || ''}`
+  };
+}
+
 function resolvePythonExecution(args) {
   // If running inside Docker / Linux:
   if (process.platform !== 'win32') {
@@ -39,7 +53,26 @@ function resolvePythonExecution(args) {
   }
 
   // If running on Windows host:
-  // 1. Check if Docker container reelssoda_studio is running
+  // 1. Ưu tiên chạy trực tiếp bằng Python Native (Nhanh, không phụ thuộc Docker)
+  const candidates = [
+    path.join(process.env.LOCALAPPDATA || '', 'Python', 'bin', 'python.exe'),
+    'py',
+    'python3',
+    'python'
+  ];
+  for (const c of candidates) {
+    try {
+      const { execSync } = require('child_process');
+      const out = execSync(`"${c}" --version`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
+      if (out && out.includes('Python')) {
+        cachedRunner = { type: 'local', cmd: c };
+        lastRunnerCheck = now;
+        return { cmd: c, args };
+      }
+    } catch (e) {}
+  }
+
+  // 2. Dự phòng: Kiểm tra Docker container nếu Python native không có
   try {
     const { execSync } = require('child_process');
     const running = execSync('docker ps --filter "name=reelssoda_studio" --filter "status=running" -q', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 }).trim();
@@ -70,25 +103,6 @@ function resolvePythonExecution(args) {
     }
   } catch (e) {}
 
-  // 2. If Docker is not running or check failed, try Windows python candidates (skipping WindowsApps 0-byte alias)
-  const candidates = [
-    path.join(process.env.LOCALAPPDATA || '', 'Python', 'bin', 'python.exe'),
-    'py',
-    'python3',
-    'python'
-  ];
-  for (const c of candidates) {
-    try {
-      const { execSync } = require('child_process');
-      const out = execSync(`"${c}" --version`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 1500 });
-      if (out && out.includes('Python')) {
-        cachedRunner = { type: 'local', cmd: c };
-        lastRunnerCheck = now;
-        return { cmd: c, args };
-      }
-    } catch (e) {}
-  }
-
   cachedRunner = { type: 'local', cmd: 'python' };
   lastRunnerCheck = now;
   return { cmd: 'python', args };
@@ -97,7 +111,7 @@ function resolvePythonExecution(args) {
 function startDubbingJob(inputVideoPath, options = {}) {
   const jobId = 'dub_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const voice = options.voice || 'vi-VN-HoaiMyNeural';
-  const speed = options.speed || '+0%';
+  const speed = options.speed || '+15%';
   const origVol = options.origVol !== undefined ? options.origVol : (options.bgmVolume !== undefined ? options.bgmVolume : 0.25);
   const whisperModel = options.whisperModel || 'small';
 
@@ -146,7 +160,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const scriptPath = path.join(__dirname, 'dubber', 'dubber.py');
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
 
-  const burnSub = options.burnSubtitles !== undefined ? options.burnSubtitles : true;
+  const burnSub = Boolean(options.burnSubtitles);
   const sourceLang = options.sourceLang || 'auto';
   const targetLang = options.targetLang || 'vi';
 
@@ -163,6 +177,8 @@ function startDubbingJob(inputVideoPath, options = {}) {
   ];
   if (burnSub) {
     args.push('--burn-subtitles');
+  } else {
+    args.push('--no-burn-subtitles');
   }
   const resolveAssetPath = (p) => {
     if (!p) return null;
@@ -204,7 +220,9 @@ function startDubbingJob(inputVideoPath, options = {}) {
     if (options.floatingWatermarkText) args.push('--float-wm-text', options.floatingWatermarkText);
     if (options.floatingWatermarkOpacity) args.push('--float-wm-opacity', String(options.floatingWatermarkOpacity / 100));
   }
-  if (options.enableOutro !== false) {
+  if (options.enableOutro === false) {
+    args.push('--no-outro');
+  } else {
     args.push('--enable-outro');
     const finalOutro = resolveAssetPath(options.outroPath || 'assets/endgpc.mp4');
     if (finalOutro) args.push('--outro-path', finalOutro);
@@ -221,7 +239,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
 
   try {
     const runner = resolvePythonExecution(args);
-    const proc = spawn(runner.cmd, runner.args);
+    const proc = spawn(runner.cmd, runner.args, { env: getPythonSpawnEnv() });
 
     proc.stdout.on('data', (data) => {
       const text = data.toString();
@@ -332,7 +350,7 @@ function generateTTSAudio(text, options = {}) {
 
     try {
       const runner = resolvePythonExecution(args);
-      const proc = spawn(runner.cmd, runner.args);
+      const proc = spawn(runner.cmd, runner.args, { env: getPythonSpawnEnv() });
       let stderr = '';
       proc.stderr.on('data', d => { stderr += d.toString(); });
       proc.on('close', code => {
@@ -375,7 +393,7 @@ function transcribeAndTranslateVideo(inputVideoPath, options = {}) {
 
     try {
       const runner = resolvePythonExecution(args);
-      const proc = spawn(runner.cmd, runner.args);
+      const proc = spawn(runner.cmd, runner.args, { env: getPythonSpawnEnv() });
       let stdout = '';
       let stderr = '';
       proc.stdout.on('data', d => { stdout += d.toString(); });

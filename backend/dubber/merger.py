@@ -863,6 +863,19 @@ class VideoMerger:
                     bufsize=1
                 )
 
+                stderr_lines = []
+                def drain_stderr():
+                    try:
+                        for l in proc.stderr:
+                            stderr_lines.append(l)
+                            if len(stderr_lines) > 50:
+                                stderr_lines.pop(0)
+                    except Exception:
+                        pass
+                import threading
+                t_err = threading.Thread(target=drain_stderr, daemon=True)
+                t_err.start()
+
                 cur_fps = 0.0
                 cur_speed = "1.0x"
                 last_reported_s = -999.0
@@ -895,7 +908,7 @@ class VideoMerger:
 
                 proc.wait()
                 if proc.returncode != 0:
-                    stderr_msg = proc.stderr.read() if proc.stderr else ""
+                    stderr_msg = "".join(stderr_lines)
                     raise subprocess.CalledProcessError(proc.returncode, cmd, stderr=stderr_msg)
 
                 if has_outro and outro_video_path and Path(outro_video_path).exists():

@@ -2,10 +2,32 @@
 Speech Recognition module using faster-whisper
 """
 from dataclasses import dataclass
+import io
 import logging
+import os
 from pathlib import Path
 import re
+import sys
 from typing import List, Optional, Union
+
+# Đảm bảo UTF-8 trên Windows console
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Monkey-patch av.open for PyAV compatibility (remove metadata_errors)
+try:
+    import av
+    _orig_av_open = av.open
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _orig_av_open(*args, **kwargs)
+    av.open = _safe_av_open
+except Exception:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +87,15 @@ def get_shared_whisper_model(model_size: str, device: str = "cpu", compute_type:
 
         logger.info(f"Loading shared WhisperModel '{model_size}' on {device} ({compute_type})...")
         from faster_whisper import WhisperModel
-        _SHARED_WHISPER_MODELS[key] = WhisperModel(model_size, device=device, compute_type=compute_type)
+        try:
+            _SHARED_WHISPER_MODELS[key] = WhisperModel(model_size, device=device, compute_type=compute_type)
+        except Exception as e:
+            if device == "cuda" or "cublas" in str(e).lower() or "cuda" in str(e).lower():
+                logger.warning(f"CUDA initialization failed ({e}). Falling back to CPU int8...")
+                key = (model_size, "cpu", "int8")
+                _SHARED_WHISPER_MODELS[key] = WhisperModel(model_size, device="cpu", compute_type="int8")
+            else:
+                raise
     return _SHARED_WHISPER_MODELS[key]
 
 
@@ -89,13 +119,20 @@ class Transcriber:
         if resolved_device == "auto":
             try:
                 import ctranslate2
-                resolved_device = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
-            except Exception:
-                try:
-                    import torch
-                    resolved_device = "cuda" if torch.cuda.is_available() else "cpu"
-                except Exception:
+                if ctranslate2.get_cuda_device_count() > 0:
+                    if sys.platform == "win32":
+                        import ctypes
+                        try:
+                            ctypes.CDLL("cublas64_12.dll")
+                            resolved_device = "cuda"
+                        except Exception:
+                            resolved_device = "cpu"
+                    else:
+                        resolved_device = "cuda"
+                else:
                     resolved_device = "cpu"
+            except Exception:
+                resolved_device = "cpu"
 
         resolved_compute = self.compute_type
         if resolved_compute in ("default", "auto", ""):
@@ -160,7 +197,7 @@ class Transcriber:
             repetition_penalty=1.2,
             no_repeat_ngram_size=3,
             compression_ratio_threshold=2.4,
-            word_timestamps=False,
+            word_timestamps=True,
         )
 
         detected_lang = info.language

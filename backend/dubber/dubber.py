@@ -13,6 +13,7 @@ Bao gồm:
 
 import sys
 import os
+import io
 import json
 import argparse
 import asyncio
@@ -20,13 +21,73 @@ import subprocess
 from pathlib import Path
 import tempfile
 
+# Đảm bảo UTF-8 toàn diện trên Windows console để tránh UnicodeEncodeError
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 # Add dubber dir and project root to sys.path to access config and pipeline
 dubber_dir = Path(__file__).resolve().parent
 root_dir = dubber_dir.parent.parent
 if str(dubber_dir) not in sys.path:
     sys.path.insert(0, str(dubber_dir))
+
+# Monkey-patch av.open for PyAV compatibility (remove metadata_errors)
+try:
+    import av
+    _orig_av_open = av.open
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _orig_av_open(*args, **kwargs)
+    av.open = _safe_av_open
+except Exception:
+    pass
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
+
+# Tự động nạp ffmpeg từ node_modules/ffmpeg-static cho pydub và subprocess
+ffmpeg_candidates = [
+    root_dir / "node_modules" / "ffmpeg-static" / "ffmpeg.exe",
+    Path("ffmpeg.exe"),
+    Path("ffmpeg")
+]
+for f_cand in ffmpeg_candidates:
+    if f_cand.exists():
+        ffmpeg_bin_dir = str(f_cand.parent.resolve())
+        if ffmpeg_bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = ffmpeg_bin_dir + os.pathsep + os.environ.get("PATH", "")
+        try:
+            from pydub import AudioSegment
+            AudioSegment.converter = str(f_cand.resolve())
+            AudioSegment.ffmpeg = str(f_cand.resolve())
+        except Exception:
+            pass
+        break
+
+# Tự động nạp ffprobe từ node_modules/ffprobe-static cho pydub
+ffprobe_candidates = [
+    root_dir / "node_modules" / "ffprobe-static" / "bin" / "win32" / "x64" / "ffprobe.exe",
+    Path("ffprobe.exe"),
+    Path("ffprobe")
+]
+for p_cand in ffprobe_candidates:
+    if p_cand.exists():
+        ffprobe_bin_dir = str(p_cand.parent.resolve())
+        if ffprobe_bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = ffprobe_bin_dir + os.pathsep + os.environ.get("PATH", "")
+        try:
+            from pydub import AudioSegment
+            AudioSegment.ffprobe = str(p_cand.resolve())
+        except Exception:
+            pass
+        break
 
 def whisper_lang_code(lang):
     if not lang or lang == "auto":
@@ -72,7 +133,7 @@ def emit_progress(status, pct, message, extra=None):
         payload.update(extra)
     print(f"__PROGRESS__{json.dumps(payload, ensure_ascii=False)}__PROGRESS__", flush=True)
 
-def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0%", orig_volume=0.15, whisper_model_size="small", burn_subtitles=True, source_lang="auto", target_lang="vi",
+def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+15%", orig_volume=0.15, whisper_model_size="small", burn_subtitles=False, source_lang="auto", target_lang="vi",
                 enable_logo=False, logo_path=None, logo_x=0.80, logo_y=0.05, logo_scale=0.18, logo_opacity=0.90, logo_rotation=0.0,
                 subtitle_style="white_outline", subtitle_font_size=32, subtitle_bottom_pct=7.0,
                 enable_float_wm=False, float_wm_text="@gocphimcuon", float_wm_opacity=0.30,
@@ -112,11 +173,12 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
 
     # 1. Thử chạy bằng VideoDubberPipeline từ StudioVDT
     try:
-        from config import DubbingConfig
         try:
             from pipeline import VideoDubberPipeline
+            from config import DubbingConfig
         except ImportError:
-            from .pipeline import VideoDubberPipeline
+            from dubber.pipeline import VideoDubberPipeline
+            from dubber.config import DubbingConfig
 
         emit_progress("starting", 5, "Đang khởi tạo StudioVDT VideoDubberPipeline...")
 
@@ -203,18 +265,36 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
             from faster_whisper import WhisperModel
             device = "cuda" if os.environ.get("USE_CUDA") == "1" else "cpu"
             compute_type = "float16" if device == "cuda" else "int8"
-            model = WhisperModel(whisper_model_size, device=device, compute_type=compute_type)
-            transcribe_kwargs = {"beam_size": 5}
+            try:
+                model = WhisperModel(whisper_model_size, device=device, compute_type=compute_type)
+            except Exception:
+                device = "cpu"
+                compute_type = "int8"
+                model = WhisperModel(whisper_model_size, device=device, compute_type=compute_type)
+
+            transcribe_kwargs = {"beam_size": 5, "word_timestamps": True}
             w_lang = whisper_lang_code(source_lang)
             if w_lang:
                 transcribe_kwargs["language"] = w_lang
-            segments, info = model.transcribe(str(extracted_audio), **transcribe_kwargs)
+
+            try:
+                segments, info = model.transcribe(str(extracted_audio), **transcribe_kwargs)
+            except Exception:
+                model = WhisperModel(whisper_model_size, device="cpu", compute_type="int8")
+                segments, info = model.transcribe(str(extracted_audio), **transcribe_kwargs)
             
+            total_dur = max(1.0, float(getattr(info, "duration", 0.0) or 0.0))
             raw_segments = []
             for seg in segments:
                 text = seg.text.strip()
                 if text:
-                    raw_segments.append({"start": seg.start, "end": seg.end, "text": text})
+                    w_start = round(seg.words[0].start, 2) if hasattr(seg, "words") and seg.words else round(seg.start, 2)
+                    w_end = round(seg.words[-1].end, 2) if hasattr(seg, "words") and seg.words else round(seg.end, 2)
+                    raw_segments.append({"start": w_start, "end": max(w_start + 0.3, w_end), "text": text})
+                    cur_pct = 40 + min(9, int((seg.end / total_dur) * 10))
+                    cur_m, cur_s = divmod(int(seg.end), 60)
+                    tot_m, tot_s = divmod(int(total_dur), 60)
+                    emit_progress("transcribing", cur_pct, f"[{cur_m:02d}:{cur_s:02d}/{tot_m:02d}:{tot_s:02d}] Đã nhận diện: \"{text[:28]}...\"")
         except Exception as e:
             emit_progress("error", 0, f"Lỗi khi nhận diện giọng nói: {str(e)}")
             return False
@@ -280,13 +360,26 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
         tts_dir = tmp_dir / "tts_clips"
         tts_dir.mkdir(parents=True, exist_ok=True)
 
+        sem = asyncio.Semaphore(4)
+
         async def generate_speech_edge(text, voice_code, clip_path, spd="+0%"):
-            # Clean voice code if prefixed with vieneu
+            clean_t = text.strip() if text else ""
+            if not clean_t or len(clean_t.replace(".", "").replace("-", "").strip()) == 0:
+                return False
             actual_voice = voice_code.replace("vieneu:", "") if "vieneu:" in voice_code else voice_code
             if not actual_voice.endswith("Neural"):
                 actual_voice = "vi-VN-HoaiMyNeural"
-            communicate = edge_tts.Communicate(text, actual_voice, rate=spd)
-            await communicate.save(clip_path)
+            async with sem:
+                for attempt in range(3):
+                    try:
+                        v = actual_voice if attempt == 0 else "vi-VN-HoaiMyNeural"
+                        communicate = edge_tts.Communicate(clean_t, v, rate=spd)
+                        await communicate.save(clip_path)
+                        if Path(clip_path).exists() and Path(clip_path).stat().st_size > 100:
+                            return True
+                    except Exception:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+            return False
 
         async def build_all_tts():
             tasks = []
@@ -294,7 +387,7 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
                 out_clip = tts_dir / f"clip_{idx:04d}.mp3"
                 seg["tts_file"] = str(out_clip)
                 tasks.append(generate_speech_edge(seg["vi_text"], voice, str(out_clip), speed))
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
         try:
             asyncio.run(build_all_tts())
@@ -309,11 +402,33 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+0
         total_duration_ms = len(orig_audio_seg)
         dub_track = AudioSegment.silent(duration=total_duration_ms)
 
-        for seg in translated_segments:
+        try:
+            try:
+                from synchronizer import trim_leading_silence, change_audio_speed
+            except ImportError:
+                from .synchronizer import trim_leading_silence, change_audio_speed
+        except Exception:
+            trim_leading_silence = None
+            change_audio_speed = None
+
+        for idx, seg in enumerate(translated_segments):
             clip_file = Path(seg["tts_file"])
             if clip_file.exists() and clip_file.stat().st_size > 0:
                 try:
                     clip_audio = AudioSegment.from_file(str(clip_file))
+                    if trim_leading_silence:
+                        clip_audio = trim_leading_silence(clip_audio)
+
+                    next_s = translated_segments[idx + 1]["start"] if idx + 1 < len(translated_segments) else (total_duration_ms / 1000.0)
+                    clip_len_s = len(clip_audio) / 1000.0
+                    orig_dur = max(0.5, seg.get("end", seg["start"] + 1.0) - seg["start"])
+                    max_win = max(0.5, next_s - seg["start"] - 0.05)
+                    target_win = min(max_win, max(orig_dur * 1.15, orig_dur + 0.25))
+
+                    if change_audio_speed and clip_len_s > target_win:
+                        needed_spd = min(clip_len_s / target_win, 1.75)
+                        clip_audio = change_audio_speed(clip_audio, speed=needed_spd)
+
                     start_ms = int(seg["start"] * 1000)
                     dub_track = dub_track.overlay(clip_audio, position=start_ms)
                 except Exception:
@@ -383,10 +498,11 @@ def main():
     parser.add_argument("--input", required=True, help="Đường dẫn file video đầu vào (.mp4)")
     parser.add_argument("--output", required=True, help="Đường dẫn file video xuất ra (.mp4)")
     parser.add_argument("--voice", default="vi-VN-HoaiMyNeural", help="Giọng đọc AI (Hoài My, Nam Minh, Jenny...)")
-    parser.add_argument("--speed", default="+0%", help="Tốc độ đọc (+0%, +10%, +20%)".replace("%", "%%"))
+    parser.add_argument("--speed", default="+15%", help="Tốc độ đọc (+0%, +15%, +25%)".replace("%", "%%"))
     parser.add_argument("--orig-vol", type=float, default=0.15, help="Âm lượng video gốc (0.1 đến 0.3)")
     parser.add_argument("--whisper-model", default="base", help="Model Whisper (tiny, base, small, medium)")
-    parser.add_argument("--burn-subtitles", action="store_true", default=True, help="Chèn phụ đề cứng vào video")
+    parser.add_argument("--burn-subtitles", dest="burn_subtitles", action="store_true", default=False, help="Chèn phụ đề cứng vào video")
+    parser.add_argument("--no-burn-subtitles", dest="burn_subtitles", action="store_false", help="Không chèn phụ đề cứng vào video")
     parser.add_argument("--source-lang", default="auto", help="Ngôn ngữ gốc (auto, zh, en)")
     parser.add_argument("--target-lang", default="vi", help="Ngôn ngữ dịch (vi)")
     parser.add_argument("--enable-logo", action="store_true", default=False, help="Chèn logo vào video")
@@ -402,7 +518,8 @@ def main():
     parser.add_argument("--enable-float-wm", action="store_true", default=False, help="Chữ mờ bảo vệ bản quyền")
     parser.add_argument("--float-wm-text", default="@gocphimcuon", help="Nội dung chữ mờ")
     parser.add_argument("--float-wm-opacity", type=float, default=0.30, help="Độ mờ chữ mờ")
-    parser.add_argument("--enable-outro", action="store_true", default=True, help="Ghép video Outro")
+    parser.add_argument("--enable-outro", dest="enable_outro", action="store_true", default=True, help="Ghép video Outro")
+    parser.add_argument("--no-outro", dest="enable_outro", action="store_false", help="Không ghép video Outro")
     parser.add_argument("--subtitles-json", default=None, help="Đường dẫn file JSON phụ đề đã sửa")
     parser.add_argument("--outro-path", default=None, help="Đường dẫn file Outro")
 

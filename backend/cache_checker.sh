@@ -31,6 +31,42 @@ elif [ "$APP" = "dramabox" ]; then
       echo "$f|$SZ|COMPLETE"
     fi
   done
+elif [ "$APP" = "loveshots" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.short.movie.app/cache/bytedance/playerkit/volcplayer/video_cache/*.mdl 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      CONF="${f%.mdl}.mdlnodeconf"
+      if [ -f "$CONF" ]; then
+        B64=$(base64 "$CONF" 2>/dev/null | tr -d '\r\n')
+        echo "$f|$SZ|$B64"
+      else
+        echo "$f|$SZ|NOCONF"
+      fi
+    fi
+  done
+elif [ "$APP" = "popdrama" ]; then
+  if [ -n "$FILTER" ]; then
+    FILES=$(ls -1tr /data/data/com.popdramas.top/cache/pssdk/pssdk_video_cache/${FILTER}*.mdl 2>/dev/null)
+  else
+    FILES=$(ls -1tr /data/data/com.popdramas.top/cache/pssdk/pssdk_video_cache/*.mdl 2>/dev/null)
+  fi
+  for f in $FILES; do
+    if [ -f "$f" ]; then
+      SZ=$(stat -c %s "$f" 2>/dev/null || echo 0)
+      CONF="${f%.mdl}.mdlnodeconf"
+      if [ -f "$CONF" ]; then
+        B64=$(base64 "$CONF" 2>/dev/null | tr -d '\r\n')
+        echo "$f|$SZ|$B64"
+      else
+        echo "$f|$SZ|NOCONF"
+      fi
+    fi
+  done
 else
   if [ -n "$FILTER" ]; then
     FILES=$(ls -1tr /data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/${FILTER}*.mdl 2>/dev/null)

@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Film,
   FileText,
-  Volume2
+  Volume2,
+  Zap
 } from 'lucide-react';
 import Header from '../components/Header';
 import { getVoiceAvatarUrl } from '../utils/voiceAvatar';
@@ -31,6 +32,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [targetLang, setTargetLang] = useState('vi');
   const [videoAspect, setVideoAspect] = useState('9 / 16');
   const [bgmVolume, setBgmVolume] = useState(25); // 25% âm lượng video gốc làm nền (êm dịu, không át giọng đọc)
+  const [speechRate, setSpeechRate] = useState('+15%'); // Tốc độ đọc AI: +15% chuẩn khớp thoại phim ngắn
 
   // 4 Tabs Tùy Chỉnh Overlay từ StudioVDT
   const [activeOverlayTab, setActiveOverlayTab] = useState('logo'); // 'logo' | 'sub' | 'wm' | 'outro'
@@ -47,7 +49,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Tab 2: Phụ đề
-  const [burnSubtitles, setBurnSubtitles] = useState(true);
+  const [burnSubtitles, setBurnSubtitles] = useState(false);
   const [subStyle, setSubStyle] = useState('white_outline'); // 'white_outline' | 'glassmorphism' | 'yellow_outline' | 'black_box'
   const [subFontSize, setSubFontSize] = useState(32);
   const [subBottomPct, setSubBottomPct] = useState(7);
@@ -327,6 +329,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
         body: JSON.stringify({
           videoPath: targetVideo,
           voice: selectedVoice,
+          speed: speechRate,
           sourceLang: sourceLang,
           targetLang: targetLang,
           whisperModel: whisperModel,
@@ -530,6 +533,43 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                 className="flex-1 accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
               />
               <span className="text-[10px] text-gray-400 font-bold">60%</span>
+            </div>
+          </div>
+
+          {/* Tốc Độ Đọc Giọng AI (Khớp Khẩu Hình & Nhịp Phim) */}
+          <div className="bg-white rounded-xl p-3 border border-gray-200/90 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-gray-800">
+              <span className="flex items-center gap-1.5">
+                <Zap size={15} className="text-amber-500" />
+                <span>Tốc Độ Đọc Giọng AI (Khớp Khẩu Hình):</span>
+              </span>
+              <span className="text-amber-800 font-extrabold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                {speechRate} {speechRate === '+15%' ? '(Chuẩn phim ngắn)' : speechRate === '+25%' ? '(Nhanh - Kịch tính)' : speechRate === '+0%' ? '(Đọc thong thả)' : '(Siêu nhanh)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 leading-snug">
+              Tùy chỉnh nhịp đọc AI để theo kịp tốc độ nói của diễn viên trong phim, tự động đồng bộ dứt câu khớp khuôn miệng.
+            </p>
+            <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+              {[
+                { val: '+0%', label: 'Bình thường (+0%)' },
+                { val: '+15%', label: '⚡ Nhanh vừa (+15%)' },
+                { val: '+25%', label: '🔥 Nhanh (+25%)' },
+                { val: '+35%', label: '🚀 Rất nhanh (+35%)' }
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => setSpeechRate(opt.val)}
+                  className={`py-1.5 px-1.5 text-[11px] font-bold rounded-lg border transition cursor-pointer text-center ${
+                    speechRate === opt.val
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 

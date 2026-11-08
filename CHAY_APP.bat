@@ -19,19 +19,9 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING 2^
     )
 )
 
-echo [2/3] Kiem tra Docker AI Engine...
-docker info >nul 2>&1
-if errorlevel 1 (
-    echo   - Docker Desktop chua bat. Dang bat Docker o che do ngam...
-    if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
-        start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-    )
-    echo   - Tinh nang TAI PHIM, BAT LINK va XUAT VIDEO van hoat dong 100%% binh thuong!
-) else (
-    echo   - Docker engine dang hoat dong.
-    echo   - Dang khoi dong Container AI Dubbing reelssoda_studio ...
-    docker compose up -d >nul 2>&1
-)
+echo [2/3] Kiem tra AI Dubbing Engine...
+echo   - Su dung truc tiep Python Native Engine (Whisper AI, Edge-TTS, FFmpeg).
+echo   - Tinh nang TAI PHIM, BAT LINK va LONG TIENG hoat dong 100%% sieu nhanh!
 
 echo.
 echo [3/3] Khoi dong Server Studio...

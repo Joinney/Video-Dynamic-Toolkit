@@ -42,6 +42,7 @@ export default function TaiPhimDramaSeries({
   const [previewVideoUrl, setPreviewVideoUrl] = useState('');
   const [isDownloadingDirectAll, setIsDownloadingDirectAll] = useState(false);
   const [downloadProgressDirect, setDownloadProgressDirect] = useState({ current: 0, total: 0 });
+  const [downloadingEps, setDownloadingEps] = useState({});
 
   // Queue danh sách tập video trong RAM cache
   const [queueItems, setQueueItems] = useState([]);
@@ -147,6 +148,9 @@ export default function TaiPhimDramaSeries({
         if (data.title && !dramaTitle) {
           setDramaTitle(data.title);
         }
+        if (data.coverUrl) {
+          setCurrentDramaCover(data.coverUrl);
+        }
       }
     } catch (e) {}
   };
@@ -191,6 +195,7 @@ export default function TaiPhimDramaSeries({
       const data = await res.json();
       if (data.success) {
         showToast('✅ Đã tải và lưu poster vào bộ phim thành công!');
+        setCurrentDramaCover(`/poster/${encodeURIComponent(dramaTitle)}?t=${Date.now()}`);
         fetchStatusData();
       } else {
         showToast(`⚠️ Không tìm thấy poster: ${data.message || ''}`);
@@ -433,49 +438,118 @@ export default function TaiPhimDramaSeries({
     }
   };
 
-  const handleDownloadSingleDirect = async (ep) => {
-    const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
-    showToast(`Đang tải/xuất Tập ${ep.epNumber} vào: ${targetFolder}...`);
+  const handleOpenFolder = async (folder) => {
     try {
-      if (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox') {
+      await fetch('/api/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: folder || '' })
+      });
+      showToast(`Đã mở thư mục: Soda_Reels_Videos/${folder || ''}`);
+    } catch (e) {
+      showToast('Không thể mở thư mục');
+    }
+  };
+
+  const handleDownloadSingleDirect = async (ep) => {
+    const targetFolder = directDramaData?.folderName || dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
+    const totalMb = (ep.localSizeFormatted || ep.sizeFormatted || '').replace(' MB', '') || '?';
+    setDownloadingEps(prev => ({
+      ...prev,
+      [ep.epNumber]: { status: 'downloading', pct: 5, currentMb: '0.00', totalMb }
+    }));
+    showToast(`⏳ Đang lưu Tập ${ep.epNumber} vào: Soda_Reels_Videos/${targetFolder}...`);
+
+    // Bộ polling kiểm tra phần trăm % tải thực tế từ server
+    const pollId = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/download-progress?drama=${encodeURIComponent(targetFolder)}&ep=${ep.epNumber}`);
+        const data = await res.json();
+        if (data.success && data.progress) {
+          const p = data.progress;
+          setDownloadingEps(prev => ({
+            ...prev,
+            [ep.epNumber]: {
+              status: p.status,
+              pct: p.pct,
+              currentMb: p.currentMb,
+              totalMb: (p.totalMb && p.totalMb !== '0.00') ? p.totalMb : totalMb
+            }
+          }));
+          if (p.pct >= 100 || p.status === 'done') {
+            clearInterval(pollId);
+          }
+        }
+      } catch (e) {}
+    }, 250);
+
+    try {
+      if (ep.path && (directDramaData?.app === 'gallery' || directDramaData?.app === 'loveshots' || directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox')) {
         const res = await fetch('/api/export', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             dramaTitle: targetFolder,
-            selectedPaths: [ep.path],
+            selectedPaths: [{ path: ep.path, epNumber: ep.epNumber, sizeBytes: ep.sizeBytes, directUrl: ep.directUrl }],
             startEpisode: ep.epNumber,
-            force: true
+            force: true,
+            forceSingle: true
           })
         });
         const data = await res.json();
+        clearInterval(pollId);
         if (data.success) {
-          showToast(`Tập ${ep.epNumber} đã được xuất thành công vào: ${targetFolder}!`);
+          setDownloadingEps(prev => ({
+            ...prev,
+            [ep.epNumber]: { status: 'done', pct: 100, currentMb: totalMb, totalMb }
+          }));
+          showToast(`🎉 Đã lưu Tập ${ep.epNumber} vào: Soda_Reels_Videos/${targetFolder}/Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`);
+          await fetchDirectEpisodes();
           fetchStatusData();
         } else {
+          setDownloadingEps(prev => ({ ...prev, [ep.epNumber]: { status: 'error', pct: 0 } }));
           showToast(`Lỗi xuất tập: ${data.message}`);
         }
       } else {
+        const directUrl = (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl;
+        if (!directUrl) {
+          clearInterval(pollId);
+          setDownloadingEps(prev => ({ ...prev, [ep.epNumber]: { status: 'error', pct: 0 } }));
+          showToast(`Tập ${ep.epNumber} chưa có link tải hoặc file trên máy!`);
+          return;
+        }
         const res = await fetch('/api/download-direct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
+            url: directUrl,
             dramaName: targetFolder,
             dramaTitle: targetFolder,
             epNumber: ep.epNumber
           })
         });
         const data = await res.json();
+        clearInterval(pollId);
         if (data.success) {
-          showToast(data.alreadyExists ? `Tập ${ep.epNumber} đã có sẵn trong bộ: ${targetFolder}` : `Tập ${ep.epNumber} tải xong vào: ${targetFolder}!`);
+          const szMb = data.sizeFormatted ? data.sizeFormatted.replace(' MB', '') : totalMb;
+          setDownloadingEps(prev => ({
+            ...prev,
+            [ep.epNumber]: { status: 'done', pct: 100, currentMb: szMb, totalMb: szMb }
+          }));
+          showToast(data.alreadyExists
+            ? `Tập ${ep.epNumber} đã có sẵn tại: Soda_Reels_Videos/${targetFolder}/Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`
+            : `🎉 Đã tải xong Tập ${ep.epNumber} vào: Soda_Reels_Videos/${targetFolder}/Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`);
+          await fetchDirectEpisodes();
           fetchStatusData();
         } else {
+          setDownloadingEps(prev => ({ ...prev, [ep.epNumber]: { status: 'error', pct: 0 } }));
           showToast(`Lỗi tải tập: ${data.message}`);
         }
       }
     } catch (e) {
-      showToast('Lỗi kết nối tải/xuất file');
+      clearInterval(pollId);
+      setDownloadingEps(prev => ({ ...prev, [ep.epNumber]: { status: 'error', pct: 0 } }));
+      showToast('Lỗi kết nối tải/xuất file: ' + e.message);
     }
   };
 
@@ -485,31 +559,35 @@ export default function TaiPhimDramaSeries({
     const targetFolder = dramaTitle || (directDramaData?.title) || (localDramas.length > 0 ? (localDramas[0].name || localDramas[0].title) : 'Phim_Drama');
     setIsDownloadingDirectAll(true);
 
-    if (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox') {
-      showToast(`Đang xuất toàn bộ ${eps.length} tập vào bộ phim: ${targetFolder}...`);
-      try {
-        const res = await fetch('/api/export', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dramaTitle: targetFolder,
-            selectedPaths: eps.map(e => ({ path: e.path, suggestedEp: e.epNumber })),
-            force: true
-          })
-        });
-        const resJson = await res.json();
-        if (resJson.success) {
-          showToast(`Đã xuất hoàn tất ${eps.length} tập vào: ${targetFolder}!`);
-          fetchStatusData();
-        } else {
-          showToast(`Lỗi xuất: ${resJson.message}`);
+    const hasAnyPaths = eps.some(e => e.path);
+    if (hasAnyPaths && (directDramaData?.app === 'gallery' || directDramaData?.app === 'loveshots' || directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox')) {
+      const validEps = eps.filter(e => e.path);
+      if (validEps.length > 0) {
+        showToast(`Đang xuất ${validEps.length} tập vào bộ phim: ${targetFolder}...`);
+        try {
+          const res = await fetch('/api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dramaTitle: targetFolder,
+              selectedPaths: validEps.map(e => ({ path: e.path, suggestedEp: e.epNumber })),
+              force: true
+            })
+          });
+          const resJson = await res.json();
+          if (resJson.success) {
+            showToast(`Đã xuất hoàn tất ${validEps.length} tập vào: ${targetFolder}!`);
+            fetchStatusData();
+          } else {
+            showToast(`Lỗi xuất: ${resJson.message}`);
+          }
+        } catch (e) {
+          showToast('Lỗi kết nối xuất toàn bộ tập');
+        } finally {
+          setIsDownloadingDirectAll(false);
         }
-      } catch (e) {
-        showToast('Lỗi kết nối xuất toàn bộ tập');
-      } finally {
-        setIsDownloadingDirectAll(false);
+        return;
       }
-      return;
     }
 
     setDownloadProgressDirect({ current: 0, total: eps.length });
@@ -551,7 +629,7 @@ export default function TaiPhimDramaSeries({
       <div className="max-w-[1740px] w-full mx-auto">
         <Header
           title="Tải Phim Drama Series"
-          badge="SODA REELS • MINUTEDRAMA • DRAMABOX"
+          badge="THƯ VIỆN • LOVESHOTS • YOUDRAMA • MINUTEDRAMA"
           showBackButton={true}
           onBackHome={onBackHome}
           backendData={backendData}
@@ -566,9 +644,10 @@ export default function TaiPhimDramaSeries({
             <div className="flex bg-blue-50/70 p-1 rounded-xl border border-blue-100">
               {[
                 { id: 'auto', label: 'Tự động quét' },
-                { id: 'sodareels', label: '🥤 Soda Reels' },
-                { id: 'minutedrama', label: '🎭 MinuteDrama' },
-                { id: 'dramabox', label: '🎁 DramaBox' }
+                { id: 'gallery', label: '🖼️ Thư Viện' },
+                { id: 'loveshots', label: '💖 LoveShots' },
+                { id: 'youdrama', label: '📺 YouDrama' },
+                { id: 'minutedrama', label: '🎭 MinuteDrama' }
               ].map((app) => (
                 <button
                   key={app.id}
@@ -646,7 +725,13 @@ export default function TaiPhimDramaSeries({
               <div className="w-24 h-32 bg-slate-200 rounded-lg flex flex-col items-center justify-center text-center text-xs text-gray-500 border border-gray-300 shrink-0 overflow-hidden relative shadow-xs">
                 <img
                   key={currentDramaCover || dramaTitle}
-                  src={currentDramaCover ? `/api/proxy-img?url=${encodeURIComponent(currentDramaCover)}` : `/poster/${encodeURIComponent(dramaTitle)}`}
+                  src={
+                    currentDramaCover && currentDramaCover.startsWith('http')
+                      ? `/api/proxy-img?url=${encodeURIComponent(currentDramaCover)}`
+                      : currentDramaCover && !currentDramaCover.includes('default_poster')
+                      ? currentDramaCover
+                      : `/poster/${encodeURIComponent(dramaTitle)}?t=${Date.now()}`
+                  }
                   alt={dramaTitle}
                   className="w-full h-full object-cover block"
                   onLoad={(e) => { e.target.style.display = 'block'; }}
@@ -875,7 +960,7 @@ export default function TaiPhimDramaSeries({
                   <span className="text-2xl mb-1.5">📥</span>
                   <h4 className="font-bold text-gray-700 text-xs">Chưa có video trong bộ nhớ đệm giả lập</h4>
                   <p className="text-[11px] text-gray-500 mt-1 max-w-sm">
-                    Hãy mở app <strong>Soda Reels</strong>, <strong>MinuteDrama</strong> hoặc <strong>DramaBox</strong> trên máy ảo để xem phim, tool sẽ tự động gom video vào đây. Hoặc bấm <strong>"Link Trực Tiếp Cả Bộ"</strong> ở trên để tải trực tiếp từ CDN!
+                    Hãy mở app <strong>LoveShots</strong>, <strong>YouDrama</strong> hoặc <strong>MinuteDrama</strong> trên máy ảo để xem phim, tool sẽ tự động gom video vào đây. Hoặc bấm <strong>"Link Trực Tiếp Cả Bộ"</strong> ở trên để tải trực tiếp từ CDN!
                   </p>
                 </div>
               ) : (
@@ -1128,17 +1213,21 @@ export default function TaiPhimDramaSeries({
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-base text-blue-700">⚡ Danh Sách Cả Bộ Phim & Xuất Video</h3>
                   <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${
-                    directDramaData?.app === 'sodareels'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : directDramaData?.app === 'dramabox'
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    directDramaData?.app === 'gallery'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : directDramaData?.app === 'loveshots'
+                        ? 'bg-pink-50 text-pink-700 border-pink-200'
+                        : directDramaData?.app === 'youdrama'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : directDramaData?.app === 'minutedrama'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
-                    {directDramaData?.app === 'sodareels' ? '🥤 Soda Reels (Bộ nhớ đệm PSSDK)' : directDramaData?.app === 'dramabox' ? '🎁 DramaBox' : '🎬 MinuteDrama CDN'}
+                    {directDramaData?.app === 'gallery' ? '🖼️ Thư Viện / Bộ Nhớ Máy (MP4 Chuẩn)' : directDramaData?.app === 'loveshots' ? '💖 LoveShots (Bộ nhớ đệm VolcPlayer)' : directDramaData?.app === 'youdrama' ? '📺 YouDrama CDN' : directDramaData?.app === 'minutedrama' ? '🎭 MinuteDrama CDN' : '🥤 Soda Reels'}
                   </span>
                   {directDramaData && directDramaData.episodes && (
                     <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
-                      {directDramaData.app === 'minutedrama' ? `Đã tìm thấy ${directDramaData.episodes.length} tập` : `Đã có ${directDramaData.episodes.length}/${directDramaData.totalEpisodes || 60} tập`}
+                      {(directDramaData.app === 'minutedrama' || directDramaData.app === 'youdrama') ? `Đã tìm thấy ${directDramaData.episodes.length} tập` : `Đã có ${directDramaData.episodes.length}/${directDramaData.totalEpisodes || 60} tập`}
                     </span>
                   )}
                 </div>
@@ -1163,13 +1252,54 @@ export default function TaiPhimDramaSeries({
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-slate-800">📁 Thư mục lưu trên máy:</span>
                   <code className="bg-white border border-slate-300 text-blue-700 font-mono font-bold text-xs px-2.5 py-1 rounded-lg">
-                    Soda_Reels_Videos/{directDramaData?.title || dramaTitle}
+                    Soda_Reels_Videos/{directDramaData?.folderName || directDramaData?.title || dramaTitle}
                   </code>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFolder(directDramaData?.folderName || directDramaData?.title || dramaTitle)}
+                    className="bg-white hover:bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-300 font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-2xs"
+                    title="Mở thư mục này trên máy tính"
+                  >
+                    📂 Mở Thư Mục
+                  </button>
                 </div>
-                <span className="text-[11px] text-emerald-700 font-semibold">
-                  ✅ Khớp chuẩn bộ phim đang mở (Không lưu ra bộ khác)
-                </span>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Đã tải: {directDramaData?.downloadedCount || 0}/{directDramaData?.episodes?.length || directDramaData?.totalEpisodes || 0} tập
+                  </span>
+                  <span className="text-emerald-700 font-semibold hidden md:inline">
+                    ✅ Khớp chuẩn bộ phim đang mở
+                  </span>
+                </div>
               </div>
+
+              {/* Hướng dẫn tải phim LoveShots */}
+              {directDramaData?.app === 'loveshots' && (
+                <div className="mb-2.5 bg-pink-50/80 p-2.5 rounded-xl border border-pink-200 text-xs text-pink-900 flex flex-col gap-1">
+                  <div className="font-bold flex items-center gap-1.5 text-pink-800">
+                    <span>💡 Cơ chế video của LoveShots:</span>
+                  </div>
+                  <div className="text-[11px] leading-relaxed text-pink-800/90">
+                    Khác với MinuteDrama / YouDrama dùng link CDN công khai, <strong>LoveShots sử dụng nền tảng ByteDance VolcEngine VOD</strong> (phát qua mã bảo mật VID & Token, không để lộ link URL ra ngoài internet).<br />
+                    • <strong>Chất lượng video:</strong> Tool trích xuất trực tiếp file container <strong>MP4 gốc 100%</strong> từ bộ nhớ đệm VolcPlayer trên máy ảo.<br />
+                    • <strong>Cách tải:</strong> Bấm nút <strong>&quot;Tải (1s)&quot;</strong> từng tập hoặc bấm <strong>&quot;🚀 Xuất Ngay Toàn Bộ Tập Sang MP4&quot;</strong> ở dưới để lưu trọn bộ về thư mục máy tính!
+                  </div>
+                </div>
+              )}
+
+              {/* Hướng dẫn tải phim DramaBox */}
+              {directDramaData?.app === 'dramabox' && (
+                <div className="mb-2.5 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 text-xs text-amber-900 flex flex-col gap-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                    <span>💡 Hướng dẫn tải video DramaBox:</span>
+                  </div>
+                  <div className="text-[11px] leading-relaxed text-amber-800/90">
+                    DramaBox phát trực tiếp qua luồng bảo mật trên RAM máy ảo nên không lưu sẵn link CDN vào cơ sở dữ liệu như MinuteDrama.<br />
+                    • <strong>Cách tải cả bộ:</strong> Mở app <strong>DramaBox</strong> trên máy ảo, bấm nút <strong>&quot;Tải xuống&quot;</strong> trọn bộ. Ngay khi tải xong trong DramaBox, tool sẽ tự động gom toàn bộ các file MP4 vào thư mục <code>Soda_Reels_Videos/{directDramaData?.title || dramaTitle}</code> trên máy tính của bạn!<br />
+                    • <strong>Tập đã có trên máy:</strong> Sẽ hiển thị trạng thái xanh sẵn sàng để lồng tiếng hoặc phát.
+                  </div>
+                </div>
+              )}
 
               {/* Codec Switcher for MinuteDrama */}
               {directDramaData?.app === 'minutedrama' && (
@@ -1193,11 +1323,15 @@ export default function TaiPhimDramaSeries({
                   directDramaData.episodes.map((ep) => {
                     const url = ep.directUrl || ((selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl);
                     const durationMins = ep.duration ? `${Math.floor(ep.duration / 60)}:${String(ep.duration % 60).padStart(2, '0')}` : '';
+                    const isDownloaded = !!ep.isDownloaded;
+                    const progInfo = downloadingEps[ep.epNumber];
+                    const isDownloading = progInfo && (progInfo.status === 'downloading' || progInfo.status === 'copying' || progInfo.status === 'starting');
+                    const pctVal = progInfo?.pct !== undefined ? progInfo.pct : 0;
 
                     return (
-                      <div key={ep.epNumber} className="bg-slate-50 hover:bg-blue-50/40 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2 transition">
+                      <div key={ep.epNumber} className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition ${isDownloading ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300 shadow-xs' : isDownloaded ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50 hover:bg-blue-50/40 border-slate-200'}`}>
                         <div className="min-w-0 flex-1 flex items-center gap-2">
-                          <span className="font-bold text-blue-700 text-xs shrink-0 w-14">
+                          <span className={`font-bold text-xs shrink-0 w-14 ${isDownloading ? 'text-blue-800' : isDownloaded ? 'text-emerald-800' : 'text-blue-700'}`}>
                             Tập {ep.epNumber < 10 ? `0${ep.epNumber}` : ep.epNumber}:
                           </span>
                           {ep.isVip && (
@@ -1205,52 +1339,119 @@ export default function TaiPhimDramaSeries({
                               VIP
                             </span>
                           )}
-                          {ep.sizeFormatted && (
-                            <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono shrink-0">
-                              {ep.sizeFormatted}
-                            </span>
-                          )}
-                          {durationMins && (
-                            <span className="text-[10px] text-slate-400 shrink-0">
-                              ({durationMins})
-                            </span>
-                          )}
-                          {url ? (
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-slate-600 hover:text-blue-600 text-[11px] font-mono truncate hover:underline"
-                              title={url}
-                            >
-                              {url}
-                            </a>
+                          {isDownloading ? (
+                            <div className="flex flex-col min-w-0 flex-1 pr-2">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-300 shrink-0 flex items-center gap-1.5 animate-pulse">
+                                  <span className="animate-spin text-[10px]">⏳</span>
+                                  Đang tải {pctVal}% ({progInfo.currentMb || '0'} / {progInfo.totalMb || '?'} MB)
+                                </span>
+                                <span className="text-slate-500 font-mono text-[11px] truncate">
+                                  Đang lưu Tap_{String(ep.epNumber).padStart(2, '0')}.mp4...
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mt-1.5 border border-slate-300 shadow-inner">
+                                <div
+                                  className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 h-full rounded-full transition-all duration-200 ease-out"
+                                  style={{ width: `${Math.max(6, pctVal)}%` }}
+                                ></div>
+                              </div>
+                            </div>
                           ) : (
-                            <span className="text-amber-600 text-[11px] font-medium truncate">
-                              ⏳ Chưa tải vào máy (Bấm &apos;Lướt Tập Này&apos; trên giả lập để bắt link)
-                            </span>
+                            <>
+                              {isDownloaded ? (
+                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-300 shrink-0 flex items-center gap-1">
+                                  ✅ Đã lưu ({ep.localSizeFormatted || ep.sizeFormatted})
+                                </span>
+                              ) : ep.sizeFormatted ? (
+                                <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono shrink-0">
+                                  {ep.sizeFormatted}
+                                </span>
+                              ) : null}
+                              {durationMins && (
+                                <span className="text-[10px] text-slate-400 shrink-0">
+                                  ({durationMins})
+                                </span>
+                              )}
+                              {isDownloaded ? (
+                                <span className="text-emerald-700 font-mono text-[11px] font-semibold truncate" title={`Lưu tại: Soda_Reels_Videos/${directDramaData?.folderName || directDramaData?.title || dramaTitle}/${ep.localFilename || `Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`}`}>
+                                  📁 {ep.localFilename || `Tap_${String(ep.epNumber).padStart(2, '0')}.mp4`}
+                                </span>
+                              ) : url ? (
+                                (directDramaData?.app === 'gallery' || directDramaData?.app === 'loveshots') ? (
+                                  <span className={`${directDramaData?.app === 'gallery' ? 'text-emerald-700' : 'text-pink-700'} text-[11px] font-semibold flex items-center gap-1.5 truncate`} title={url}>
+                                    <span className={`${directDramaData?.app === 'gallery' ? 'bg-emerald-100 text-emerald-800' : 'bg-pink-100 text-pink-700'} px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0`}>
+                                      {directDramaData?.app === 'gallery' ? 'MP4 Thư Viện' : 'MP4 Gốc'}
+                                    </span>
+                                    <span className="text-slate-500 font-mono text-[10px] truncate">{ep.filename || 'Video Cache'}</span>
+                                  </span>
+                                ) : (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-slate-600 hover:text-blue-600 text-[11px] font-mono truncate hover:underline"
+                                    title={url}
+                                  >
+                                    {url}
+                                  </a>
+                                )
+                              ) : (
+                                <span className="text-amber-600 text-[11px] font-medium truncate">
+                                  ⏳ Chưa tải vào máy (Bấm &apos;Lướt Tập Này&apos; trên giả lập để bắt link)
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="flex gap-1.5 shrink-0">
-                          {url ? (
+                          {url && !isDownloaded && !isDownloading && (
                             <button
                               type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(url);
-                                showToast(`Đã copy link CDN Tập ${ep.epNumber}!`);
+                                showToast((directDramaData?.app === 'gallery' || directDramaData?.app === 'loveshots') ? `Đã copy link stream nội bộ Tập ${ep.epNumber}!` : `Đã copy link CDN Tập ${ep.epNumber}!`);
                               }}
                               className="bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded border border-blue-200 cursor-pointer shadow-2xs"
                             >
                               Copy Link
                             </button>
-                          ) : null}
-                          {ep.isCached || url ? (
+                          )}
+                          {isDownloading ? (
+                            <button
+                              disabled
+                              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md cursor-wait opacity-95 shrink-0"
+                            >
+                              <span className="animate-spin text-xs">⏳</span>
+                              <span className="font-mono font-black">{pctVal}%</span>
+                            </button>
+                          ) : isDownloaded ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenFolder(directDramaData?.folderName || directDramaData?.title || dramaTitle)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2.5 py-1 rounded-lg transition cursor-pointer shadow-2xs flex items-center gap-1"
+                                title="Mở thư mục chứa video này trên máy tính"
+                              >
+                                📂 Mở File
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSingleDirect(ep)}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-2 py-1 rounded border border-slate-300 cursor-pointer"
+                                title="Tải lại / ghi đè file này"
+                              >
+                                Tải lại
+                              </button>
+                            </div>
+                          ) : (ep.isCached || url) ? (
                             <button
                               type="button"
                               onClick={() => handleDownloadSingleDirect(ep)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs"
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition cursor-pointer shadow-xs flex items-center gap-1"
+                              title="Tải tập này ngay vào máy tính"
                             >
-                              Tải (1s)
+                              🚀 Tải (1s)
                             </button>
                           ) : (
                             <button
@@ -1289,7 +1490,7 @@ export default function TaiPhimDramaSeries({
                 >
                   {isDownloadingDirectAll
                     ? `⏳ Đang Xử Lý Tập ${downloadProgressDirect.current}/${downloadProgressDirect.total}...`
-                    : (directDramaData?.app === 'sodareels' || directDramaData?.app === 'dramabox'
+                    : ((directDramaData?.app === 'gallery' || directDramaData?.app === 'loveshots' || directDramaData?.app === 'sodareels')
                         ? `🚀 Xuất Ngay Toàn Bộ ${directDramaData?.episodes?.length || 0} Tập Sang MP4`
                         : `🚀 Tải Tự Động Tất Cả Các Tập (${directDramaData?.episodes?.length || 0} Tập)`)
                   }

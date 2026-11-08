@@ -68,13 +68,22 @@ class TTSService:
                 )
                 await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
                 if raw_tmp.exists() and raw_tmp.stat().st_size > 150:
-                    snd = AudioSegment.from_file(str(raw_tmp))
+                    converted = False
                     try:
-                        snd = enhance_vocal(snd, voice_name=cur_voice, deep_warmth=True)
-                    except Exception as e_enh:
-                        logger.debug(f"enhance_vocal note: {e_enh}")
-                    snd.export(str(output_file), format="wav")
-                    return True
+                        snd = AudioSegment.from_file(str(raw_tmp))
+                        try:
+                            snd = enhance_vocal(snd, voice_name=cur_voice, deep_warmth=True)
+                        except Exception as e_enh:
+                            logger.debug(f"enhance_vocal note: {e_enh}")
+                        snd.export(str(output_file), format="wav")
+                        converted = True
+                    except Exception as e_pydub:
+                        logger.warning(f"pydub audio conversion failed: {e_pydub}, trying direct ffmpeg...")
+                        import subprocess
+                        ret = subprocess.run(["ffmpeg", "-y", "-i", str(raw_tmp), str(output_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        converted = (ret.returncode == 0 and output_file.exists() and output_file.stat().st_size > 150)
+                    if converted:
+                        return True
             except Exception as e_master:
                 if attempt < 2:
                     await asyncio.sleep(0.4 * (attempt + 1))

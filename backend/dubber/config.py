@@ -155,10 +155,10 @@ class DubbingConfig:
     source_language: str = "auto"
     target_language: str = "vi"
     tts_voice: str = "vieneu:Adam"
-    tts_rate: str = "+0%"
+    tts_rate: str = "+15%"
     tts_volume: str = "+0%"
     original_audio_volume: float = 0.15
-    max_speed_factor: float = 1.35
+    max_speed_factor: float = 1.75
     min_speed_factor: float = 0.75
     temp_dir: Path = field(default_factory=lambda: Path("./temp"))
     output_dir: Path = field(default_factory=lambda: Path("./output"))
@@ -169,7 +169,7 @@ class DubbingConfig:
     logo_scale: float = 0.18
     logo_opacity: float = 0.90
     logo_rotation: float = 0.0
-    burn_subtitles: bool = True
+    burn_subtitles: bool = False
     subtitle_font_size: int = 32
     subtitle_style: str = "white_outline"
     subtitle_margin_v: int = 7

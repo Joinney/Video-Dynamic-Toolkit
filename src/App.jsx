@@ -48,7 +48,13 @@ export default function App() {
 
   useEffect(() => {
     fetchGlobalStatus();
-    const interval = setInterval(fetchGlobalStatus, 3500);
+    // Chỉ poll ngầm ở Trang Chủ (#home) để tránh nghẽn luồng tải phim / lồng tiếng
+    const interval = setInterval(() => {
+      const hash = window.location.hash || '#home';
+      if (hash === '#home' || !hash) {
+        fetchGlobalStatus();
+      }
+    }, 8000);
     return () => clearInterval(interval);
   }, []);
 

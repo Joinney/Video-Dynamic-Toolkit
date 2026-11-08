@@ -3,6 +3,7 @@ Audio Synchronization and Time-Stretching Module
 Aligns generated speech with the original speech timestamps.
 """
 import logging
+import os
 from pathlib import Path
 from typing import List, Optional, Union
 from pydub import AudioSegment
@@ -13,18 +14,61 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Tự động nạp ffmpeg và ffprobe tĩnh cho pydub và subprocess
+_here = Path(__file__).resolve().parent
+_ffmpeg_candidates = [
+    _here.parent.parent / "node_modules" / "ffmpeg-static" / "ffmpeg.exe",
+    _here.parent.parent / "node_modules" / "ffmpeg-static" / "ffmpeg",
+    Path(r"D:\Nodejs\project\reelssoda\node_modules\ffmpeg-static\ffmpeg.exe"),
+    Path("C:/src/platform-tools/ffmpeg.exe"),
+    Path("C:/ffmpeg/bin/ffmpeg.exe"),
+]
+_ffprobe_candidates = [
+    _here.parent.parent / "node_modules" / "ffprobe-static" / "bin" / "win32" / "x64" / "ffprobe.exe",
+    _here.parent.parent / "node_modules" / "ffprobe-static" / "bin" / "linux" / "x64" / "ffprobe",
+    Path(r"D:\Nodejs\project\reelssoda\node_modules\ffprobe-static\bin\win32\x64\ffprobe.exe"),
+    Path("C:/src/platform-tools/ffprobe.exe"),
+    Path("C:/ffmpeg/bin/ffprobe.exe"),
+]
 
-def trim_leading_silence(sound: AudioSegment, silence_thresh: float = -42.0) -> AudioSegment:
+for _c in _ffmpeg_candidates:
+    if _c.exists():
+        AudioSegment.converter = str(_c)
+        AudioSegment.ffmpeg = str(_c)
+        _bin_dir = str(_c.parent)
+        if _bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = _bin_dir + os.pathsep + os.environ.get("PATH", "")
+        break
+
+for _p in _ffprobe_candidates:
+    if _p.exists():
+        AudioSegment.ffprobe = str(_p)
+        _bin_dir = str(_p.parent)
+        if _bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = _bin_dir + os.pathsep + os.environ.get("PATH", "")
+        break
+
+
+def get_ffmpeg_binary() -> str:
+    if getattr(AudioSegment, "converter", None) and Path(AudioSegment.converter).exists():
+        return str(AudioSegment.converter)
+    for c in _ffmpeg_candidates:
+        if c.exists():
+            return str(c)
+    return "ffmpeg"
+
+
+def trim_leading_silence(sound: AudioSegment, silence_thresh: float = -40.0) -> AudioSegment:
     """
-    Cắt bỏ khoảng lặng kỹ thuật số (150ms-300ms) ở đầu tệp sinh từ TTS.
+    Cắt bỏ khoảng lặng kỹ thuật số (100ms-300ms) ở đầu tệp sinh từ TTS.
     Đảm bảo âm thanh phát âm NGAY LẬP TỨC khi nhân vật mở miệng, triệt tiêu hoàn toàn độ trễ tiếng so với video.
     """
-    chunk_ms = 10
+    chunk_ms = 5
     trim_ms = 0
     max_scan = min(len(sound), 800)
     for i in range(0, max_scan, chunk_ms):
         if sound[i:i + chunk_ms].dBFS > silence_thresh:
-            trim_ms = max(0, i - 15)
+            trim_ms = max(0, i - 10)
             break
     return sound[trim_ms:] if trim_ms > 0 else sound
 
@@ -34,10 +78,10 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
     Điều chỉnh tốc độ âm thanh (tempo) mượt mà bằng thuật toán chuyên nghiệp FFmpeg atempo (WSOLA).
     Giữ nguyên 100% cao độ giọng nói, không ngập ngừng, không bị giật rè hay méo tiếng.
     """
-    if 0.98 <= speed <= 1.02:
+    if 0.97 <= speed <= 1.03:
         return sound
 
-    speed = max(0.9, min(1.35, speed))
+    speed = max(0.85, min(1.85, speed))
     import tempfile, subprocess
     tmp_in = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     tmp_out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -48,9 +92,17 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
 
     try:
         sound.export(in_path, format="wav")
+        if speed > 2.0:
+            filter_str = f"atempo=2.0,atempo={speed / 2.0:.4f}"
+        elif speed < 0.5:
+            filter_str = f"atempo=0.5,atempo={speed / 0.5:.4f}"
+        else:
+            filter_str = f"atempo={speed:.4f}"
+
+        ffmpeg_bin = get_ffmpeg_binary()
         cmd = [
-            "ffmpeg", "-y", "-i", in_path,
-            "-filter:a", f"atempo={speed:.4f}",
+            ffmpeg_bin, "-y", "-i", in_path,
+            "-filter:a", filter_str,
             "-vn", out_path
         ]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -70,10 +122,10 @@ def change_audio_speed(sound: AudioSegment, speed: float = 1.0) -> AudioSegment:
 class AudioSynchronizer:
     def __init__(
         self,
-        max_speed_factor: float = 1.45,
+        max_speed_factor: float = 1.75,
         min_speed_factor: float = 1.0,
     ):
-        self.max_speed_factor = max(1.05, min(2.0, max_speed_factor))
+        self.max_speed_factor = max(1.10, min(2.0, max_speed_factor))
         self.min_speed_factor = 1.0  # Luôn giữ tối thiểu 1.0x, tuyệt đối không kéo chậm làm tụt tông/trầm giọng
 
     def align_and_assemble(
@@ -124,13 +176,17 @@ class AudioSynchronizer:
             else:
                 next_start = total_duration_seconds
 
-            available_window_s = max(0.3, next_start - seg.start - 0.05)
             clip_len_s = len(clip) / 1000.0
+            orig_spoken_dur = max(0.5, seg.end - seg.start)
+            max_window_s = max(0.5, next_start - seg.start - 0.05)
 
-            # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng trống tới câu tiếp theo
-            # TUYỆT ĐỐI KHÔNG BAO GIỜ CẮT CỤT ÂM THANH (đảm bảo 100% nhân vật nói trọn vẹn câu thoại, không bao giờ bị cụt âm cuối)
-            if clip_len_s > available_window_s:
-                needed_speed = clip_len_s / available_window_s
+            # Khớp khẩu hình: Cố gắng dứt câu bám sát lúc nhân vật kết thúc thoại (+ đệm tự nhiên 15-20%),
+            # nhưng không được vượt quá mốc câu kế tiếp để tránh đè lời thoại.
+            target_window_s = min(max_window_s, max(orig_spoken_dur * 1.15, orig_spoken_dur + 0.25))
+
+            # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng thời gian mục tiêu
+            if clip_len_s > target_window_s:
+                needed_speed = clip_len_s / target_window_s
                 target_speed = min(needed_speed, self.max_speed_factor)
                 adjusted_clip = change_audio_speed(clip, speed=target_speed)
             else:

@@ -5,13 +5,37 @@ Trích xuất giọng nói và dịch phụ đề trước khi lồng tiếng b�
 """
 import sys
 import os
+import io
 import json
 import argparse
 import subprocess
 from pathlib import Path
 
+# Đảm bảo UTF-8 toàn diện trên Windows console để tránh UnicodeEncodeError
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        try:
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 # Add current directory to sys.path
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
+
+# Monkey-patch av.open for PyAV compatibility (remove metadata_errors)
+try:
+    import av
+    _orig_av_open = av.open
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _orig_av_open(*args, **kwargs)
+    av.open = _safe_av_open
+except Exception:
+    pass
 
 def extract_audio_wav(video_path: Path, output_wav: Path):
     """Trích xuất âm thanh 16kHz mono WAV cho Whisper nhận diện nhanh nhất"""

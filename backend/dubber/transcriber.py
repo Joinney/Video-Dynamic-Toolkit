@@ -268,15 +268,48 @@ class Transcriber:
                     logger.info(f"Filtered out background song lyrics: '{text}'")
                     continue
 
-            # Dùng mốc thời gian từng từ (word timestamps) để lấy điểm bắt đầu chính xác từng mili-giây
-            w_start = round(s.words[0].start, 2) if hasattr(s, "words") and s.words else round(s.start, 2)
-            w_end = round(s.words[-1].end, 2) if hasattr(s, "words") and s.words else round(s.end, 2)
-
-            cleaned_raw.append({
-                "start": max(0.0, w_start),
-                "end": max(w_start + 0.3, w_end),
-                "text": text,
-            })
+            # KỸ THUẬT PHÂN NHỊP TỰ NHIÊN (NÓI TỚI ĐÂU RA PHỤ ĐỀ TỚI ĐÓ):
+            # Không dồn một câu dài 15-20 từ hiển thị trước cả 5-7 giây.
+            # Dựa vào word timestamps, tự động chia nhỏ thành các cụm đàm thoại ngắn (3-6 từ, 1-2.5 giây)
+            # khớp chính xác từng thời điểm phát âm của nhân vật.
+            if hasattr(s, "words") and s.words and len(s.words) > 1:
+                curr_words = []
+                for w in s.words:
+                    if curr_words:
+                        pause = w.start - curr_words[-1].end
+                        dur = w.end - curr_words[0].start
+                        w_prev_txt = curr_words[-1].word.strip()
+                        is_break = any(p in w_prev_txt for p in ['.', '!', '?', '。', '！', '？'])
+                        is_comma = any(p in w_prev_txt for p in [',', ';', '，', '；', '、'])
+                        
+                        if is_break or (is_comma and len(curr_words) >= 3) or pause >= 0.35 or dur >= 2.6 or len(curr_words) >= 7:
+                            c_text = ''.join(x.word for x in curr_words).strip()
+                            c_text = re.sub(r'[-—–_]{2,}', ' ', c_text).strip()
+                            if is_valid_speech_text(c_text):
+                                cleaned_raw.append({
+                                    "start": max(0.0, round(curr_words[0].start, 2)),
+                                    "end": max(round(curr_words[0].start, 2) + 0.3, round(curr_words[-1].end, 2)),
+                                    "text": c_text,
+                                })
+                            curr_words = []
+                    curr_words.append(w)
+                if curr_words:
+                    c_text = ''.join(x.word for x in curr_words).strip()
+                    c_text = re.sub(r'[-—–_]{2,}', ' ', c_text).strip()
+                    if is_valid_speech_text(c_text):
+                        cleaned_raw.append({
+                            "start": max(0.0, round(curr_words[0].start, 2)),
+                            "end": max(round(curr_words[0].start, 2) + 0.3, round(curr_words[-1].end, 2)),
+                            "text": c_text,
+                        })
+            else:
+                w_start = round(s.start, 2)
+                w_end = round(s.end, 2)
+                cleaned_raw.append({
+                    "start": max(0.0, w_start),
+                    "end": max(w_start + 0.3, w_end),
+                    "text": text,
+                })
 
         # KỸ THUẬT PHÂN TÁCH LỜI THOẠI RÕ RÀNG:
         # Tuyệt đối không gộp chung câu thoại của các nhân vật khác nhau (hỏi - đáp).

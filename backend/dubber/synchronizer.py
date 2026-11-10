@@ -58,17 +58,17 @@ def get_ffmpeg_binary() -> str:
     return "ffmpeg"
 
 
-def trim_leading_silence(sound: AudioSegment, silence_thresh: float = -40.0) -> AudioSegment:
+def trim_leading_silence(sound: AudioSegment, silence_thresh: float = -36.0) -> AudioSegment:
     """
-    Cắt bỏ khoảng lặng kỹ thuật số (100ms-300ms) ở đầu tệp sinh từ TTS.
-    Đảm bảo âm thanh phát âm NGAY LẬP TỨC khi nhân vật mở miệng, triệt tiêu hoàn toàn độ trễ tiếng so với video.
+    Cắt bỏ khoảng lặng kỹ thuật số (150ms-300ms) ở đầu tệp sinh từ TTS.
+    Đảm bảo âm thanh phát âm NGAY LẬP TỨC đúng mili-giây đầu tiên khi nhân vật mở miệng, triệt tiêu hoàn toàn độ trễ tiếng so với video.
     """
-    chunk_ms = 5
+    chunk_ms = 2
     trim_ms = 0
     max_scan = min(len(sound), 800)
     for i in range(0, max_scan, chunk_ms):
         if sound[i:i + chunk_ms].dBFS > silence_thresh:
-            trim_ms = max(0, i - 10)
+            trim_ms = max(0, i - 4)
             break
     return sound[trim_ms:] if trim_ms > 0 else sound
 

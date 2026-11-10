@@ -287,9 +287,38 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
             raw_segments = []
             for seg in segments:
                 text = seg.text.strip()
-                if text:
-                    w_start = round(seg.words[0].start, 2) if hasattr(seg, "words") and seg.words else round(seg.start, 2)
-                    w_end = round(seg.words[-1].end, 2) if hasattr(seg, "words") and seg.words else round(seg.end, 2)
+                if not text:
+                    continue
+                if hasattr(seg, "words") and seg.words and len(seg.words) > 1:
+                    curr_words = []
+                    for w in seg.words:
+                        if curr_words:
+                            pause = w.start - curr_words[-1].end
+                            dur = w.end - curr_words[0].start
+                            w_prev_txt = curr_words[-1].word.strip()
+                            is_break = any(p in w_prev_txt for p in ['.', '!', '?', '。', '！', '？'])
+                            is_comma = any(p in w_prev_txt for p in [',', ';', '，', '；', '、'])
+                            if is_break or (is_comma and len(curr_words) >= 3) or pause >= 0.35 or dur >= 2.6 or len(curr_words) >= 7:
+                                c_text = ''.join(x.word for x in curr_words).strip()
+                                if c_text:
+                                    raw_segments.append({
+                                        "start": max(0.0, round(curr_words[0].start, 2)),
+                                        "end": max(round(curr_words[0].start, 2) + 0.3, round(curr_words[-1].end, 2)),
+                                        "text": c_text
+                                    })
+                                curr_words = []
+                        curr_words.append(w)
+                    if curr_words:
+                        c_text = ''.join(x.word for x in curr_words).strip()
+                        if c_text:
+                            raw_segments.append({
+                                "start": max(0.0, round(curr_words[0].start, 2)),
+                                "end": max(round(curr_words[0].start, 2) + 0.3, round(curr_words[-1].end, 2)),
+                                "text": c_text
+                            })
+                else:
+                    w_start = round(seg.start, 2)
+                    w_end = round(seg.end, 2)
                     raw_segments.append({"start": w_start, "end": max(w_start + 0.3, w_end), "text": text})
                     cur_pct = 40 + min(9, int((seg.end / total_dur) * 10))
                     cur_m, cur_s = divmod(int(seg.end), 60)

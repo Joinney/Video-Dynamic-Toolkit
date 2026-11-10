@@ -222,7 +222,7 @@ class VideoDubberPipeline:
         # Đảm bảo phụ đề và âm thanh khớp 100%: Chỉ xuất phụ đề cho các câu thoại thực sự có âm thanh lồng tiếng
         valid_segments = []
         for seg in segments:
-            if seg.tts_audio_path and Path(seg.tts_audio_path).exists() and Path(seg.tts_audio_path).stat().st_size > 150:
+            if seg.tts_audio_path and Path(seg.tts_audio_path).exists() and Path(seg.tts_audio_path).stat().st_size > 100:
                 valid_segments.append(seg)
             else:
                 logger.warning(f"Bỏ qua phụ đề câu không có âm thanh lồng tiếng: '{getattr(seg, 'translated_text', '') or getattr(seg, 'text', '')}'")

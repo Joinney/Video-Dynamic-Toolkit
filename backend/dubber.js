@@ -160,7 +160,7 @@ function startDubbingJob(inputVideoPath, options = {}) {
   const scriptPath = path.join(__dirname, 'dubber', 'dubber.py');
   const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
 
-  const burnSub = Boolean(options.burnSubtitles);
+  const burnSub = options.burnSubtitles !== undefined ? Boolean(options.burnSubtitles) : true;
   const sourceLang = options.sourceLang || 'auto';
   const targetLang = options.targetLang || 'vi';
 
@@ -206,9 +206,8 @@ function startDubbingJob(inputVideoPath, options = {}) {
     if (options.logoOpacity !== undefined) args.push('--logo-opacity', String(options.logoOpacity / 100));
     if (options.logoRotation !== undefined) args.push('--logo-rotation', String(options.logoRotation));
   }
-  if (options.subStyle) {
-    args.push('--sub-style', options.subStyle);
-  }
+  const finalSubStyle = options.subStyle || 'black_box';
+  args.push('--sub-style', finalSubStyle);
   if (options.subFontSize) {
     args.push('--sub-font-size', String(options.subFontSize));
   }

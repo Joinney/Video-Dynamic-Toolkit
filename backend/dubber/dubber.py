@@ -370,15 +370,14 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
             if not actual_voice.endswith("Neural"):
                 actual_voice = "vi-VN-HoaiMyNeural"
             async with sem:
-                for attempt in range(3):
+                for attempt in range(4):
                     try:
-                        v = actual_voice if attempt == 0 else "vi-VN-HoaiMyNeural"
-                        communicate = edge_tts.Communicate(clean_t, v, rate=spd)
+                        communicate = edge_tts.Communicate(clean_t, actual_voice, rate=spd if attempt < 2 else "+0%")
                         await communicate.save(clip_path)
                         if Path(clip_path).exists() and Path(clip_path).stat().st_size > 100:
                             return True
                     except Exception:
-                        await asyncio.sleep(0.5 * (attempt + 1))
+                        await asyncio.sleep(0.4 * (attempt + 1))
             return False
 
         async def build_all_tts():

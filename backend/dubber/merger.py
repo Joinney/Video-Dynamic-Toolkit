@@ -252,9 +252,9 @@ def srt_to_ass(
             f"Style: SubText,{font_name},{f_size},&H00FFFFFF,&H000000FF,&H00000000,&H75000000,-1,0,0,0,100,100,0,0,1,0,1.2,2,20,20,{mv},1\n\n"
         )
     elif is_black_box:
-        # Layer 0: Cinema Black Box rounded vector pill
+        # Layer 0: Cinema Black Box (Nền hộp đen 100% che kín hoàn toàn phụ đề video gốc)
         header += (
-            f"Style: Pill,{font_name},10,&H25040406,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n"
+            f"Style: Pill,{font_name},10,&H00000000,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1\n"
             f"Style: SubText,{font_name},{f_size},&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,2,20,20,{mv},1\n\n"
         )
     elif is_yellow:
@@ -336,11 +336,15 @@ def srt_to_ass(
                         bb = d_draw.textbbox((0, 0), w_ln, font=font)
                         max_lw = max(max_lw, bb[2] - bb[0])
 
-                    pad_x = max(18, int(f_size * 0.42))
-                    pad_y = max(8, int(f_size * 0.22))
-                    pill_w = max_lw + pad_x * 2
+                    pad_x = max(24, int(f_size * 0.50))
+                    pad_y = max(10, int(f_size * 0.28))
+                    if is_black_box:
+                        min_box_w = int(v_w * 0.88)
+                        pill_w = max(min_box_w, max_lw + pad_x * 2)
+                    else:
+                        pill_w = max_lw + pad_x * 2
                     pill_h = line_h * len(wrapped_lines) + pad_y * 2
-                    radius = max(8, min(22, int(f_size * 0.35)))
+                    radius = max(6, min(16, int(f_size * 0.25)))
 
                     pill_path = make_rounded_rect_ass(pill_w, pill_h, radius)
                     pill_x = (v_w - pill_w) // 2

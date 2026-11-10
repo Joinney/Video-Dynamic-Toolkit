@@ -192,11 +192,12 @@ class AudioSynchronizer:
             else:
                 adjusted_clip = clip
 
-            # Mốc kết thúc phụ đề chuẩn xác: Đúng thời điểm giọng đọc dứt câu là phụ đề ẩn đi
+            # Mốc kết thúc phụ đề chuẩn xác: Đồng bộ hoàn hảo với giọng đọc và che kín phụ đề gốc của video
             actual_spoken_len_s = round(len(adjusted_clip) / 1000.0, 3)
-            seg.sub_end = round(seg.start + actual_spoken_len_s, 3)
-            if seg.sub_end > next_start and idx + 1 < len(segments):
-                seg.sub_end = max(seg.start + 0.6, next_start)
+            target_sub_end = max(seg.start + actual_spoken_len_s, seg.end)
+            if idx + 1 < len(segments):
+                target_sub_end = min(target_sub_end, next_start - 0.05)
+            seg.sub_end = round(max(seg.start + 0.5, target_sub_end), 3)
 
             start_pos_ms = int(seg.start * 1000)
             master_track = master_track.overlay(adjusted_clip, position=start_pos_ms)

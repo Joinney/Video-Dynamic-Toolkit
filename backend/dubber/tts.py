@@ -50,18 +50,10 @@ class TTSService:
         if not clean_text:
             return False
 
-        # Thử lại tối đa 4 lần với backoff và đổi giọng dự phòng nếu cần
-        candidate_voices = [voice]
-        if "HoaiMy" in voice:
-            candidate_voices.append("vi-VN-NamMinhNeural")
-        elif "NamMinh" in voice:
-            candidate_voices.append("vi-VN-HoaiMyNeural")
-        else:
-            candidate_voices.append("vi-VN-HoaiMyNeural")
-            candidate_voices.append("vi-VN-NamMinhNeural")
-
+        # ĐẢM BẢO 100% ĐÚNG 1 GIỌNG ĐỌC DUY NHẤT TRONG SUỐT VIDEO:
+        # Tuyệt đối không bao giờ đổi giọng dự phòng làm video bị 2 giọng nói khác nhau (lúc nam lúc nữ)!
+        cur_voice = voice
         for attempt in range(4):
-            cur_voice = candidate_voices[attempt % len(candidate_voices)]
             cur_rate = rate if attempt < 2 else "+0%"
             try:
                 communicate = edge_tts.Communicate(
@@ -141,13 +133,16 @@ class TTSService:
                         cur_pct
                     )
                 audio_file = output_dir / f"seg_{seg.id:04d}.wav"
+                FEMALE_VIENEU = ("trúc ly", "mai anh", "thùy dung", "ngọc huyền", "ngọc trân", "ngọc linh", "đoan trang", "quỳnh anh", "ái hân", "xuân tiên", "thục đoan", "mỹ duyên", "kim thanh")
+                is_female = any(fn in clean_voice.lower() for fn in FEMALE_VIENEU)
+                fb_voice = "vi-VN-HoaiMyNeural" if is_female else "vi-VN-NamMinhNeural"
                 try:
                     generate_vieneu_speech(text, voice=clean_voice, output_path=audio_file)
                 except Exception as vn_err:
-                    logger.warning(f"VieNeu TTS note on seg {seg.id}: {vn_err}, trying fallback...")
+                    logger.warning(f"VieNeu TTS note on seg {seg.id}: {vn_err}, trying fallback with same gender voice ({fb_voice})...")
                     try:
                         loop_fb = asyncio.new_event_loop()
-                        loop_fb.run_until_complete(self._generate_single_audio_edge(text, audio_file, voice="vi-VN-HoaiMyNeural", rate=self.rate, volume=self.volume))
+                        loop_fb.run_until_complete(self._generate_single_audio_edge(text, audio_file, voice=fb_voice, rate=self.rate, volume=self.volume))
                         loop_fb.close()
                     except Exception:
                         pass
@@ -195,33 +190,30 @@ class TTSService:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Phục hồi triệt để: Tự động phát hiện và sinh lại tuần tự các câu chưa tạo được âm thanh
-                # Đảm bảo 100% video đều có tiếng nói, không bao giờ bị gián đoạn hay mất câu giữa chừng
+                # ĐẢM BẢO 100% ĐÚNG 1 GIỌNG ĐỌC DUY NHẤT (self.voice), không bao giờ đổi giọng
                 for seg in segments:
                     t_val = seg.translated_text.strip() or seg.text.strip()
                     if not t_val:
                         continue
                     a_file = output_dir / f"seg_{seg.id:04d}.wav"
-                    if not a_file.exists() or a_file.stat().st_size <= 120:
-                        logger.warning(f"Segment {seg.id} missing TTS audio, retrying individually...")
-                        for retry_attempt in range(3):
-                            cur_fb = "vi-VN-NamMinhNeural" if "HoaiMy" in self.voice else "vi-VN-HoaiMyNeural"
-                            v_to_use = self.voice if retry_attempt == 0 else cur_fb
-                            r_to_use = self.rate if retry_attempt == 0 else "+0%"
+                    if not a_file.exists() or a_file.stat().st_size <= 100:
+                        logger.warning(f"Segment {seg.id} missing TTS audio, retrying individually with consistent voice '{self.voice}'...")
+                        for retry_attempt in range(4):
                             ok = await self._generate_single_audio_edge(
                                 text=t_val,
                                 output_file=a_file,
-                                voice=v_to_use,
-                                rate=r_to_use,
+                                voice=self.voice,
+                                rate=self.rate if retry_attempt == 0 else "+0%",
                                 volume=self.volume,
                             )
-                            if ok and a_file.exists() and a_file.stat().st_size > 120:
+                            if ok and a_file.exists() and a_file.stat().st_size > 100:
                                 break
-                            await asyncio.sleep(0.3)
+                            await asyncio.sleep(0.4 * (retry_attempt + 1))
 
                 # Gán tts_audio_path cho các tệp WAV thực sự sinh thành công
                 for seg in segments:
                     a_file = output_dir / f"seg_{seg.id:04d}.wav"
-                    if a_file.exists() and a_file.stat().st_size > 120:
+                    if a_file.exists() and a_file.stat().st_size > 100:
                         seg.tts_audio_path = str(a_file)
                     else:
                         seg.tts_audio_path = None

@@ -49,8 +49,8 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Tab 2: Phụ đề
-  const [burnSubtitles, setBurnSubtitles] = useState(false);
-  const [subStyle, setSubStyle] = useState('white_outline'); // 'white_outline' | 'glassmorphism' | 'yellow_outline' | 'black_box'
+  const [burnSubtitles, setBurnSubtitles] = useState(true);
+  const [subStyle, setSubStyle] = useState('black_box'); // 'black_box' | 'glassmorphism' | 'white_outline' | 'yellow_outline'
   const [subFontSize, setSubFontSize] = useState(32);
   const [subBottomPct, setSubBottomPct] = useState(7);
   const [previewSubText, setPreviewSubText] = useState('Studio VDT — Lồng tiếng phim AI đỉnh cao');
@@ -66,7 +66,7 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
     const isClean = (t) => t && typeof t === 'string' && t.replace(/[\s\-_—–]/g, '').length > 0;
     if (previewSegments && previewSegments.length > 0) {
       const activeSeg = previewSegments.find(
-        (s) => videoCurrentTime >= s.start && videoCurrentTime <= s.end
+        (s) => videoCurrentTime >= s.start && videoCurrentTime <= (s.sub_end || s.end)
       );
       if (activeSeg && isClean(activeSeg.text)) {
         return activeSeg.text;
@@ -901,10 +901,10 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                           onChange={(e) => setSubStyle(e.target.value)}
                           className="w-full bg-slate-50 border border-gray-200 rounded-lg p-1.5 text-xs font-semibold text-gray-800 cursor-pointer"
                         >
+                          <option value="black_box">⬛ Nền hộp đen (Che sạch phụ đề gốc video)</option>
+                          <option value="glassmorphism">🪟 Nền kính mờ trong suốt (Glassmorphism)</option>
                           <option value="white_outline">Viền trắng điện ảnh (Cinema White Outline)</option>
-                          <option value="glassmorphism">Nền kính mờ trong suốt (Glassmorphism)</option>
-                          <option value="yellow_outline">Nổi bật (Yellow Text Outline)</option>
-                          <option value="black_box">Nền hộp đen (Cinema Black Box)</option>
+                          <option value="yellow_outline">Nổi bật viền vàng (Yellow Text Outline)</option>
                         </select>
                       </div>
 

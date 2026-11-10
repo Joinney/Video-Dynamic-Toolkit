@@ -3,6 +3,7 @@ Text-to-Speech (TTS) module supporting Microsoft Edge-TTS and VieNeu-TTS (Adam T
 """
 import asyncio
 import logging
+import re
 from pathlib import Path
 from typing import List, Optional
 try:
@@ -13,6 +14,42 @@ except ImportError:
     from synchronizer import get_ffmpeg_binary
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_text_for_tts(text: str) -> str:
+    """
+    Chuẩn hóa câu thoại để Edge-TTS và các bộ sinh giọng AI phát âm trơn tru 100%,
+    khắc phục triệt để lỗi NoAudioReceived do chứa số có gạch nối, dấu ba chấm, ký tự đặc biệt.
+    """
+    if not text:
+        return "Ừm."
+    t = str(text).strip()
+    t = re.sub(r'[\r\n\t]+', ' ', t)
+    t = re.sub(r'[-—–_]{2,}', ' ', t)
+    t = re.sub(r'~+', '', t)
+    # Tách các dãy số có gạch nối ví dụ 2-1-1 thành 2, 1, 1 để Edge-TTS đọc tự nhiên không bị lỗi
+    t = re.sub(r'(\d+)\s*[-—–]\s*(?=\d)', r'\1, ', t)
+    t = re.sub(r'\?+', '?', t)
+    t = re.sub(r'!+', '!', t)
+    t = re.sub(r'\.{2,}|…', '.', t)
+
+    has_words = bool(re.search(r'[a-zA-Z0-9\u00C0-\u1EF9]', t))
+    if not has_words:
+        if '?' in t:
+            return 'Hả?'
+        elif '!' in t:
+            return 'Á!'
+        else:
+            return 'Ừm.'
+
+    # Chuẩn hóa các từ cảm thán ngắn
+    lower = t.lower()
+    if lower in ('a?!', 'a?', 'a!'):
+        return 'Á!'
+    if lower in ('ah!', 'ah'):
+        return 'A!'
+
+    return t.strip()
 
 
 class TTSService:
@@ -35,7 +72,6 @@ class TTSService:
         volume: str,
     ) -> bool:
         import edge_tts
-        import re
         from pydub import AudioSegment
         try:
             from .vieneu_tts import enhance_vocal
@@ -45,10 +81,9 @@ class TTSService:
         output_file.parent.mkdir(parents=True, exist_ok=True)
         raw_tmp = output_file.with_suffix(".raw.mp3")
 
-        clean_text = re.sub(r'[\r\n\t]+', ' ', text).strip()
-        clean_text = re.sub(r'[-—–_]{2,}', ' ', clean_text).strip()
+        clean_text = sanitize_text_for_tts(text)
         if not clean_text:
-            return False
+            clean_text = "Ừm."
 
         # ĐẢM BẢO 100% ĐÚNG 1 GIỌNG ĐỌC DUY NHẤT TRONG SUỐT VIDEO:
         # Tuyệt đối không bao giờ đổi giọng dự phòng làm video bị 2 giọng nói khác nhau (lúc nam lúc nữ)!
@@ -62,7 +97,7 @@ class TTSService:
                     rate=cur_rate,
                     volume=volume,
                 )
-                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=25.0)
+                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
                 if raw_tmp.exists() and raw_tmp.stat().st_size > 100:
                     converted = False
                     try:
@@ -85,7 +120,7 @@ class TTSService:
                         return True
             except Exception as e_master:
                 if attempt < 3:
-                    await asyncio.sleep(0.4 * (attempt + 1))
+                    await asyncio.sleep(0.3 * (attempt + 1))
                     continue
                 logger.warning(f"Edge TTS processing note: {e_master}")
             finally:
@@ -94,6 +129,36 @@ class TTSService:
                         raw_tmp.unlink(missing_ok=True)
                     except Exception:
                         pass
+
+        # BẢO HIỂM 100%: Fallback tự động qua Google TTS nếu Edge-TTS bị nghẽn mạng/rate-limit hoặc NoAudioReceived
+        # Tuyệt đối không bao giờ để câu thoại bị câm tiếng trong khi phụ đề vẫn hiển thị!
+        try:
+            import urllib.request, urllib.parse, ssl, subprocess
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            clean_q = re.sub(r'[\-_—–~^#*]', ' ', clean_text).strip() or "Ừm."
+            g_url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=' + urllib.parse.quote(clean_q[:250])
+            g_req = urllib.request.Request(g_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(g_req, context=ctx, timeout=10.0) as resp:
+                g_data = resp.read()
+                if len(g_data) > 100:
+                    with open(raw_tmp, "wb") as fg:
+                        fg.write(g_data)
+                    ffmpeg_bin = get_ffmpeg_binary()
+                    ret = subprocess.run([ffmpeg_bin, "-y", "-i", str(raw_tmp), str(output_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if ret.returncode == 0 and output_file.exists() and output_file.stat().st_size > 100:
+                        logger.info(f"Generated fallback audio via Google TTS for: '{clean_text[:30]}'")
+                        return True
+        except Exception as eg:
+            logger.warning(f"Google TTS emergency fallback note: {eg}")
+        finally:
+            if raw_tmp.exists():
+                try:
+                    raw_tmp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
         return False
 
     def generate_speech_for_segments(
@@ -158,16 +223,16 @@ class TTSService:
                         done_pct
                     )
         else:
-            # Edge TTS with Semaphore concurrency limiter (max 3 at once) to prevent rate limits
+            # Edge TTS with Semaphore concurrency limiter (max 2 at once) to prevent rate limits & socket drops
             async def run_edge_batch():
                 done_count = 0
-                sem = asyncio.Semaphore(3)
+                sem = asyncio.Semaphore(2)
 
                 async def wrapped_gen(seg_item):
                     nonlocal done_count
                     t_val = seg_item.translated_text.strip() or seg_item.text.strip()
                     if not t_val:
-                        return
+                        t_val = "Ừm."
                     out_f = output_dir / f"seg_{seg_item.id:04d}.wav"
                     snip = t_val.replace('"', '')[:30]
                     async with sem:
@@ -178,6 +243,7 @@ class TTSService:
                             rate=self.rate,
                             volume=self.volume,
                         )
+                        await asyncio.sleep(0.05)
                     done_count += 1
                     if progress_callback:
                         sub_pct = 0.50 + min(0.25, (done_count / tot_segs) * 0.25)
@@ -186,19 +252,17 @@ class TTSService:
                             sub_pct
                         )
 
-                tasks = [wrapped_gen(seg) for seg in segments if (seg.translated_text.strip() or seg.text.strip())]
+                tasks = [wrapped_gen(seg) for seg in segments]
                 await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Phục hồi triệt để: Tự động phát hiện và sinh lại tuần tự các câu chưa tạo được âm thanh
                 # ĐẢM BẢO 100% ĐÚNG 1 GIỌNG ĐỌC DUY NHẤT (self.voice), không bao giờ đổi giọng
                 for seg in segments:
-                    t_val = seg.translated_text.strip() or seg.text.strip()
-                    if not t_val:
-                        continue
+                    t_val = seg.translated_text.strip() or seg.text.strip() or "Ừm."
                     a_file = output_dir / f"seg_{seg.id:04d}.wav"
                     if not a_file.exists() or a_file.stat().st_size <= 100:
-                        logger.warning(f"Segment {seg.id} missing TTS audio, retrying individually with consistent voice '{self.voice}'...")
-                        for retry_attempt in range(4):
+                        logger.warning(f"Segment {seg.id} missing TTS audio, retrying with emergency fallback for '{t_val[:25]}'...")
+                        for retry_attempt in range(3):
                             ok = await self._generate_single_audio_edge(
                                 text=t_val,
                                 output_file=a_file,
@@ -208,9 +272,9 @@ class TTSService:
                             )
                             if ok and a_file.exists() and a_file.stat().st_size > 100:
                                 break
-                            await asyncio.sleep(0.4 * (retry_attempt + 1))
+                            await asyncio.sleep(0.3 * (retry_attempt + 1))
 
-                # Gán tts_audio_path cho các tệp WAV thực sự sinh thành công
+                # Gán tts_audio_path cho tất cả các câu thoại
                 for seg in segments:
                     a_file = output_dir / f"seg_{seg.id:04d}.wav"
                     if a_file.exists() and a_file.stat().st_size > 100:

@@ -364,8 +364,12 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
 
         async def generate_speech_edge(text, voice_code, clip_path, spd="+0%"):
             clean_t = text.strip() if text else ""
+            clean_t = re.sub(r'[\r\n\t]+', ' ', clean_t)
+            clean_t = re.sub(r'(\d+)\s*[-—–]\s*(?=\d)', r'\1, ', clean_t)
+            clean_t = re.sub(r'[-—–_]{2,}', ' ', clean_t)
+            clean_t = re.sub(r'\.{2,}|…', '.', clean_t).strip()
             if not clean_t or len(clean_t.replace(".", "").replace("-", "").strip()) == 0:
-                return False
+                clean_t = "Ừm."
             actual_voice = voice_code.replace("vieneu:", "") if "vieneu:" in voice_code else voice_code
             if not actual_voice.endswith("Neural"):
                 actual_voice = "vi-VN-HoaiMyNeural"
@@ -377,7 +381,23 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
                         if Path(clip_path).exists() and Path(clip_path).stat().st_size > 100:
                             return True
                     except Exception:
-                        await asyncio.sleep(0.4 * (attempt + 1))
+                        await asyncio.sleep(0.3 * (attempt + 1))
+
+            # Fallback Google TTS
+            try:
+                import urllib.request, urllib.parse, ssl
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                g_url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=' + urllib.parse.quote(clean_t[:250])
+                g_req = urllib.request.Request(g_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(g_req, context=ctx, timeout=8.0) as resp:
+                    with open(clip_path, "wb") as fg:
+                        fg.write(resp.read())
+                    if Path(clip_path).exists() and Path(clip_path).stat().st_size > 100:
+                        return True
+            except Exception:
+                pass
             return False
 
         async def build_all_tts():

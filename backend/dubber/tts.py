@@ -88,16 +88,28 @@ class TTSService:
         # ĐẢM BẢO 100% ĐÚNG 1 GIỌNG ĐỌC DUY NHẤT TRONG SUỐT VIDEO:
         # Tuyệt đối không bao giờ đổi giọng dự phòng làm video bị 2 giọng nói khác nhau (lúc nam lúc nữ)!
         cur_voice = voice
-        for attempt in range(4):
+        for attempt in range(5):
             cur_rate = rate if attempt < 2 else "+0%"
+            # Làm sạch sâu văn bản ở các lượt retry để tránh lỗi ký tự đặc biệt của Edge-TTS
+            speak_txt = clean_text
+            if attempt == 2:
+                speak_txt = re.sub(r'[^\w\s\.,\?!àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]', ' ', clean_text).strip() or "Ừm."
+            elif attempt >= 3:
+                # Đảm bảo câu ngắn gọn, chắc chắn sinh được audio với đúng giọng đã chọn
+                speak_txt = re.sub(r'[\r\n\t\-—–_\.\?!,]+', ' ', clean_text).strip()
+                if not speak_txt:
+                    speak_txt = "Ừm."
+                elif len(speak_txt.split()) > 15:
+                    speak_txt = ' '.join(speak_txt.split()[:12]) + "."
+
             try:
                 communicate = edge_tts.Communicate(
-                    text=clean_text,
+                    text=speak_txt,
                     voice=cur_voice,
                     rate=cur_rate,
                     volume=volume,
                 )
-                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=20.0)
+                await asyncio.wait_for(communicate.save(str(raw_tmp)), timeout=25.0)
                 if raw_tmp.exists() and raw_tmp.stat().st_size > 100:
                     converted = False
                     try:
@@ -119,45 +131,16 @@ class TTSService:
                     if converted:
                         return True
             except Exception as e_master:
-                if attempt < 3:
-                    await asyncio.sleep(0.3 * (attempt + 1))
+                if attempt < 4:
+                    await asyncio.sleep(0.4 * (attempt + 1))
                     continue
-                logger.warning(f"Edge TTS processing note: {e_master}")
+                logger.warning(f"Edge TTS processing note on voice '{cur_voice}': {e_master}")
             finally:
                 if raw_tmp.exists():
                     try:
                         raw_tmp.unlink(missing_ok=True)
                     except Exception:
                         pass
-
-        # BẢO HIỂM 100%: Fallback tự động qua Google TTS nếu Edge-TTS bị nghẽn mạng/rate-limit hoặc NoAudioReceived
-        # Tuyệt đối không bao giờ để câu thoại bị câm tiếng trong khi phụ đề vẫn hiển thị!
-        try:
-            import urllib.request, urllib.parse, ssl, subprocess
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            clean_q = re.sub(r'[\-_—–~^#*]', ' ', clean_text).strip() or "Ừm."
-            g_url = 'https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=' + urllib.parse.quote(clean_q[:250])
-            g_req = urllib.request.Request(g_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(g_req, context=ctx, timeout=10.0) as resp:
-                g_data = resp.read()
-                if len(g_data) > 100:
-                    with open(raw_tmp, "wb") as fg:
-                        fg.write(g_data)
-                    ffmpeg_bin = get_ffmpeg_binary()
-                    ret = subprocess.run([ffmpeg_bin, "-y", "-i", str(raw_tmp), str(output_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    if ret.returncode == 0 and output_file.exists() and output_file.stat().st_size > 100:
-                        logger.info(f"Generated fallback audio via Google TTS for: '{clean_text[:30]}'")
-                        return True
-        except Exception as eg:
-            logger.warning(f"Google TTS emergency fallback note: {eg}")
-        finally:
-            if raw_tmp.exists():
-                try:
-                    raw_tmp.unlink(missing_ok=True)
-                except Exception:
-                    pass
 
         return False
 
@@ -283,14 +266,15 @@ class TTSService:
                         seg.tts_audio_path = None
 
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    import nest_asyncio
-                    nest_asyncio.apply()
-                    loop.run_until_complete(run_edge_batch())
-                else:
-                    loop.run_until_complete(run_edge_batch())
+                loop = asyncio.get_running_loop()
             except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pool.submit(lambda: asyncio.run(run_edge_batch())).result()
+            else:
                 asyncio.run(run_edge_batch())
 
         logger.info("Speech generation finished.")

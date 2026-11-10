@@ -270,8 +270,8 @@ class Transcriber:
 
             # KỸ THUẬT PHÂN NHỊP TỰ NHIÊN (NÓI TỚI ĐÂU RA PHỤ ĐỀ TỚI ĐÓ):
             # Không dồn một câu dài 15-20 từ hiển thị trước cả 5-7 giây.
-            # Dựa vào word timestamps, tự động chia nhỏ thành các cụm đàm thoại ngắn (3-6 từ, 1-2.5 giây)
-            # khớp chính xác từng thời điểm phát âm của nhân vật.
+            # Dựa vào word timestamps, phân tách chính xác theo câu thoại tự nhiên (2.0s - 3.8s)
+            # Khớp chính xác từng nhịp nói của nhân vật, không ngắt vụn làm hỏng ngữ điệu đọc AI.
             if hasattr(s, "words") and s.words and len(s.words) > 1:
                 curr_words = []
                 for w in s.words:
@@ -282,7 +282,20 @@ class Transcriber:
                         is_break = any(p in w_prev_txt for p in ['.', '!', '?', '。', '！', '？'])
                         is_comma = any(p in w_prev_txt for p in [',', ';', '，', '；', '、'])
                         
-                        if is_break or (is_comma and len(curr_words) >= 3) or pause >= 0.35 or dur >= 2.6 or len(curr_words) >= 7:
+                        # Điều kiện phân tách nhịp thoại hoàn hảo:
+                        # 1. Hết câu hoàn chỉnh (. ! ? 。 ！ ？)
+                        # 2. Dấu phẩy khi vế câu đã đủ dài (>= 2.2s hoặc >= 6 từ)
+                        # 3. Khoảng lặng đàm thoại thực sự (pause >= 0.55s và câu đã kéo dài >= 1.5s)
+                        # 4. Câu đàm thoại liên tục quá dài (> 3.8s) có nhịp thở (pause >= 0.20s)
+                        should_split = (
+                            is_break
+                            or (is_comma and (dur >= 2.2 or len(curr_words) >= 6))
+                            or (pause >= 0.55 and dur >= 1.5)
+                            or (dur >= 3.8 and pause >= 0.20)
+                            or (dur >= 4.5)
+                        )
+                        
+                        if should_split:
                             c_text = ''.join(x.word for x in curr_words).strip()
                             c_text = re.sub(r'[-—–_]{2,}', ' ', c_text).strip()
                             if is_valid_speech_text(c_text):
@@ -311,10 +324,9 @@ class Transcriber:
                     "text": text,
                 })
 
-        # KỸ THUẬT PHÂN TÁCH LỜI THOẠI RÕ RÀNG:
+        # KỸ THUẬT PHÂN TÁCH LỜI THOẠI RÕ RÀNG & CHỐNG MẨU VỤN:
         # Tuyệt đối không gộp chung câu thoại của các nhân vật khác nhau (hỏi - đáp).
-        # Giữ nguyên từng câu thoại, câu hỏi, câu cảm thán độc lập để phụ đề và giọng đọc khớp 100% từng nhân vật.
-        # Chỉ gộp khi mẩu âm thanh quá ngắn (< 0.5s), cực ngắn và khoảng nghỉ gần như 0s (<= 0.05s).
+        # Tự động sáp nhập các mẩu ngữ âm cụt (< 0.7s) vào câu liền trước nếu không có dấu ngắt câu.
         merged_list = []
         for item in cleaned_raw:
             if not merged_list:
@@ -325,11 +337,12 @@ class Transcriber:
             combined_dur = item["end"] - last_item["start"]
 
             has_ending_punct = last_item["text"][-1] in "。！？?!.,:;" if last_item["text"] else False
-            is_micro_syllable = (last_item["end"] - last_item["start"]) < 0.5 and len(last_item["text"]) <= 2
+            item_is_tiny = (item["end"] - item["start"]) < 0.7 and len(item["text"]) <= 3
+            last_is_tiny = (last_item["end"] - last_item["start"]) < 0.7 and len(last_item["text"]) <= 3
 
-            if 0.0 <= gap <= 0.05 and is_micro_syllable and not has_ending_punct and combined_dur <= 1.2:
+            if (gap <= 0.3 and (item_is_tiny or last_is_tiny) and not has_ending_punct and combined_dur <= 4.0):
                 last_item["end"] = max(last_item["end"], item["end"])
-                sep = "，" if last_item["text"][-1] not in "，, " else " "
+                sep = " " if last_item["text"][-1] not in "，, " else ""
                 last_item["text"] = last_item["text"] + sep + item["text"]
             else:
                 if item["start"] < last_item["end"]:

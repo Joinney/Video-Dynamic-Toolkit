@@ -25642,6 +25642,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
     const [isUpdatingDrama, setIsUpdatingDrama] = (0, import_react8.useState)(false);
     const [isDeletingDrama, setIsDeletingDrama] = (0, import_react8.useState)(false);
     const [isAutoFetchingPoster, setIsAutoFetchingPoster] = (0, import_react8.useState)(false);
+    const [editAppKey, setEditAppKey] = (0, import_react8.useState)("auto");
+    const [editCustomAppName, setEditCustomAppName] = (0, import_react8.useState)("");
     const showToast = (text) => {
       setToastMsg(text);
       setTimeout(() => setToastMsg(""), 3500);
@@ -25785,6 +25787,8 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
       const dramaName = d.name || d.title || "";
       setEditingDrama(d);
       setEditDramaName(dramaName);
+      setEditAppKey(d.app || "auto");
+      setEditCustomAppName(d.appName || "");
       setEditPosterUrl("");
       setEditPosterBase64("");
       setEditPosterPreview(`/poster/${encodeURIComponent(dramaName)}?t=${Date.now()}`);
@@ -25850,7 +25854,9 @@ H\xE3y vi\u1EBFt k\u1ECBch b\u1EA3n (review phim / k\u1EC3 chuy\u1EC7n / \u0111\
             oldDramaName: editingDrama.name || editingDrama.title,
             newDramaName: editDramaName.trim(),
             posterUrl: editPosterUrl.trim(),
-            posterBase64: editPosterBase64
+            posterBase64: editPosterBase64,
+            app: editAppKey,
+            appName: editAppKey === "custom" ? editCustomAppName.trim() : void 0
           })
         });
         const data = await res.json();
@@ -25988,7 +25994,8 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
             dramaName: dramaTitle,
             dramaTitle,
             selectedPaths,
-            force: true
+            force: true,
+            app: activeApp || directDramaData?.app || "auto"
           })
         });
         const data = await res.json();
@@ -26054,7 +26061,8 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
               selectedPaths: [{ path: ep.path, epNumber: ep.epNumber, sizeBytes: ep.sizeBytes, directUrl: ep.directUrl }],
               startEpisode: ep.epNumber,
               force: true,
-              forceSingle: true
+              forceSingle: true,
+              app: activeApp || directDramaData?.app || "auto"
             })
           });
           const data = await res.json();
@@ -26086,7 +26094,8 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
               url: directUrl,
               dramaName: targetFolder,
               dramaTitle: targetFolder,
-              epNumber: ep.epNumber
+              epNumber: ep.epNumber,
+              app: activeApp || directDramaData?.app || "auto"
             })
           });
           const data = await res.json();
@@ -26128,7 +26137,8 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
               body: JSON.stringify({
                 dramaTitle: targetFolder,
                 selectedPaths: validEps.map((e) => ({ path: e.path, suggestedEp: e.epNumber })),
-                force: true
+                force: true,
+                app: activeApp || directDramaData?.app || "auto"
               })
             });
             const resJson = await res.json();
@@ -26160,7 +26170,8 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
               url: selectedCodec === "h264" && ep.directUrlH264 ? ep.directUrlH264 : ep.directUrl,
               dramaName: targetFolder,
               dramaTitle: targetFolder,
-              epNumber: ep.epNumber
+              epNumber: ep.epNumber,
+              app: activeApp || directDramaData?.app || "auto"
             })
           });
           const resJson = await res.json();
@@ -26498,7 +26509,7 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
           className: "text-slate-400 hover:text-amber-600 cursor-pointer p-0.5"
         },
         /* @__PURE__ */ import_react8.default.createElement(PenLine, { size: 12 })
-      )), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[11px] text-emerald-600 font-bold block mt-0.5" }, d.videos ? `${d.videos.length} T\u1EADp Video` : d.episodes || "0 T\u1EADp", " \u2022 ", d.totalSizeMb ? `${d.totalSizeMb} MB` : ""), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[10px] text-gray-400 truncate" }, "Soda_Reels_Videos/", d.name || d.title))), d.videos && d.videos.length > 0 && /* @__PURE__ */ import_react8.default.createElement("div", { className: "max-h-24 overflow-y-auto bg-white rounded-lg border border-gray-200 p-1 space-y-1" }, d.videos.map((v) => /* @__PURE__ */ import_react8.default.createElement("div", { key: v.relPath, className: "flex items-center justify-between text-[11px] p-1 hover:bg-slate-50 rounded" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "font-medium text-slate-700 truncate max-w-[130px]" }, v.name), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-1 shrink-0" }, /* @__PURE__ */ import_react8.default.createElement(
+      )), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-1.5 mt-1 flex-wrap" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/90 shadow-2xs" }, /* @__PURE__ */ import_react8.default.createElement("span", null, d.appIcon || "\u{1F3AC}"), /* @__PURE__ */ import_react8.default.createElement("span", null, d.appName || "Kh\xE1c")), /* @__PURE__ */ import_react8.default.createElement("span", { className: "text-[10px] text-emerald-600 font-bold" }, d.videos ? `${d.videos.length} T\u1EADp Video` : d.episodes || "0 T\u1EADp", " \u2022 ", d.totalSizeMb ? `${d.totalSizeMb} MB` : "")), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[10px] text-gray-400 truncate mt-0.5" }, "Soda_Reels_Videos/", d.name || d.title))), d.videos && d.videos.length > 0 && /* @__PURE__ */ import_react8.default.createElement("div", { className: "max-h-24 overflow-y-auto bg-white rounded-lg border border-gray-200 p-1 space-y-1" }, d.videos.map((v) => /* @__PURE__ */ import_react8.default.createElement("div", { key: v.relPath, className: "flex items-center justify-between text-[11px] p-1 hover:bg-slate-50 rounded" }, /* @__PURE__ */ import_react8.default.createElement("span", { className: "font-medium text-slate-700 truncate max-w-[130px]" }, v.name), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex items-center gap-1 shrink-0" }, /* @__PURE__ */ import_react8.default.createElement(
         "button",
         {
           type: "button",
@@ -26723,7 +26734,32 @@ H\xE0nh \u0111\u1ED9ng n\xE0y s\u1EBD x\xF3a th\u01B0 m\u1EE5c "Soda_Reels_Video
               placeholder: "Nh\u1EADp t\xEAn b\u1ED9 phim...",
               className: "w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 transition"
             }
-          ), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[10px] text-slate-400 mt-1 truncate" }, "Th\u01B0 m\u1EE5c: Soda_Reels_Videos/", editDramaName || "...")), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("label", { className: "text-xs font-bold text-slate-700 block mb-1" }, "Kh\xF4i Ph\u1EE5c / \u0110\u1ED5i \u1EA2nh Poster:"), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, /* @__PURE__ */ import_react8.default.createElement(
+          ), /* @__PURE__ */ import_react8.default.createElement("p", { className: "text-[10px] text-slate-400 mt-1 truncate" }, "Th\u01B0 m\u1EE5c: Soda_Reels_Videos/", editDramaName || "...")), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("label", { className: "text-xs font-bold text-slate-700 block mb-1" }, "\u{1F4F1} \u1EE8ng D\u1EE5ng Ngu\u1ED3n (T\xEAn App T\u1EA3i V\u1EC1):"), /* @__PURE__ */ import_react8.default.createElement(
+            "select",
+            {
+              value: editAppKey,
+              onChange: (e) => setEditAppKey(e.target.value),
+              className: "w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 transition cursor-pointer"
+            },
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "auto" }, "\u{1F310} T\u1EF1 \u0111\u1ED9ng nh\u1EADn di\u1EC7n"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "loveshots" }, "\u{1F496} LoveShots"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "youdrama" }, "\u{1F4FA} YouDrama"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "minutedrama" }, "\u{1F3AD} MinuteDrama"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "sodareels" }, "\u{1F964} Soda Reels"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "dramabox" }, "\u{1F4E6} DramaBox"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "gallery" }, "\u{1F5BC}\uFE0F Th\u01B0 Vi\u1EC7n M\xE1y \u1EA2o (OneRoom)"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "popdrama" }, "\u{1F37F} PopDrama"),
+            /* @__PURE__ */ import_react8.default.createElement("option", { value: "custom" }, "\u2728 T\xEAn App Kh\xE1c (T\xF9y ch\u1EC9nh)...")
+          ), editAppKey === "custom" && /* @__PURE__ */ import_react8.default.createElement(
+            "input",
+            {
+              type: "text",
+              value: editCustomAppName,
+              onChange: (e) => setEditCustomAppName(e.target.value),
+              placeholder: "Nh\u1EADp t\xEAn \u1EE9ng d\u1EE5ng (VD: ShortMax, ReelShort, Fasho...)",
+              className: "mt-1.5 w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+            }
+          )), /* @__PURE__ */ import_react8.default.createElement("div", null, /* @__PURE__ */ import_react8.default.createElement("label", { className: "text-xs font-bold text-slate-700 block mb-1" }, "Kh\xF4i Ph\u1EE5c / \u0110\u1ED5i \u1EA2nh Poster:"), /* @__PURE__ */ import_react8.default.createElement("div", { className: "flex flex-wrap gap-1.5" }, /* @__PURE__ */ import_react8.default.createElement(
             "button",
             {
               type: "button",

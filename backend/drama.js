@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { ADB_PATH, TARGET_DIR, TEMP_DIR, FFMPEG_PATH } = require('./config');
+const { ADB_PATH, TARGET_DIR, TEMP_DIR, FFMPEG_PATH, SUPPORTED_APPS } = require('./config');
 const { adbQuerySqlite, resolveActiveApp, pullRemoteFile } = require('./adb');
 const { getRemoteCacheCompletenessMap } = require('./cache');
 
@@ -814,6 +814,130 @@ function getDramaInfoFromDevice(device, appKey = 'loveshots', requestedDrama = '
   }
 }
 
+/**
+ * Lưu thông tin metadata của bộ phim (Ứng dụng nguồn, tên app, icon...) vào info.json
+ */
+function saveDramaMetadata(folderName, meta = {}) {
+  try {
+    const dramaDir = path.join(TARGET_DIR, folderName);
+    if (!fs.existsSync(dramaDir)) return null;
+    const infoFile = path.join(dramaDir, 'info.json');
+    let existing = {};
+    if (fs.existsSync(infoFile)) {
+      try { existing = JSON.parse(fs.readFileSync(infoFile, 'utf8')); } catch (e) {}
+    }
+    const appKey = meta.app || meta.activeApp || existing.app || 'auto';
+    const appMeta = SUPPORTED_APPS && SUPPORTED_APPS[appKey];
+    const appName = meta.appName || (appMeta ? appMeta.name : (existing.appName || 'Khác'));
+    const appIcon = meta.appIcon || (appMeta ? appMeta.icon : (existing.appIcon || '🎬'));
+
+    const merged = {
+      ...existing,
+      ...meta,
+      app: appKey,
+      appName: appName,
+      appIcon: appIcon,
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(infoFile, JSON.stringify(merged, null, 2), 'utf8');
+    return merged;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Tự động nhận diện bộ phim tải về được lấy từ tên app nào
+ */
+function detectDramaApp(folderName, device = null) {
+  const dramaDir = path.join(TARGET_DIR, folderName);
+  const infoFile = path.join(dramaDir, 'info.json');
+  if (fs.existsSync(infoFile)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(infoFile, 'utf8'));
+      if (data && (data.app || data.appName)) {
+        const appMeta = SUPPORTED_APPS && SUPPORTED_APPS[data.app];
+        return {
+          app: data.app || 'auto',
+          appName: data.appName || (appMeta ? appMeta.name : 'Khác'),
+          appIcon: data.appIcon || (appMeta ? appMeta.icon : '🎬')
+        };
+      }
+    } catch (e) {}
+  }
+
+  // Tự động nhận diện từ các nguồn dữ liệu có sẵn
+  let detectedApp = null;
+  const fLower = folderName.toLowerCase();
+
+  // 1. Kiểm tra trong danh sách DramaBox titles đã lưu
+  try {
+    const dbTitlesPath = path.join(__dirname, 'dramabox_titles.json');
+    if (fs.existsSync(dbTitlesPath)) {
+      const dbTitles = JSON.parse(fs.readFileSync(dbTitlesPath, 'utf8'));
+      const normF = folderName.replace(/[\s\-_—–]/g, '').toLowerCase();
+      for (const t of Object.values(dbTitles)) {
+        const normT = String(t).replace(/[\s\-_—–]/g, '').toLowerCase();
+        if (normF.includes(normT) || normT.includes(normF)) {
+          detectedApp = 'dramabox';
+          break;
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Nhận diện theo tên thư mục hoặc tiền tố
+  if (!detectedApp) {
+    if (fLower.includes('loveshots')) detectedApp = 'loveshots';
+    else if (fLower.includes('youdrama')) detectedApp = 'youdrama';
+    else if (fLower.includes('minutedrama')) detectedApp = 'minutedrama';
+    else if (fLower.includes('sodareels') || fLower.includes('soda_reels')) detectedApp = 'sodareels';
+    else if (fLower.includes('dramabox')) detectedApp = 'dramabox';
+    else if (fLower.includes('popdrama')) detectedApp = 'popdrama';
+    else if (fLower.includes('oneroom') || fLower.includes('gallery')) detectedApp = 'gallery';
+  }
+
+  // 3. Nếu có thiết bị ADB, kiểm tra trong các cơ sở dữ liệu thực tế
+  if (!detectedApp) {
+    try {
+      const dev = device || (require('./adb').checkAdbDevice ? require('./adb').checkAdbDevice() : null);
+      if (dev) {
+        const cleanT = folderName.replace(/['"\\`]/g, '');
+        // OneRoom (Thư viện máy ảo)
+        const or = adbQuerySqlite(dev, '/data/data/com.community.oneroom/databases/oneroom-db', `SELECT name FROM download_table WHERE name LIKE '%${cleanT}%' OR subjectName LIKE '%${cleanT}%' LIMIT 1;`);
+        if (or && or.trim()) detectedApp = 'gallery';
+        // LoveShots
+        if (!detectedApp) {
+          const ls = adbQuerySqlite(dev, '/data/data/com.short.movie.app/databases/mini_drama.db', `SELECT name FROM drama_record WHERE name LIKE '%${cleanT}%' LIMIT 1;`);
+          if (ls && ls.trim()) detectedApp = 'loveshots';
+        }
+        // YouDrama
+        if (!detectedApp) {
+          const yd = adbQuerySqlite(dev, '/data/data/you.drama.shorts/databases/shortvideo.db', `SELECT drama_title FROM episode_info WHERE drama_title LIKE '%${cleanT}%' LIMIT 1;`);
+          if (yd && yd.trim()) detectedApp = 'youdrama';
+        }
+      }
+    } catch (e) {}
+  }
+
+  const appKey = detectedApp || 'auto';
+  const appMeta = SUPPORTED_APPS && SUPPORTED_APPS[appKey];
+  const result = {
+    app: appKey,
+    appName: appMeta ? appMeta.name : (detectedApp ? detectedApp : 'Khác'),
+    appIcon: appMeta ? appMeta.icon : '🎬'
+  };
+
+  // Lưu file info.json nếu nhận diện được
+  if (detectedApp && fs.existsSync(dramaDir)) {
+    try {
+      fs.writeFileSync(infoFile, JSON.stringify({ ...result, title: folderName, updatedAt: new Date().toISOString() }, null, 2), 'utf8');
+    } catch (e) {}
+  }
+
+  return result;
+}
+
 function getLocalDramas() {
   if (!fs.existsSync(TARGET_DIR)) return [];
   const entries = fs.readdirSync(TARGET_DIR, { withFileTypes: true });
@@ -849,6 +973,7 @@ function getLocalDramas() {
 
     const totalBytes = videos.reduce((acc, v) => acc + v.sizeBytes, 0);
     const hasPoster = fs.existsSync(path.join(dirPath, 'poster.png'));
+    const appInfo = detectDramaApp(dir.name);
 
     dramas.push({
       name: dir.name,
@@ -857,6 +982,9 @@ function getLocalDramas() {
       nextEpisode: maxEpisode + 1,
       totalSizeMb: (totalBytes / (1024 * 1024)).toFixed(2),
       hasPoster,
+      app: appInfo.app || 'auto',
+      appName: appInfo.appName || 'Khác',
+      appIcon: appInfo.appIcon || '🎬',
       videos
     });
   });
@@ -917,7 +1045,8 @@ async function exportVideos(device, payload, onProgress) {
     startEp = currentMaxEp + 1;
   }
 
-  const activeApp = resolveActiveApp(device);
+  const activeApp = payload.app || payload.activeApp || resolveActiveApp(device);
+  saveDramaMetadata(folderName, { app: activeApp, title: rawDramaName });
   const compInfo = getRemoteCacheCompletenessMap(device, activeApp);
   const incompleteList = [];
 
@@ -1089,10 +1218,13 @@ function deleteRemoteCache(device, paths) {
   } catch (e) {}
 }
 
-async function downloadDirectVideo(url, rawDramaName, epNum, onProgress) {
+async function downloadDirectVideo(url, rawDramaName, epNum, onProgress, appKey = null) {
   const folderName = resolveExistingDramaFolder(rawDramaName);
   const dramaDir = path.join(TARGET_DIR, folderName);
   if (!fs.existsSync(dramaDir)) fs.mkdirSync(dramaDir, { recursive: true });
+  if (appKey) {
+    saveDramaMetadata(folderName, { app: appKey, title: rawDramaName });
+  }
 
   const fileName = `Tap_${String(epNum).padStart(2, '0')}.mp4`;
   const destPath = path.join(dramaDir, fileName);
@@ -1966,6 +2098,8 @@ module.exports = {
   downloadDramaPoster,
   getDramaInfoFromDevice,
   getLocalDramas,
+  saveDramaMetadata,
+  detectDramaApp,
   exportVideos,
   exportSingleCacheItem,
   deleteRemoteCache,

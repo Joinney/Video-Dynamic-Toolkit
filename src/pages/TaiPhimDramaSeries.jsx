@@ -59,6 +59,8 @@ export default function TaiPhimDramaSeries({
   const [isUpdatingDrama, setIsUpdatingDrama] = useState(false);
   const [isDeletingDrama, setIsDeletingDrama] = useState(false);
   const [isAutoFetchingPoster, setIsAutoFetchingPoster] = useState(false);
+  const [editAppKey, setEditAppKey] = useState('auto');
+  const [editCustomAppName, setEditCustomAppName] = useState('');
 
   const showToast = (text) => {
     setToastMsg(text);
@@ -209,6 +211,8 @@ export default function TaiPhimDramaSeries({
     const dramaName = d.name || d.title || '';
     setEditingDrama(d);
     setEditDramaName(dramaName);
+    setEditAppKey(d.app || 'auto');
+    setEditCustomAppName(d.appName || '');
     setEditPosterUrl('');
     setEditPosterBase64('');
     setEditPosterPreview(`/poster/${encodeURIComponent(dramaName)}?t=${Date.now()}`);
@@ -278,7 +282,9 @@ export default function TaiPhimDramaSeries({
           oldDramaName: editingDrama.name || editingDrama.title,
           newDramaName: editDramaName.trim(),
           posterUrl: editPosterUrl.trim(),
-          posterBase64: editPosterBase64
+          posterBase64: editPosterBase64,
+          app: editAppKey,
+          appName: editAppKey === 'custom' ? editCustomAppName.trim() : undefined
         })
       });
       const data = await res.json();
@@ -423,7 +429,8 @@ export default function TaiPhimDramaSeries({
           dramaName: dramaTitle,
           dramaTitle: dramaTitle,
           selectedPaths,
-          force: true
+          force: true,
+          app: activeApp || directDramaData?.app || 'auto'
         })
       });
       const data = await res.json();
@@ -493,7 +500,8 @@ export default function TaiPhimDramaSeries({
             selectedPaths: [{ path: ep.path, epNumber: ep.epNumber, sizeBytes: ep.sizeBytes, directUrl: ep.directUrl }],
             startEpisode: ep.epNumber,
             force: true,
-            forceSingle: true
+            forceSingle: true,
+            app: activeApp || directDramaData?.app || 'auto'
           })
         });
         const data = await res.json();
@@ -525,7 +533,8 @@ export default function TaiPhimDramaSeries({
             url: directUrl,
             dramaName: targetFolder,
             dramaTitle: targetFolder,
-            epNumber: ep.epNumber
+            epNumber: ep.epNumber,
+            app: activeApp || directDramaData?.app || 'auto'
           })
         });
         const data = await res.json();
@@ -571,7 +580,8 @@ export default function TaiPhimDramaSeries({
             body: JSON.stringify({
               dramaTitle: targetFolder,
               selectedPaths: validEps.map(e => ({ path: e.path, suggestedEp: e.epNumber })),
-              force: true
+              force: true,
+              app: activeApp || directDramaData?.app || 'auto'
             })
           });
           const resJson = await res.json();
@@ -604,7 +614,8 @@ export default function TaiPhimDramaSeries({
             url: (selectedCodec === 'h264' && ep.directUrlH264) ? ep.directUrlH264 : ep.directUrl,
             dramaName: targetFolder,
             dramaTitle: targetFolder,
-            epNumber: ep.epNumber
+            epNumber: ep.epNumber,
+            app: activeApp || directDramaData?.app || 'auto'
           })
         });
         const resJson = await res.json();
@@ -1096,10 +1107,17 @@ export default function TaiPhimDramaSeries({
                           <Edit3 size={12} />
                         </button>
                       </div>
-                      <span className="text-[11px] text-emerald-600 font-bold block mt-0.5">
-                        {d.videos ? `${d.videos.length} Tập Video` : (d.episodes || '0 Tập')} • {d.totalSizeMb ? `${d.totalSizeMb} MB` : ''}
-                      </span>
-                      <p className="text-[10px] text-gray-400 truncate">Soda_Reels_Videos/{d.name || d.title}</p>
+                      {/* Nhận diện Tên App nguồn của bộ phim */}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/90 shadow-2xs">
+                          <span>{d.appIcon || '🎬'}</span>
+                          <span>{d.appName || 'Khác'}</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-600 font-bold">
+                          {d.videos ? `${d.videos.length} Tập Video` : (d.episodes || '0 Tập')} • {d.totalSizeMb ? `${d.totalSizeMb} MB` : ''}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 truncate mt-0.5">Soda_Reels_Videos/{d.name || d.title}</p>
                     </div>
                   </div>
 
@@ -1580,6 +1598,36 @@ export default function TaiPhimDramaSeries({
                     <p className="text-[10px] text-slate-400 mt-1 truncate">
                       Thư mục: Soda_Reels_Videos/{editDramaName || '...'}
                     </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      📱 Ứng Dụng Nguồn (Tên App Tải Về):
+                    </label>
+                    <select
+                      value={editAppKey}
+                      onChange={(e) => setEditAppKey(e.target.value)}
+                      className="w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500 transition cursor-pointer"
+                    >
+                      <option value="auto">🌐 Tự động nhận diện</option>
+                      <option value="loveshots">💖 LoveShots</option>
+                      <option value="youdrama">📺 YouDrama</option>
+                      <option value="minutedrama">🎭 MinuteDrama</option>
+                      <option value="sodareels">🥤 Soda Reels</option>
+                      <option value="dramabox">📦 DramaBox</option>
+                      <option value="gallery">🖼️ Thư Viện Máy Ảo (OneRoom)</option>
+                      <option value="popdrama">🍿 PopDrama</option>
+                      <option value="custom">✨ Tên App Khác (Tùy chỉnh)...</option>
+                    </select>
+                    {editAppKey === 'custom' && (
+                      <input
+                        type="text"
+                        value={editCustomAppName}
+                        onChange={(e) => setEditCustomAppName(e.target.value)}
+                        placeholder="Nhập tên ứng dụng (VD: ShortMax, ReelShort, Fasho...)"
+                        className="mt-1.5 w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                      />
+                    )}
                   </div>
 
                   <div>

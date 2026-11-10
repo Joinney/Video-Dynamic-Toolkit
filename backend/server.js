@@ -25,6 +25,8 @@ const {
   downloadDramaPoster,
   getDramaInfoFromDevice,
   getLocalDramas,
+  saveDramaMetadata,
+  detectDramaApp,
   exportVideos,
   deleteRemoteCache,
   downloadDirectVideo,
@@ -617,9 +619,10 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const dramaName = (payload.dramaName || payload.dramaTitle || payload.folder || '').trim();
+      const appKey = payload.app || payload.activeApp || null;
       const result = await downloadDirectVideo(payload.url, dramaName, payload.epNumber || 1, (drama, ep, prog) => {
         updateDownloadProgress(drama, ep, prog);
-      });
+      }, appKey);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: result.success, ...result }));
     } catch (e) {
@@ -766,6 +769,14 @@ const server = http.createServer(async (req, res) => {
           const resPoster = await downloadDramaPoster(device, currentFolder);
           if (resPoster && resPoster.success) posterUpdated = true;
         }
+      }
+
+      if (payload.app || payload.appName) {
+        saveDramaMetadata(currentFolder, {
+          app: payload.app,
+          appName: payload.appName,
+          appIcon: payload.appIcon
+        });
       }
 
       clearGlobalStatusCache();

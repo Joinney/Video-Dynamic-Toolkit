@@ -58,6 +58,21 @@ const SUPPORTED_APPS = {
     pkg: 'com.sodareels.drama.short',
     cacheGlob: '/data/data/com.sodareels.drama.short/cache/pssdk/pssdk_video_cache/*.mdl',
     isMdl: true
+  },
+  dramabox: {
+    id: 'dramabox',
+    name: 'DramaBox',
+    icon: '📦',
+    pkg: 'com.storymatrix.drama',
+    cacheGlob: '/data/data/com.storymatrix.drama/cache/*.mp4',
+    isMdl: false
+  },
+  popdrama: {
+    id: 'popdrama',
+    name: 'PopDrama',
+    icon: '🍿',
+    pkg: 'com.popdrama.app',
+    isMdl: false
   }
 };
 

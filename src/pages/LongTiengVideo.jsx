@@ -913,18 +913,21 @@ export default function LongTiengVideo({ onBackHome, initialVideo, backendData }
                           <span>Vị trí khoảng cách đáy Y:</span>
                           <span className="text-gray-500 font-semibold">{subBottomPct}%</span>
                         </div>
-                        <div className="grid grid-cols-4 gap-1">
-                          <button type="button" onClick={() => setSubBottomPct(5)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 5 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
-                            ⬇️ Đáy (5%)
+                        <div className="grid grid-cols-5 gap-1">
+                          <button type="button" onClick={() => setSubBottomPct(5)} className={`py-1 px-0.5 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 5 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            ⬇️ Đáy 5%
                           </button>
-                          <button type="button" onClick={() => setSubBottomPct(7)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 7 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
-                            ⭐ Chuẩn (7%)
+                          <button type="button" onClick={() => setSubBottomPct(7)} className={`py-1 px-0.5 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 7 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            ⭐ Chuẩn 7%
                           </button>
-                          <button type="button" onClick={() => setSubBottomPct(14)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 14 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
-                            📱 Reels (14%)
+                          <button type="button" onClick={() => setSubBottomPct(14)} className={`py-1 px-0.5 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 14 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            📱 Reels 14%
                           </button>
-                          <button type="button" onClick={() => setSubBottomPct(25)} className={`py-1 px-1 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 25 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
-                            🔼 Cao (25%)
+                          <button type="button" onClick={() => setSubBottomPct(25)} className={`py-1 px-0.5 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 25 ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'}`}>
+                            🔼 Cao 25%
+                          </button>
+                          <button type="button" onClick={() => setSubBottomPct(32)} className={`py-1 px-0.5 text-[10px] font-bold rounded border transition cursor-pointer ${subBottomPct === 32 ? 'bg-amber-600 text-white border-amber-600' : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300'}`} title="Che khít phụ đề gốc phim ngắn / Drama dọc">
+                            ⚡ Che sub 32%
                           </button>
                         </div>
                       </div>

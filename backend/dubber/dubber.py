@@ -436,6 +436,23 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
         dub_audio_wav = tmp_dir / "dub_voice_track.wav"
         dub_track.export(str(dub_audio_wav), format="wav")
 
+        # Lưu file phụ đề SRT
+        fallback_srt = out_path.with_suffix(".srt")
+        try:
+            with open(fallback_srt, "w", encoding="utf-8") as fsrt:
+                for idx_s, s_item in enumerate(translated_segments):
+                    s_st = s_item["start"]
+                    s_en = s_item.get("end", s_st + 1.5)
+                    st_m, st_s = divmod(s_st, 60)
+                    st_h, st_m = divmod(st_m, 60)
+                    en_m, en_s = divmod(s_en, 60)
+                    en_h, en_m = divmod(en_m, 60)
+                    fsrt.write(f"{idx_s + 1}\n")
+                    fsrt.write(f"{int(st_h):02d}:{int(st_m):02d}:{st_s:06.3f}".replace(".", ",") + " --> " + f"{int(en_h):02d}:{int(en_m):02d}:{en_s:06.3f}".replace(".", ",") + "\n")
+                    fsrt.write(f"{s_item['vi_text']}\n\n")
+        except Exception:
+            pass
+
         # Trộn nhạc nền & xuất video chuẩn H.264
         emit_progress("merging", 95, "Đang hòa âm & hoàn thiện video chuẩn H.264...")
         use_fallback_ffmpeg = True
@@ -444,11 +461,15 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
                 from merger import VideoMerger
             except ImportError:
                 from .merger import VideoMerger
-            merger = VideoMerger()
+            merger = VideoMerger(original_audio_volume=orig_volume)
             merger.merge_video(
                 video_path=input_path,
                 audio_path=dub_audio_wav,
                 output_video_path=out_path,
+                subtitle_path=fallback_srt if (burn_subtitles and fallback_srt.exists()) else None,
+                subtitle_font_size=subtitle_font_size,
+                subtitle_style=subtitle_style,
+                subtitle_margin_v=int(subtitle_bottom_pct),
                 logo_path=logo_path if enable_logo else None,
                 logo_x_pct=logo_x,
                 logo_y_pct=logo_y,
@@ -461,7 +482,8 @@ def run_dubbing(input_video, output_video, voice="vi-VN-HoaiMyNeural", speed="+1
                 total_duration=total_duration_ms / 1000.0
             )
             use_fallback_ffmpeg = False
-        except Exception:
+        except Exception as e_m:
+            print(f"VideoMerger fallback error: {e_m}", file=sys.stderr)
             use_fallback_ffmpeg = True
 
         if use_fallback_ffmpeg:

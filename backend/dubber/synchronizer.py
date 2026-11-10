@@ -180,9 +180,10 @@ class AudioSynchronizer:
             orig_spoken_dur = max(0.5, seg.end - seg.start)
             max_window_s = max(0.5, next_start - seg.start - 0.05)
 
-            # Khớp khẩu hình chuẩn xác: Giọng AI dứt câu kịp thời lúc nhân vật ngậm miệng (orig_spoken_dur),
-            # tuyệt đối không đọc kéo dài lê thê và không vượt quá mốc câu kế tiếp để tránh đè lời thoại.
-            target_window_s = min(max_window_s, orig_spoken_dur)
+            # Khớp khẩu hình tự nhiên: Giọng AI phát âm tròn vành rõ chữ, dứt khoát và không bị nói quá nhanh
+            # Cho phép kéo dài tự nhiên nếu khoảng cách tới câu thoại tiếp theo còn rộng (không đè tiếng)
+            allowed_natural_dur = max(orig_spoken_dur, min(orig_spoken_dur + 0.5, orig_spoken_dur * 1.25))
+            target_window_s = min(max_window_s, allowed_natural_dur)
 
             # Tự động tính toán tốc độ mượt mà bằng atempo nếu câu đọc dài hơn khoảng thời gian mục tiêu
             if clip_len_s > target_window_s:

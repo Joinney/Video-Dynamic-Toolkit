@@ -547,8 +547,8 @@ def create_sub_png(
             draw.text((lx + 1, ly + 1), ln, fill=(0, 0, 0, 180), font=font)
             draw.text((lx, ly), ln, fill=txt_color, font=font)
     elif "black_box" in s_lower or "hộp đen" in s_lower or "black box" in s_lower:
-        # Rounded semi-transparent black background box with crisp white text
-        draw.rounded_rectangle([(0, 0), (total_w - 1, total_h - 1)], radius=max(6, int(f_size * 0.2)), fill=(0, 0, 0, 195))
+        # Rounded solid black background box (100% che kín phụ đề video gốc) with crisp white text
+        draw.rounded_rectangle([(0, 0), (total_w - 1, total_h - 1)], radius=max(6, int(f_size * 0.2)), fill=(0, 0, 0, 255))
         for idx, (ln, lw) in enumerate(zip(lines, line_bboxes)):
             lx = pad_x + (max_line_w - lw) // 2
             ly = pad_y + idx * line_height

@@ -173,18 +173,17 @@ class Transcriber:
         dev, comp = self._resolve_device_and_compute()
         model = get_shared_whisper_model(target_model, device=dev, compute_type=comp)
 
-        # Tạo prompt ngữ cảnh tổng quát hỗ trợ nhận diện rõ thoại phim, không thiên vị nội dung
+        # Tránh prompt thiên vị hay áp đặt làm hallucinate từ ngữ lạ
         if not initial_prompt:
             if whisper_lang in ("zh", "zh-cn", "zh-tw") or (whisper_lang is None and is_asian):
-                initial_prompt = "微短剧精彩影视对白，普通话口语对话。"
+                initial_prompt = "，。！？"
             elif whisper_lang in ("en", "english"):
-                initial_prompt = "Dramatic movie dialogue between characters with emotional speech."
+                initial_prompt = ".,?!"
 
         logger.info(f"Transcribing audio file: {audio_path.name} with model '{target_model}' (prompt: {bool(initial_prompt)})...")
 
-        # beam_size=5, temperature=(0.0, 0.2, 0.4) giúp nhận diện chính xác 100% ngữ cảnh phim
-        # vad_filter=False đảm bảo không bị Silero VAD nuốt mất thoại khi phim có nhạc nền to
-        # KHÔNG dùng hallucination_silence_threshold để tránh bị cắt cụt/bỏ sót thoại sau đoạn nhạc/khoảng lặng
+        # beam_size=5, vad_filter=False đảm bảo không bị Silero VAD nuốt mất thoại khi phim có nhạc nền
+        # repetition_penalty=1.0 và no_repeat_ngram_size=0 để không bỏ sót các từ lặp lại trong đàm thoại
         raw_segments, info = model.transcribe(
             str(audio_path),
             language=whisper_lang,
@@ -194,8 +193,8 @@ class Transcriber:
             temperature=(0.0, 0.2, 0.4),
             condition_on_previous_text=False,  # Tránh bỏ sót lời thoại sau các đoạn nhạc
             vad_filter=False,
-            repetition_penalty=1.2,
-            no_repeat_ngram_size=3,
+            repetition_penalty=1.0,
+            no_repeat_ngram_size=0,
             compression_ratio_threshold=2.4,
             word_timestamps=True,
         )
@@ -279,10 +278,10 @@ class Transcriber:
                 "text": text,
             })
 
-        # KỸ THUẬT SMART SEGMENT MERGING CHUẨN XÁC:
-        # Không gộp bừa bãi lời thoại của các nhân vật khác nhau (hỏi - đáp).
-        # Chỉ hợp nhất các mảnh câu ngắt quãng cực ngắn (dưới 0.25s) và câu trước CHƯA kết thúc bằng dấu chấm/hỏi/than.
-        # Đảm bảo mọi câu thoại, câu hỏi, câu cảm thán của nhân vật đều được lồng tiếng đầy đủ 100%, không bị nuốt câu.
+        # KỸ THUẬT PHÂN TÁCH LỜI THOẠI RÕ RÀNG:
+        # Tuyệt đối không gộp chung câu thoại của các nhân vật khác nhau (hỏi - đáp).
+        # Giữ nguyên từng câu thoại, câu hỏi, câu cảm thán độc lập để phụ đề và giọng đọc khớp 100% từng nhân vật.
+        # Chỉ gộp khi mẩu âm thanh quá ngắn (< 0.5s), cực ngắn và khoảng nghỉ gần như 0s (<= 0.05s).
         merged_list = []
         for item in cleaned_raw:
             if not merged_list:
@@ -293,9 +292,9 @@ class Transcriber:
             combined_dur = item["end"] - last_item["start"]
 
             has_ending_punct = last_item["text"][-1] in "。！？?!.,:;" if last_item["text"] else False
+            is_micro_syllable = (last_item["end"] - last_item["start"]) < 0.5 and len(last_item["text"]) <= 2
 
-            # Chỉ gộp nếu khoảng nghỉ cực ngắn <= 0.25s, chưa hết câu và tổng thời lượng <= 4.0s
-            if 0.0 <= gap <= 0.25 and not has_ending_punct and combined_dur <= 4.0:
+            if 0.0 <= gap <= 0.05 and is_micro_syllable and not has_ending_punct and combined_dur <= 1.2:
                 last_item["end"] = max(last_item["end"], item["end"])
                 sep = "，" if last_item["text"][-1] not in "，, " else " "
                 last_item["text"] = last_item["text"] + sep + item["text"]
